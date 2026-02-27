@@ -1,13 +1,16 @@
 BINARY := issue-tracker
 CMD     := ./cmd/server
 
-.PHONY: build run test lint fmt sqlc migrate-up migrate-down swagger tidy
+.PHONY: build run dev test lint fmt sqlc migrate-up migrate-down swagger tidy
 
 build:
 	go build -o bin/$(BINARY) $(CMD)
 
 run:
 	go run $(CMD)
+
+dev:
+	air
 
 test:
 	go test ./...
