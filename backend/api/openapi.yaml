@@ -1,0 +1,568 @@
+openapi: "3.1.0"
+
+info:
+  title: Issue Tracker API
+  version: "1.0.0"
+  description: REST API for the issue tracker application.
+
+servers:
+  - url: /api/v1
+
+security:
+  - bearerAuth: []
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    IssueStatus:
+      type: string
+      enum: [backlog, todo, in_progress, done, cancelled]
+
+    IssuePriority:
+      type: string
+      enum: [none, urgent, high, medium, low]
+
+    User:
+      type: object
+      required: [id, email, name, createdAt, updatedAt]
+      properties:
+        id:          { type: string, format: uuid }
+        email:       { type: string, format: email }
+        name:        { type: string }
+        createdAt:   { type: string, format: date-time }
+        updatedAt:   { type: string, format: date-time }
+
+    Project:
+      type: object
+      required: [id, name, ownerId, createdAt, updatedAt]
+      properties:
+        id:          { type: string, format: uuid }
+        name:        { type: string }
+        description: { type: ["string", "null"] }
+        ownerId:     { type: string, format: uuid }
+        createdAt:   { type: string, format: date-time }
+        updatedAt:   { type: string, format: date-time }
+
+    Issue:
+      type: object
+      required: [id, projectId, title, status, priority, reporterId, createdAt, updatedAt]
+      properties:
+        id:          { type: string, format: uuid }
+        projectId:   { type: string, format: uuid }
+        title:       { type: string }
+        description: { type: ["string", "null"] }
+        status:      { $ref: "#/components/schemas/IssueStatus" }
+        priority:    { $ref: "#/components/schemas/IssuePriority" }
+        assigneeId:  { type: ["string", "null"], format: uuid }
+        reporterId:  { type: string, format: uuid }
+        createdAt:   { type: string, format: date-time }
+        updatedAt:   { type: string, format: date-time }
+
+    Comment:
+      type: object
+      required: [id, issueId, authorId, body, createdAt, updatedAt]
+      properties:
+        id:        { type: string, format: uuid }
+        issueId:   { type: string, format: uuid }
+        authorId:  { type: string, format: uuid }
+        body:      { type: string }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    # Pagination — oapi-codegen has no generics support; spell out each page type
+    ProjectPage:
+      type: object
+      required: [items]
+      properties:
+        items:      { type: array, items: { $ref: "#/components/schemas/Project" } }
+        nextCursor: { type: ["string", "null"] }
+
+    IssuePage:
+      type: object
+      required: [items]
+      properties:
+        items:      { type: array, items: { $ref: "#/components/schemas/Issue" } }
+        nextCursor: { type: ["string", "null"] }
+
+    CommentPage:
+      type: object
+      required: [items]
+      properties:
+        items:      { type: array, items: { $ref: "#/components/schemas/Comment" } }
+        nextCursor: { type: ["string", "null"] }
+
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code:    { type: string }
+        message: { type: string }
+
+    # ── Request bodies ──────────────────────────────────────────────────────
+    RegisterRequest:
+      type: object
+      required: [email, password, name]
+      properties:
+        email:    { type: string, format: email }
+        password: { type: string, minLength: 8 }
+        name:     { type: string }
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:    { type: string, format: email }
+        password: { type: string }
+
+    AuthResponse:
+      type: object
+      required: [token, user]
+      properties:
+        token: { type: string }
+        user:  { $ref: "#/components/schemas/User" }
+
+    CreateProjectRequest:
+      type: object
+      required: [name]
+      properties:
+        name:        { type: string }
+        description: { type: ["string", "null"] }
+
+    UpdateProjectRequest:
+      type: object
+      properties:
+        name:        { type: string }
+        description: { type: ["string", "null"] }
+
+    CreateIssueRequest:
+      type: object
+      required: [title, status, priority]
+      properties:
+        title:       { type: string }
+        description: { type: ["string", "null"] }
+        status:      { $ref: "#/components/schemas/IssueStatus" }
+        priority:    { $ref: "#/components/schemas/IssuePriority" }
+        assigneeId:  { type: ["string", "null"], format: uuid }
+
+    UpdateIssueRequest:
+      type: object
+      properties:
+        title:       { type: string }
+        description: { type: ["string", "null"] }
+        status:      { $ref: "#/components/schemas/IssueStatus" }
+        priority:    { $ref: "#/components/schemas/IssuePriority" }
+        assigneeId:  { type: ["string", "null"], format: uuid }
+
+    CreateCommentRequest:
+      type: object
+      required: [body]
+      properties:
+        body: { type: string, minLength: 1 }
+
+    UpdateCommentRequest:
+      type: object
+      required: [body]
+      properties:
+        body: { type: string, minLength: 1 }
+
+  parameters:
+    ProjectIdParam:
+      name: projectId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+
+    IssueIdParam:
+      name: issueId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+
+    CommentIdParam:
+      name: commentId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+
+    CursorParam:
+      name: cursor
+      in: query
+      required: false
+      schema: { type: string }
+
+    LimitParam:
+      name: limit
+      in: query
+      required: false
+      schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+
+  responses:
+    BadRequest:
+      description: Invalid request payload or parameters.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Unauthorized:
+      description: Missing or invalid authentication token.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Forbidden:
+      description: Authenticated user lacks permission.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    NotFound:
+      description: Resource not found.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    UnprocessableEntity:
+      description: Semantic validation error.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    InternalServerError:
+      description: Unexpected server error.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+
+paths:
+
+  /auth/register:
+    post:
+      operationId: register
+      summary: Register a new user account.
+      security: []
+      tags: [auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RegisterRequest" }
+      responses:
+        "201":
+          description: Account created.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AuthResponse" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "422": { $ref: "#/components/responses/UnprocessableEntity" }
+        "500": { $ref: "#/components/responses/InternalServerError" }
+
+  /auth/login:
+    post:
+      operationId: login
+      summary: Authenticate and obtain a JWT.
+      security: []
+      tags: [auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LoginRequest" }
+      responses:
+        "200":
+          description: Authentication successful.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AuthResponse" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "500": { $ref: "#/components/responses/InternalServerError" }
+
+  /users/me:
+    get:
+      operationId: getMe
+      summary: Get the currently authenticated user.
+      tags: [users]
+      responses:
+        "200":
+          description: Current user profile.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/User" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "500": { $ref: "#/components/responses/InternalServerError" }
+
+  /projects:
+    get:
+      operationId: listProjects
+      summary: List projects accessible to the authenticated user.
+      tags: [projects]
+      parameters:
+        - { $ref: "#/components/parameters/CursorParam" }
+        - { $ref: "#/components/parameters/LimitParam" }
+      responses:
+        "200":
+          description: Paginated list of projects.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ProjectPage" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "500": { $ref: "#/components/responses/InternalServerError" }
+
+    post:
+      operationId: createProject
+      summary: Create a new project.
+      tags: [projects]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateProjectRequest" }
+      responses:
+        "201":
+          description: Project created.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Project" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "422": { $ref: "#/components/responses/UnprocessableEntity" }
+        "500": { $ref: "#/components/responses/InternalServerError" }
+
+  /projects/{projectId}:
+    parameters:
+      - { $ref: "#/components/parameters/ProjectIdParam" }
+
+    get:
+      operationId: getProject
+      summary: Get a single project by ID.
+      tags: [projects]
+      responses:
+        "200":
+          description: Project details.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Project" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "500": { $ref: "#/components/responses/InternalServerError" }
+
+    patch:
+      operationId: updateProject
+      summary: Partially update a project.
+      tags: [projects]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateProjectRequest" }
+      responses:
+        "200":
+          description: Updated project.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Project" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "500": { $ref: "#/components/responses/InternalServerError" }
+
+    delete:
+      operationId: deleteProject
+      summary: Delete a project and all its issues.
+      tags: [projects]
+      responses:
+        "204": { description: Project deleted. }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "500": { $ref: "#/components/responses/InternalServerError" }
+
+  /projects/{projectId}/issues:
+    parameters:
+      - { $ref: "#/components/parameters/ProjectIdParam" }
+
+    get:
+      operationId: listIssues
+      summary: List issues in a project with optional filters.
+      tags: [issues]
+      parameters:
+        - { $ref: "#/components/parameters/CursorParam" }
+        - { $ref: "#/components/parameters/LimitParam" }
+        - name: status
+          in: query
+          required: false
+          schema: { $ref: "#/components/schemas/IssueStatus" }
+        - name: priority
+          in: query
+          required: false
+          schema: { $ref: "#/components/schemas/IssuePriority" }
+        - name: assigneeId
+          in: query
+          required: false
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Paginated list of issues.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/IssuePage" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "500": { $ref: "#/components/responses/InternalServerError" }
+
+    post:
+      operationId: createIssue
+      summary: Create a new issue in a project.
+      tags: [issues]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateIssueRequest" }
+      responses:
+        "201":
+          description: Issue created.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Issue" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/UnprocessableEntity" }
+        "500": { $ref: "#/components/responses/InternalServerError" }
+
+  /issues/{issueId}:
+    parameters:
+      - { $ref: "#/components/parameters/IssueIdParam" }
+
+    get:
+      operationId: getIssue
+      summary: Get a single issue by ID.
+      tags: [issues]
+      responses:
+        "200":
+          description: Issue details.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Issue" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "500": { $ref: "#/components/responses/InternalServerError" }
+
+    patch:
+      operationId: updateIssue
+      summary: Partially update an issue (including status transitions).
+      tags: [issues]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateIssueRequest" }
+      responses:
+        "200":
+          description: Updated issue.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Issue" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/UnprocessableEntity" }
+        "500": { $ref: "#/components/responses/InternalServerError" }
+
+    delete:
+      operationId: deleteIssue
+      summary: Delete an issue and its comments.
+      tags: [issues]
+      responses:
+        "204": { description: Issue deleted. }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "500": { $ref: "#/components/responses/InternalServerError" }
+
+  /issues/{issueId}/comments:
+    parameters:
+      - { $ref: "#/components/parameters/IssueIdParam" }
+
+    get:
+      operationId: listComments
+      summary: List comments on an issue.
+      tags: [comments]
+      parameters:
+        - { $ref: "#/components/parameters/CursorParam" }
+        - { $ref: "#/components/parameters/LimitParam" }
+      responses:
+        "200":
+          description: Paginated list of comments.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CommentPage" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "500": { $ref: "#/components/responses/InternalServerError" }
+
+    post:
+      operationId: createComment
+      summary: Add a comment to an issue.
+      tags: [comments]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateCommentRequest" }
+      responses:
+        "201":
+          description: Comment created.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Comment" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/UnprocessableEntity" }
+        "500": { $ref: "#/components/responses/InternalServerError" }
+
+  /comments/{commentId}:
+    parameters:
+      - { $ref: "#/components/parameters/CommentIdParam" }
+
+    patch:
+      operationId: updateComment
+      summary: Edit the body of a comment.
+      tags: [comments]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateCommentRequest" }
+      responses:
+        "200":
+          description: Updated comment.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Comment" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "500": { $ref: "#/components/responses/InternalServerError" }
+
+    delete:
+      operationId: deleteComment
+      summary: Delete a comment.
+      tags: [comments]
+      responses:
+        "204": { description: Comment deleted. }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "500": { $ref: "#/components/responses/InternalServerError" }

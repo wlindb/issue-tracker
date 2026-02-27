@@ -1,7 +1,7 @@
 BINARY := issue-tracker
 CMD     := ./cmd/server
 
-.PHONY: build run dev test lint fmt sqlc migrate-up migrate-down swagger tidy
+.PHONY: build run dev test lint fmt sqlc migrate-up migrate-down generate tidy
 
 build:
 	go build -o bin/$(BINARY) $(CMD)
@@ -31,8 +31,9 @@ migrate-up:
 migrate-down:
 	goose -dir db/migrations postgres "$(DATABASE_URL)" down
 
-swagger:
-	swag init -g $(CMD)/main.go -o docs
+generate:
+	mkdir -p internal/api/generated
+	oapi-codegen --config api/oapi-codegen.yaml api/openapi.yaml
 
 tidy:
 	go mod tidy
