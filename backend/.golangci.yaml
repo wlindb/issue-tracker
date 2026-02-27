@@ -1,6 +1,7 @@
+version: "2"
+
 run:
   timeout: 5m
-  go: "1.23"
 
 linters:
   default: none
@@ -14,8 +15,6 @@ linters:
     # style
     - revive
     - gocritic
-    - gofmt
-    - goimports
     - misspell
     # safety
     - gosec
@@ -32,50 +31,58 @@ linters:
     # architecture boundary enforcement
     - depguard
 
-linters-settings:
-  gocyclo:
-    min-complexity: 15
-  funlen:
-    lines: 80
-    statements: 50
-  exhaustive:
-    default-signifies-exhaustive: true
-  goimports:
-    local-prefixes: github.com/wlindb/issue-tracker
-  revive:
-    rules:
-      - name: exported
-      - name: var-naming
-      - name: package-comments
-      - name: error-return
-      - name: unused-parameter
-  wrapcheck:
-    ignoreSigs:
-      - .Errorf(
-      - errors.New(
-      - errors.Unwrap(
-  depguard:
-    rules:
-      domain-isolation:
-        files:
-          - "**/internal/domain/**"
-        deny:
-          - pkg: "github.com/wlindb/issue-tracker/internal/api"
-            desc: "domain layer must not import api"
-          - pkg: "github.com/wlindb/issue-tracker/internal/infrastructure"
-            desc: "domain layer must not import infrastructure"
-          - pkg: "github.com/wlindb/issue-tracker/internal/config"
-            desc: "domain layer must not import config"
-      api-no-infra:
-        files:
-          - "**/internal/api/**"
-        deny:
-          - pkg: "github.com/wlindb/issue-tracker/internal/infrastructure"
-            desc: "api layer must not import infrastructure; depend on domain interfaces only"
+  settings:
+    gocyclo:
+      min-complexity: 15
+    funlen:
+      lines: 80
+      statements: 50
+    exhaustive:
+      default-signifies-exhaustive: true
+    revive:
+      rules:
+        - name: exported
+        - name: var-naming
+        - name: package-comments
+        - name: error-return
+        - name: unused-parameter
+    wrapcheck:
+      ignoreSigs:
+        - .Errorf(
+        - errors.New(
+        - errors.Unwrap(
+    depguard:
+      rules:
+        domain-isolation:
+          files:
+            - "**/internal/domain/**"
+          deny:
+            - pkg: "github.com/wlindb/issue-tracker/internal/api"
+              desc: "domain layer must not import api"
+            - pkg: "github.com/wlindb/issue-tracker/internal/infrastructure"
+              desc: "domain layer must not import infrastructure"
+            - pkg: "github.com/wlindb/issue-tracker/internal/config"
+              desc: "domain layer must not import config"
+        api-no-infra:
+          files:
+            - "**/internal/api/**"
+          deny:
+            - pkg: "github.com/wlindb/issue-tracker/internal/infrastructure"
+              desc: "api layer must not import infrastructure; depend on domain interfaces only"
 
-issues:
-  exclude-rules:
-    - path: _test\.go
-      linters: [wrapcheck, dupl, gosec, funlen]
-    - path: internal/infrastructure/generated/
-      linters: [wrapcheck, errcheck, gocritic, revive]
+  exclusions:
+    rules:
+      - path: _test\.go
+        linters: [wrapcheck, dupl, gosec, funlen]
+      - path: internal/infrastructure/generated/
+        linters: [wrapcheck, errcheck, gocritic, revive]
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/wlindb/issue-tracker
