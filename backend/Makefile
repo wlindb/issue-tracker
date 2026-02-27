@@ -33,7 +33,11 @@ migrate-down:
 
 generate:
 	mkdir -p internal/api/generated
-	oapi-codegen --config api/oapi-codegen.yaml api/openapi.yaml
+	go run github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen \
+		-generate types,strict-server,server,spec \
+		-package generated \
+		-o internal/api/generated/api.gen.go \
+		api/openapi.yaml
 
 tidy:
 	go mod tidy

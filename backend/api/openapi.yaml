@@ -1,4 +1,4 @@
-openapi: "3.1.0"
+openapi: "3.0.3"
 
 info:
   title: Issue Tracker API
@@ -43,7 +43,7 @@ components:
       properties:
         id:          { type: string, format: uuid }
         name:        { type: string }
-        description: { type: ["string", "null"] }
+        description: { type: string, nullable: true }
         ownerId:     { type: string, format: uuid }
         createdAt:   { type: string, format: date-time }
         updatedAt:   { type: string, format: date-time }
@@ -55,10 +55,10 @@ components:
         id:          { type: string, format: uuid }
         projectId:   { type: string, format: uuid }
         title:       { type: string }
-        description: { type: ["string", "null"] }
+        description: { type: string, nullable: true }
         status:      { $ref: "#/components/schemas/IssueStatus" }
         priority:    { $ref: "#/components/schemas/IssuePriority" }
-        assigneeId:  { type: ["string", "null"], format: uuid }
+        assigneeId:  { type: string, format: uuid, nullable: true }
         reporterId:  { type: string, format: uuid }
         createdAt:   { type: string, format: date-time }
         updatedAt:   { type: string, format: date-time }
@@ -80,21 +80,21 @@ components:
       required: [items]
       properties:
         items:      { type: array, items: { $ref: "#/components/schemas/Project" } }
-        nextCursor: { type: ["string", "null"] }
+        nextCursor: { type: string, nullable: true }
 
     IssuePage:
       type: object
       required: [items]
       properties:
         items:      { type: array, items: { $ref: "#/components/schemas/Issue" } }
-        nextCursor: { type: ["string", "null"] }
+        nextCursor: { type: string, nullable: true }
 
     CommentPage:
       type: object
       required: [items]
       properties:
         items:      { type: array, items: { $ref: "#/components/schemas/Comment" } }
-        nextCursor: { type: ["string", "null"] }
+        nextCursor: { type: string, nullable: true }
 
     Error:
       type: object
@@ -131,32 +131,32 @@ components:
       required: [name]
       properties:
         name:        { type: string }
-        description: { type: ["string", "null"] }
+        description: { type: string, nullable: true }
 
     UpdateProjectRequest:
       type: object
       properties:
         name:        { type: string }
-        description: { type: ["string", "null"] }
+        description: { type: string, nullable: true }
 
     CreateIssueRequest:
       type: object
       required: [title, status, priority]
       properties:
         title:       { type: string }
-        description: { type: ["string", "null"] }
+        description: { type: string, nullable: true }
         status:      { $ref: "#/components/schemas/IssueStatus" }
         priority:    { $ref: "#/components/schemas/IssuePriority" }
-        assigneeId:  { type: ["string", "null"], format: uuid }
+        assigneeId:  { type: string, format: uuid, nullable: true }
 
     UpdateIssueRequest:
       type: object
       properties:
         title:       { type: string }
-        description: { type: ["string", "null"] }
+        description: { type: string, nullable: true }
         status:      { $ref: "#/components/schemas/IssueStatus" }
         priority:    { $ref: "#/components/schemas/IssuePriority" }
-        assigneeId:  { type: ["string", "null"], format: uuid }
+        assigneeId:  { type: string, format: uuid, nullable: true }
 
     CreateCommentRequest:
       type: object
