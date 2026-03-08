@@ -20,12 +20,12 @@ var (
 	ErrInvalidCredentials = errors.New("invalid credentials")
 )
 
-type Service struct {
-	repo       UserRepository
+type AuthService struct {
+	repository UserRepository
 	privateKey *rsa.PrivateKey
 }
 
-func New(repo UserRepository, privateKeyPEM string) (*Service, error) {
+func New(repo UserRepository, privateKeyPEM string) (*AuthService, error) {
 	// Support \n-escaped PEM strings stored in env vars
 	pemStr := strings.ReplaceAll(privateKeyPEM, `\n`, "\n")
 
@@ -56,16 +56,16 @@ func New(repo UserRepository, privateKeyPEM string) (*Service, error) {
 		return nil, fmt.Errorf("unsupported PEM block type: %s", block.Type)
 	}
 
-	return &Service{repo: repo, privateKey: rsaKey}, nil
+	return &AuthService{repository: repo, privateKey: rsaKey}, nil
 }
 
-func (s *Service) Register(ctx context.Context, email, name, password string) (*User, string, error) {
+func (s *AuthService) Register(ctx context.Context, email, name, password string) (*User, string, error) {
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		return nil, "", fmt.Errorf("hashing password: %w", err)
 	}
 
-	user, err := s.repo.Create(ctx, email, name, string(hash))
+	user, err := s.repository.Create(ctx, email, name, string(hash))
 	if err != nil {
 		if isUniqueViolation(err) {
 			return nil, "", ErrEmailTaken
@@ -81,8 +81,8 @@ func (s *Service) Register(ctx context.Context, email, name, password string) (*
 	return user, token, nil
 }
 
-func (s *Service) Login(ctx context.Context, email, password string) (*User, string, error) {
-	user, err := s.repo.GetByEmail(ctx, email)
+func (s *AuthService) Login(ctx context.Context, email, password string) (*User, string, error) {
+	user, err := s.repository.GetByEmail(ctx, email)
 	if err != nil {
 		return nil, "", ErrInvalidCredentials
 	}
@@ -99,7 +99,7 @@ func (s *Service) Login(ctx context.Context, email, password string) (*User, str
 	return user, token, nil
 }
 
-func (s *Service) PublicKey() *rsa.PublicKey {
+func (s *AuthService) PublicKey() *rsa.PublicKey {
 	return &s.privateKey.PublicKey
 }
 
@@ -113,7 +113,7 @@ func isUniqueViolation(err error) bool {
 	return errors.As(err, &pgErr) && pgErr.Code == "23505"
 }
 
-func (s *Service) issueToken(user *User) (string, error) {
+func (s *AuthService) issueToken(user *User) (string, error) {
 	now := time.Now()
 	c := claims{
 		Email: user.Email,

@@ -10,15 +10,15 @@ import (
 )
 
 type AuthHandler struct {
-	svc *domain.Service
+	service *domain.AuthService
 }
 
-func NewAuthHandler(svc *domain.Service) AuthHandler {
-	return AuthHandler{svc: svc}
+func NewAuthHandler(service *domain.AuthService) AuthHandler {
+	return AuthHandler{service: service}
 }
 
 func (h AuthHandler) Login(ctx context.Context, request generated.LoginRequestObject) (generated.LoginResponseObject, error) {
-	user, token, err := h.svc.Login(ctx, string(request.Body.Email), request.Body.Password)
+	user, token, err := h.service.Login(ctx, string(request.Body.Email), request.Body.Password)
 	if err != nil {
 		if errors.Is(err, domain.ErrInvalidCredentials) {
 			return generated.Login401JSONResponse{
@@ -49,7 +49,7 @@ func (h AuthHandler) Login(ctx context.Context, request generated.LoginRequestOb
 }
 
 func (h AuthHandler) Register(ctx context.Context, request generated.RegisterRequestObject) (generated.RegisterResponseObject, error) {
-	user, token, err := h.svc.Register(ctx, string(request.Body.Email), request.Body.Name, request.Body.Password)
+	user, token, err := h.service.Register(ctx, string(request.Body.Email), request.Body.Name, request.Body.Password)
 	if err != nil {
 		if errors.Is(err, domain.ErrEmailTaken) {
 			return generated.Register422JSONResponse{
