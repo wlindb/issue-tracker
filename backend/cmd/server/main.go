@@ -51,7 +51,7 @@ func run() error {
 	}()
 
 	if err := e.Start(cfg.ServerAddr); !errors.Is(err, http.ErrServerClosed) {
-		return err
+		return fmt.Errorf("server: %w", err)
 	}
 	return nil
 }
