@@ -9,7 +9,7 @@ build:
 run:
 	go run $(CMD)
 
-dev:
+dev: docker-up
 	set -a && . ./.env && air
 
 test:

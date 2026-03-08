@@ -3,58 +3,55 @@ package main
 
 import (
 	"context"
-	"embed"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
-	"github.com/labstack/echo/v4"
-	"github.com/labstack/echo/v4/middleware"
-
-	"github.com/wlindb/issue-tracker/internal/api"
-	"github.com/wlindb/issue-tracker/internal/api/generated"
 	"github.com/wlindb/issue-tracker/internal/config"
 	"github.com/wlindb/issue-tracker/internal/db"
 )
 
-//go:embed static
-var staticFiles embed.FS
-
 func main() {
+	if err := run(); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func run() error {
 	ctx := context.Background()
 
 	cfg, err := config.Load()
 	if err != nil {
-		log.Fatalf("config: %v", err)
+		return fmt.Errorf("config: %w", err)
 	}
 
 	pool, err := db.New(ctx, cfg.DatabaseURL)
 	if err != nil {
-		log.Fatalf("database connection failed: %v", err)
+		return fmt.Errorf("database: %w", err)
 	}
 	defer pool.Close()
 	log.Println("database connected")
 
-	e := echo.New()
-	e.Use(middleware.RequestLogger())
-	e.Use(middleware.Recover())
+	e := newServer()
 
-	// Serve the embedded OpenAPI spec as JSON.
-	e.GET("/openapi.json", func(c echo.Context) error {
-		swagger, err := generated.GetSwagger()
-		if err != nil {
-			return fmt.Errorf("loading openapi spec: %w", err)
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	go func() {
+		<-quit
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		if err := e.Shutdown(shutdownCtx); err != nil {
+			e.Logger.Fatal(err)
 		}
-		return c.JSON(http.StatusOK, swagger)
-	})
+	}()
 
-	// Serve Swagger UI at /docs.
-	e.FileFS("/docs", "docs.html", echo.MustSubFS(staticFiles, "static"))
-
-	// Register all API handlers under /api/v1.
-	h := &api.Handler{}
-	strict := generated.NewStrictHandler(h, nil)
-	generated.RegisterHandlersWithBaseURL(e, strict, "/api/v1")
-
-	log.Fatal(e.Start(cfg.ServerAddr))
+	if err := e.Start(cfg.ServerAddr); !errors.Is(err, http.ErrServerClosed) {
+		return err
+	}
+	return nil
 }
