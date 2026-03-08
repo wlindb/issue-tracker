@@ -1,7 +1,7 @@
 BINARY := issue-tracker
 CMD     := ./cmd/server
 
-.PHONY: build run dev test lint fmt sqlc migrate-up migrate-down generate tidy
+.PHONY: build run dev test lint fmt sqlc migrate-up migrate-down generate tidy docker-up docker-down
 
 build:
 	go build -o bin/$(BINARY) $(CMD)
@@ -41,3 +41,9 @@ generate:
 
 tidy:
 	go mod tidy
+
+docker-up:
+	docker compose -f ../infrastructure/docker-compose.yml up -d
+
+docker-down:
+	docker compose -f ../infrastructure/docker-compose.yml down
