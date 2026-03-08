@@ -2,12 +2,13 @@ package api
 
 import (
 	"github.com/wlindb/issue-tracker/internal/api/generated"
-	"github.com/wlindb/issue-tracker/internal/auth"
 )
 
-// Handler implements generated.StrictServerInterface.
+// Handler composes per-domain-area handlers and implements StrictServerInterface.
+// Stub methods for unimplemented areas remain directly on Handler.
 type Handler struct {
-	Auth *auth.Service
+	AuthHandler
+	// future: IssueHandler, ProjectHandler, …
 }
 
 var _ generated.StrictServerInterface = (*Handler)(nil)

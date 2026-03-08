@@ -25,11 +25,11 @@ fmt:
 sqlc:
 	sqlc generate
 
-migrate-up:
-	goose -dir db/migrations postgres "$(DATABASE_URL)" up
+migrate-up: docker-up
+	set -a && . ./.env && goose -dir db/migrations postgres "$$DATABASE_URL" up
 
 migrate-down:
-	goose -dir db/migrations postgres "$(DATABASE_URL)" down
+	set -a && . ./.env && goose -dir db/migrations postgres "$$DATABASE_URL" down
 
 generate:
 	mkdir -p internal/api/generated

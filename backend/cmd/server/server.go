@@ -11,8 +11,8 @@ import (
 
 	"github.com/wlindb/issue-tracker/internal/api"
 	"github.com/wlindb/issue-tracker/internal/api/generated"
-	"github.com/wlindb/issue-tracker/internal/auth"
 	"github.com/wlindb/issue-tracker/internal/config"
+	"github.com/wlindb/issue-tracker/internal/domain"
 	"github.com/wlindb/issue-tracker/internal/infrastructure/postgres"
 )
 
@@ -22,7 +22,7 @@ var staticFiles embed.FS
 func newServer(cfg *config.Config, pool *pgxpool.Pool) (*echo.Echo, error) {
 	userRepo := postgres.NewUserRepo(pool)
 
-	authSvc, err := auth.New(userRepo, cfg.JWTPrivateKey)
+	authSvc, err := domain.New(userRepo, cfg.JWTPrivateKey)
 	if err != nil {
 		return nil, fmt.Errorf("auth service: %w", err)
 	}
@@ -41,7 +41,9 @@ func newServer(cfg *config.Config, pool *pgxpool.Pool) (*echo.Echo, error) {
 
 	e.FileFS("/docs", "docs.html", echo.MustSubFS(staticFiles, "static"))
 
-	h := &api.Handler{Auth: authSvc}
+	h := &api.Handler{
+		AuthHandler: api.NewAuthHandler(authSvc),
+	}
 	strict := generated.NewStrictHandler(h, nil)
 	generated.RegisterHandlersWithBaseURL(e, strict, "/api/v1")
 

@@ -6,13 +6,21 @@ import (
 
 	openapi_types "github.com/oapi-codegen/runtime/types"
 	"github.com/wlindb/issue-tracker/internal/api/generated"
-	"github.com/wlindb/issue-tracker/internal/auth"
+	"github.com/wlindb/issue-tracker/internal/domain"
 )
 
-func (h *Handler) Login(ctx context.Context, request generated.LoginRequestObject) (generated.LoginResponseObject, error) {
-	user, token, err := h.Auth.Login(ctx, string(request.Body.Email), request.Body.Password)
+type AuthHandler struct {
+	svc *domain.Service
+}
+
+func NewAuthHandler(svc *domain.Service) AuthHandler {
+	return AuthHandler{svc: svc}
+}
+
+func (h AuthHandler) Login(ctx context.Context, request generated.LoginRequestObject) (generated.LoginResponseObject, error) {
+	user, token, err := h.svc.Login(ctx, string(request.Body.Email), request.Body.Password)
 	if err != nil {
-		if errors.Is(err, auth.ErrInvalidCredentials) {
+		if errors.Is(err, domain.ErrInvalidCredentials) {
 			return generated.Login401JSONResponse{
 				UnauthorizedJSONResponse: generated.UnauthorizedJSONResponse{
 					Code:    "invalid_credentials",
@@ -40,10 +48,10 @@ func (h *Handler) Login(ctx context.Context, request generated.LoginRequestObjec
 	}, nil
 }
 
-func (h *Handler) Register(ctx context.Context, request generated.RegisterRequestObject) (generated.RegisterResponseObject, error) {
-	user, token, err := h.Auth.Register(ctx, string(request.Body.Email), request.Body.Name, request.Body.Password)
+func (h AuthHandler) Register(ctx context.Context, request generated.RegisterRequestObject) (generated.RegisterResponseObject, error) {
+	user, token, err := h.svc.Register(ctx, string(request.Body.Email), request.Body.Name, request.Body.Password)
 	if err != nil {
-		if errors.Is(err, auth.ErrEmailTaken) {
+		if errors.Is(err, domain.ErrEmailTaken) {
 			return generated.Register422JSONResponse{
 				UnprocessableEntityJSONResponse: generated.UnprocessableEntityJSONResponse{
 					Code:    "email_taken",

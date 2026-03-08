@@ -1,4 +1,4 @@
-package auth
+package domain
 
 import (
 	"context"
@@ -12,7 +12,6 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/jackc/pgx/v5/pgconn"
-	"github.com/wlindb/issue-tracker/internal/domain"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -22,11 +21,11 @@ var (
 )
 
 type Service struct {
-	repo       domain.UserRepository
+	repo       UserRepository
 	privateKey *rsa.PrivateKey
 }
 
-func New(repo domain.UserRepository, privateKeyPEM string) (*Service, error) {
+func New(repo UserRepository, privateKeyPEM string) (*Service, error) {
 	// Support \n-escaped PEM strings stored in env vars
 	pemStr := strings.ReplaceAll(privateKeyPEM, `\n`, "\n")
 
@@ -60,7 +59,7 @@ func New(repo domain.UserRepository, privateKeyPEM string) (*Service, error) {
 	return &Service{repo: repo, privateKey: rsaKey}, nil
 }
 
-func (s *Service) Register(ctx context.Context, email, name, password string) (*domain.User, string, error) {
+func (s *Service) Register(ctx context.Context, email, name, password string) (*User, string, error) {
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		return nil, "", fmt.Errorf("hashing password: %w", err)
@@ -82,7 +81,7 @@ func (s *Service) Register(ctx context.Context, email, name, password string) (*
 	return user, token, nil
 }
 
-func (s *Service) Login(ctx context.Context, email, password string) (*domain.User, string, error) {
+func (s *Service) Login(ctx context.Context, email, password string) (*User, string, error) {
 	user, err := s.repo.GetByEmail(ctx, email)
 	if err != nil {
 		return nil, "", ErrInvalidCredentials
@@ -114,7 +113,7 @@ func isUniqueViolation(err error) bool {
 	return errors.As(err, &pgErr) && pgErr.Code == "23505"
 }
 
-func (s *Service) issueToken(user *domain.User) (string, error) {
+func (s *Service) issueToken(user *User) (string, error) {
 	now := time.Now()
 	c := claims{
 		Email: user.Email,
