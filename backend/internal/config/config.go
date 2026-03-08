@@ -6,8 +6,9 @@ import (
 )
 
 type Config struct {
-	DatabaseURL string
-	ServerAddr  string
+	DatabaseURL   string
+	ServerAddr    string
+	JWTPrivateKey string
 }
 
 func Load() (*Config, error) {
@@ -21,8 +22,14 @@ func Load() (*Config, error) {
 		serverAddr = ":8080"
 	}
 
+	jwtPrivateKey := os.Getenv("JWT_PRIVATE_KEY")
+	if jwtPrivateKey == "" {
+		return nil, fmt.Errorf("JWT_PRIVATE_KEY is required")
+	}
+
 	return &Config{
-		DatabaseURL: databaseURL,
-		ServerAddr:  serverAddr,
+		DatabaseURL:   databaseURL,
+		ServerAddr:    serverAddr,
+		JWTPrivateKey: jwtPrivateKey,
 	}, nil
 }

@@ -37,7 +37,10 @@ func run() error {
 	defer pool.Close()
 	log.Println("database connected")
 
-	e := newServer()
+	e, err := newServer(cfg, pool)
+	if err != nil {
+		return fmt.Errorf("server: %w", err)
+	}
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)

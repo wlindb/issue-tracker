@@ -1,10 +1,14 @@
 package api
 
-import "github.com/wlindb/issue-tracker/internal/api/generated"
+import (
+	"github.com/wlindb/issue-tracker/internal/api/generated"
+	"github.com/wlindb/issue-tracker/internal/auth"
+)
 
 // Handler implements generated.StrictServerInterface.
-// All methods return 501 Not Implemented until real logic is wired in.
-type Handler struct{}
+type Handler struct {
+	Auth *auth.Service
+}
 
 var _ generated.StrictServerInterface = (*Handler)(nil)
 

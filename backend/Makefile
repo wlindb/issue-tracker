@@ -1,7 +1,7 @@
 BINARY := issue-tracker
 CMD     := ./cmd/server
 
-.PHONY: build run dev test lint fmt sqlc migrate-up migrate-down generate tidy docker-up docker-down
+.PHONY: build run dev test lint fmt sqlc migrate-up migrate-down generate tidy docker-up docker-down gen-jwt-key
 
 build:
 	go build -o bin/$(BINARY) $(CMD)
@@ -47,3 +47,7 @@ docker-up:
 
 docker-down:
 	docker compose -f ../infrastructure/docker-compose.yml down
+
+gen-jwt-key:
+	openssl genrsa 2048 | awk 'NF {sub(/\r/, ""); printf "%s\\n", $$0}' > jwt_private_key.txt
+	@echo "Paste the contents of jwt_private_key.txt into .env as JWT_PRIVATE_KEY=\"...\""
