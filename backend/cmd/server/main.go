@@ -7,13 +7,13 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"os"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 
 	"github.com/wlindb/issue-tracker/internal/api"
 	"github.com/wlindb/issue-tracker/internal/api/generated"
+	"github.com/wlindb/issue-tracker/internal/config"
 	"github.com/wlindb/issue-tracker/internal/db"
 )
 
@@ -23,8 +23,12 @@ var staticFiles embed.FS
 func main() {
 	ctx := context.Background()
 
-	databaseURL := os.Getenv("DATABASE_URL")
-	pool, err := db.New(ctx, databaseURL)
+	cfg, err := config.Load()
+	if err != nil {
+		log.Fatalf("config: %v", err)
+	}
+
+	pool, err := db.New(ctx, cfg.DatabaseURL)
 	if err != nil {
 		log.Fatalf("database connection failed: %v", err)
 	}
@@ -52,5 +56,5 @@ func main() {
 	strict := generated.NewStrictHandler(h, nil)
 	generated.RegisterHandlersWithBaseURL(e, strict, "/api/v1")
 
-	log.Fatal(e.Start(":8080"))
+	log.Fatal(e.Start(cfg.ServerAddr))
 }
