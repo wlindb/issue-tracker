@@ -10,7 +10,7 @@ run:
 	go run $(CMD)
 
 dev:
-	air
+	set -a && . ./.env && air
 
 test:
 	go test ./...
