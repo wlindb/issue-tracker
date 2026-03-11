@@ -15,8 +15,8 @@ import (
 	"github.com/wlindb/issue-tracker/internal/api"
 	"github.com/wlindb/issue-tracker/internal/config"
 	"github.com/wlindb/issue-tracker/internal/db"
-	"github.com/wlindb/issue-tracker/internal/domain"
-	"github.com/wlindb/issue-tracker/internal/infrastructure"
+	authdomain "github.com/wlindb/issue-tracker/internal/domain/auth"
+	authinfra "github.com/wlindb/issue-tracker/internal/infrastructure/auth"
 )
 
 func main() {
@@ -40,14 +40,14 @@ func run() error {
 	defer pool.Close()
 	log.Println("database connected")
 
-	if err := db.Migrate(ctx, pool); err != nil {
+	if err = authinfra.Migrate(ctx, pool); err != nil {
 		return fmt.Errorf("migrate: %w", err)
 	}
 	log.Println("migrations applied")
 
-	userRepo := infrastructure.NewUserRepository(pool)
+	userRepository := authinfra.NewUserRepository(pool)
 
-	authService, err := domain.NewAutService(userRepo, cfg.JWTPrivateKey)
+	authService, err := authdomain.NewAutService(userRepository, cfg.JWTPrivateKey)
 	if err != nil {
 		return fmt.Errorf("auth service: %w", err)
 	}

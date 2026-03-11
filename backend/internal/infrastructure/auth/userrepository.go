@@ -1,24 +1,24 @@
-package infrastructure
+package auth
 
 import (
 	"context"
 	"fmt"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/wlindb/issue-tracker/internal/domain"
-	"github.com/wlindb/issue-tracker/internal/infrastructure/generated"
+	authdomain "github.com/wlindb/issue-tracker/internal/domain/auth"
+	authdb "github.com/wlindb/issue-tracker/internal/infrastructure/auth/generated"
 )
 
 type UserRepository struct {
-	q *generated.Queries
+	q *authdb.Queries
 }
 
 func NewUserRepository(pool *pgxpool.Pool) *UserRepository {
-	return &UserRepository{q: generated.New(pool)}
+	return &UserRepository{q: authdb.New(pool)}
 }
 
-func (r *UserRepository) Create(ctx context.Context, email, name, passwordHash string) (*domain.User, error) {
-	row, err := r.q.CreateUser(ctx, generated.CreateUserParams{
+func (r *UserRepository) Create(ctx context.Context, email, name, passwordHash string) (*authdomain.User, error) {
+	row, err := r.q.CreateUser(ctx, authdb.CreateUserParams{
 		Email:        email,
 		Name:         name,
 		PasswordHash: passwordHash,
@@ -29,7 +29,7 @@ func (r *UserRepository) Create(ctx context.Context, email, name, passwordHash s
 	return toDomainUser(row), nil
 }
 
-func (r *UserRepository) GetByEmail(ctx context.Context, email string) (*domain.User, error) {
+func (r *UserRepository) GetByEmail(ctx context.Context, email string) (*authdomain.User, error) {
 	row, err := r.q.GetUserByEmail(ctx, email)
 	if err != nil {
 		return nil, fmt.Errorf("get user by email: %w", err)
@@ -37,8 +37,8 @@ func (r *UserRepository) GetByEmail(ctx context.Context, email string) (*domain.
 	return toDomainUser(row), nil
 }
 
-func toDomainUser(u generated.User) *domain.User {
-	return &domain.User{
+func toDomainUser(u authdb.User) *authdomain.User {
+	return &authdomain.User{
 		ID:           u.ID,
 		Email:        u.Email,
 		Name:         u.Name,

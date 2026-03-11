@@ -23,13 +23,13 @@ fmt:
 	goimports -w .
 
 sqlc:
-	sqlc generate
+	cd internal/infrastructure/auth && sqlc generate
 
 migrate-up: docker-up
-	set -a && . ./.env && goose -dir internal/db/migrations postgres "$$DATABASE_URL" up
+	set -a && . ./.env && goose -dir internal/infrastructure/auth/migrations postgres "$$DATABASE_URL" up
 
 migrate-down:
-	set -a && . ./.env && goose -dir internal/db/migrations postgres "$$DATABASE_URL" down
+	set -a && . ./.env && goose -dir internal/infrastructure/auth/migrations postgres "$$DATABASE_URL" down
 
 generate:
 	mkdir -p internal/api/generated

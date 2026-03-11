@@ -1,12 +1,12 @@
 version: "2"
 sql:
   - engine: "postgresql"
-    queries: "db/queries/"
-    schema: "db/migrations/"
+    queries: "queries/"
+    schema: "migrations/"
     gen:
       go:
-        package: "generated"
-        out: "internal/infrastructure/generated"
+        package: "authdb"
+        out: "generated"
         emit_json_tags: true
         emit_prepared_queries: false
         emit_interface: true

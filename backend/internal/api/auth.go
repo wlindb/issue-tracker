@@ -7,21 +7,21 @@ import (
 
 	openapi_types "github.com/oapi-codegen/runtime/types"
 	"github.com/wlindb/issue-tracker/internal/api/generated"
-	"github.com/wlindb/issue-tracker/internal/domain"
+	authdomain "github.com/wlindb/issue-tracker/internal/domain/auth"
 )
 
 type AuthHandler struct {
-	service *domain.AuthService
+	service *authdomain.AuthService
 }
 
-func NewAuthHandler(service *domain.AuthService) AuthHandler {
+func NewAuthHandler(service *authdomain.AuthService) AuthHandler {
 	return AuthHandler{service: service}
 }
 
 func (h AuthHandler) Login(ctx context.Context, request generated.LoginRequestObject) (generated.LoginResponseObject, error) {
 	user, token, err := h.service.Login(ctx, string(request.Body.Email), request.Body.Password)
 	if err != nil {
-		if errors.Is(err, domain.ErrInvalidCredentials) {
+		if errors.Is(err, authdomain.ErrInvalidCredentials) {
 			return generated.Login401JSONResponse{
 				UnauthorizedJSONResponse: generated.UnauthorizedJSONResponse{
 					Code:    "invalid_credentials",
@@ -47,7 +47,7 @@ func (h AuthHandler) Login(ctx context.Context, request generated.LoginRequestOb
 func (h AuthHandler) Register(ctx context.Context, request generated.RegisterRequestObject) (generated.RegisterResponseObject, error) {
 	user, token, err := h.service.Register(ctx, string(request.Body.Email), request.Body.Name, request.Body.Password)
 	if err != nil {
-		if errors.Is(err, domain.ErrEmailTaken) {
+		if errors.Is(err, authdomain.ErrEmailTaken) {
 			return generated.Register422JSONResponse{
 				UnprocessableEntityJSONResponse: generated.UnprocessableEntityJSONResponse{
 					Code:    "email_taken",
