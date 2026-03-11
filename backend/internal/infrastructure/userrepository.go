@@ -6,43 +6,44 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/wlindb/issue-tracker/internal/domain"
+	"github.com/wlindb/issue-tracker/internal/infrastructure/generated"
 )
 
 type UserRepository struct {
-	pool *pgxpool.Pool
+	q *generated.Queries
 }
 
 func NewUserRepository(pool *pgxpool.Pool) *UserRepository {
-	return &UserRepository{pool: pool}
+	return &UserRepository{q: generated.New(pool)}
 }
-
-const createUserSQL = `
-INSERT INTO users (email, name, password_hash)
-VALUES ($1, $2, $3)
-RETURNING id, email, name, password_hash, created_at, updated_at`
 
 func (r *UserRepository) Create(ctx context.Context, email, name, passwordHash string) (*domain.User, error) {
-	row := r.pool.QueryRow(ctx, createUserSQL, email, name, passwordHash)
-	return scanUser(row)
+	row, err := r.q.CreateUser(ctx, generated.CreateUserParams{
+		Email:        email,
+		Name:         name,
+		PasswordHash: passwordHash,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("create user: %w", err)
+	}
+	return toDomainUser(row), nil
 }
-
-const getUserByEmailSQL = `
-SELECT id, email, name, password_hash, created_at, updated_at
-FROM users WHERE email = $1`
 
 func (r *UserRepository) GetByEmail(ctx context.Context, email string) (*domain.User, error) {
-	row := r.pool.QueryRow(ctx, getUserByEmailSQL, email)
-	return scanUser(row)
-}
-
-type scanner interface {
-	Scan(dest ...any) error
-}
-
-func scanUser(row scanner) (*domain.User, error) {
-	var u domain.User
-	if err := row.Scan(&u.ID, &u.Email, &u.Name, &u.PasswordHash, &u.CreatedAt, &u.UpdatedAt); err != nil {
-		return nil, fmt.Errorf("scanning user: %w", err)
+	row, err := r.q.GetUserByEmail(ctx, email)
+	if err != nil {
+		return nil, fmt.Errorf("get user by email: %w", err)
 	}
-	return &u, nil
+	return toDomainUser(row), nil
+}
+
+func toDomainUser(u generated.User) *domain.User {
+	return &domain.User{
+		ID:           u.ID,
+		Email:        u.Email,
+		Name:         u.Name,
+		PasswordHash: u.PasswordHash,
+		CreatedAt:    u.CreatedAt,
+		UpdatedAt:    u.UpdatedAt,
+	}
 }
