@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	openapi_types "github.com/oapi-codegen/runtime/types"
 	"github.com/wlindb/issue-tracker/internal/api/generated"
@@ -28,12 +29,7 @@ func (h AuthHandler) Login(ctx context.Context, request generated.LoginRequestOb
 				},
 			}, nil
 		}
-		return generated.Login500JSONResponse{
-			InternalServerErrorJSONResponse: generated.InternalServerErrorJSONResponse{
-				Code:    "internal_error",
-				Message: "an unexpected error occurred",
-			},
-		}, nil
+		return nil, fmt.Errorf("login: %w", err)
 	}
 
 	return generated.Login200JSONResponse{
@@ -59,12 +55,7 @@ func (h AuthHandler) Register(ctx context.Context, request generated.RegisterReq
 				},
 			}, nil
 		}
-		return generated.Register500JSONResponse{
-			InternalServerErrorJSONResponse: generated.InternalServerErrorJSONResponse{
-				Code:    "internal_error",
-				Message: "an unexpected error occurred",
-			},
-		}, nil
+		return nil, fmt.Errorf("register: %w", err)
 	}
 
 	return generated.Register201JSONResponse{

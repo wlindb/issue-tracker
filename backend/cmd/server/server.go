@@ -3,7 +3,9 @@ package main
 import (
 	"embed"
 	"fmt"
+	"log/slog"
 	"net/http"
+	"os"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
@@ -16,8 +18,11 @@ import (
 var staticFiles embed.FS
 
 func newServer(h *api.Handler) (*echo.Echo, error) {
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+
 	e := echo.New()
-	e.Use(middleware.RequestLogger())
+	e.HTTPErrorHandler = api.HTTPErrorHandler
+	e.Use(api.RequestLogger(logger))
 	e.Use(middleware.Recover())
 
 	e.GET("/openapi.json", func(c echo.Context) error {
