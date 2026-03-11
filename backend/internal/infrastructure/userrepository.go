@@ -1,4 +1,4 @@
-package postgres
+package infrastructure
 
 import (
 	"context"
@@ -8,12 +8,12 @@ import (
 	"github.com/wlindb/issue-tracker/internal/domain"
 )
 
-type UserRepo struct {
+type UserRepository struct {
 	pool *pgxpool.Pool
 }
 
-func NewUserRepo(pool *pgxpool.Pool) *UserRepo {
-	return &UserRepo{pool: pool}
+func NewUserRepository(pool *pgxpool.Pool) *UserRepository {
+	return &UserRepository{pool: pool}
 }
 
 const createUserSQL = `
@@ -21,7 +21,7 @@ INSERT INTO users (email, name, password_hash)
 VALUES ($1, $2, $3)
 RETURNING id, email, name, password_hash, created_at, updated_at`
 
-func (r *UserRepo) Create(ctx context.Context, email, name, passwordHash string) (*domain.User, error) {
+func (r *UserRepository) Create(ctx context.Context, email, name, passwordHash string) (*domain.User, error) {
 	row := r.pool.QueryRow(ctx, createUserSQL, email, name, passwordHash)
 	return scanUser(row)
 }
@@ -30,7 +30,7 @@ const getUserByEmailSQL = `
 SELECT id, email, name, password_hash, created_at, updated_at
 FROM users WHERE email = $1`
 
-func (r *UserRepo) GetByEmail(ctx context.Context, email string) (*domain.User, error) {
+func (r *UserRepository) GetByEmail(ctx context.Context, email string) (*domain.User, error) {
 	row := r.pool.QueryRow(ctx, getUserByEmailSQL, email)
 	return scanUser(row)
 }

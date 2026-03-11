@@ -5,28 +5,17 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 
 	"github.com/wlindb/issue-tracker/internal/api"
 	"github.com/wlindb/issue-tracker/internal/api/generated"
-	"github.com/wlindb/issue-tracker/internal/config"
-	"github.com/wlindb/issue-tracker/internal/domain"
-	"github.com/wlindb/issue-tracker/internal/infrastructure/postgres"
 )
 
 //go:embed static
 var staticFiles embed.FS
 
-func newServer(cfg *config.Config, pool *pgxpool.Pool) (*echo.Echo, error) {
-	userRepo := postgres.NewUserRepo(pool)
-
-	authService, err := domain.NewAutService(userRepo, cfg.JWTPrivateKey)
-	if err != nil {
-		return nil, fmt.Errorf("auth service: %w", err)
-	}
-
+func newServer(h *api.Handler) (*echo.Echo, error) {
 	e := echo.New()
 	e.Use(middleware.RequestLogger())
 	e.Use(middleware.Recover())
@@ -41,9 +30,6 @@ func newServer(cfg *config.Config, pool *pgxpool.Pool) (*echo.Echo, error) {
 
 	e.FileFS("/docs", "docs.html", echo.MustSubFS(staticFiles, "static"))
 
-	h := &api.Handler{
-		AuthHandler: api.NewAuthHandler(authService),
-	}
 	strict := generated.NewStrictHandler(h, nil)
 	generated.RegisterHandlersWithBaseURL(e, strict, "/api/v1")
 

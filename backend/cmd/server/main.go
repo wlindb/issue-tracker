@@ -12,8 +12,11 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/wlindb/issue-tracker/internal/api"
 	"github.com/wlindb/issue-tracker/internal/config"
 	"github.com/wlindb/issue-tracker/internal/db"
+	"github.com/wlindb/issue-tracker/internal/domain"
+	"github.com/wlindb/issue-tracker/internal/infrastructure"
 )
 
 func main() {
@@ -37,7 +40,18 @@ func run() error {
 	defer pool.Close()
 	log.Println("database connected")
 
-	e, err := newServer(cfg, pool)
+	userRepo := infrastructure.NewUserRepository(pool)
+
+	authService, err := domain.NewAutService(userRepo, cfg.JWTPrivateKey)
+	if err != nil {
+		return fmt.Errorf("auth service: %w", err)
+	}
+
+	h := &api.Handler{
+		AuthHandler: api.NewAuthHandler(authService),
+	}
+
+	e, err := newServer(h)
 	if err != nil {
 		return fmt.Errorf("server: %w", err)
 	}
