@@ -63,6 +63,18 @@ linters:
               desc: "domain layer must not import infrastructure"
             - pkg: "github.com/wlindb/issue-tracker/internal/config"
               desc: "domain layer must not import config"
+        auth-no-tracker:
+          files:
+            - "**/internal/domain/auth/**"
+          deny:
+            - pkg: "github.com/wlindb/issue-tracker/internal/domain/tracker"
+              desc: "auth domain must not import tracker domain"
+        tracker-no-auth:
+          files:
+            - "**/internal/domain/tracker/**"
+          deny:
+            - pkg: "github.com/wlindb/issue-tracker/internal/domain/auth"
+              desc: "tracker domain must not import auth domain"
         api-no-infra:
           files:
             - "**/internal/api/**"

@@ -3,7 +3,7 @@ CMD     := ./cmd/server
 
 .PHONY: build run dev test lint fmt sqlc migrate-up migrate-down generate tidy docker-up docker-down gen-jwt-key
 
-build:
+build: lint
 	go build -o bin/$(BINARY) $(CMD)
 
 run:
