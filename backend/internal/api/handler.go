@@ -8,7 +8,7 @@ import (
 // Stub methods for unimplemented areas remain directly on Handler.
 type Handler struct {
 	AuthHandler
-	// future: IssueHandler, ProjectHandler, …
+	ProjectHandler
 }
 
 var _ generated.StrictServerInterface = (*Handler)(nil)

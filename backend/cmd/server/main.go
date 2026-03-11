@@ -53,7 +53,8 @@ func run() error {
 	}
 
 	h := &api.Handler{
-		AuthHandler: api.NewAuthHandler(authService),
+		AuthHandler:    api.NewAuthHandler(authService),
+		ProjectHandler: api.NewProjectHandler(nil), // TODO: wire real service
 	}
 
 	e, err := newServer(h)
