@@ -10,16 +10,16 @@ import (
 	trackerdomain "github.com/wlindb/issue-tracker/internal/domain/tracker/project"
 )
 
-// ProjectServicer is what the handler needs from the domain.
-type ProjectServicer interface {
+// ProjectService is what the handler needs from the domain.
+type ProjectService interface {
 	Create(ctx context.Context, ownerID uuid.UUID, name string, description *string) (*trackerdomain.Project, error)
 }
 
 type ProjectHandler struct {
-	service ProjectServicer
+	service ProjectService
 }
 
-func NewProjectHandler(service ProjectServicer) ProjectHandler {
+func NewProjectHandler(service ProjectService) ProjectHandler {
 	return ProjectHandler{service: service}
 }
 
@@ -37,6 +37,9 @@ func (h *Handler) CreateProject(ctx context.Context, req generated.CreateProject
 		}, nil
 	}
 	userID := userIDFromContext(ctx)
+	if userID == uuid.Nil {
+		return nil, fmt.Errorf("missing user ID in context")
+	}
 	project, err := h.ProjectHandler.service.Create(ctx, userID, req.Body.Name, req.Body.Description)
 	if err != nil {
 		return nil, fmt.Errorf("create project: %w", err)

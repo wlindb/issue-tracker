@@ -35,35 +35,23 @@ func (m *mockProjectService) Create(ctx context.Context, ownerID uuid.UUID, name
 }
 
 // newTestServer builds a minimal Echo server wired to the given project service.
-func newTestServer(t *testing.T, svc api.ProjectServicer) *echo.Echo {
+func newTestServer(t *testing.T, service api.ProjectService) *echo.Echo {
 	t.Helper()
 	e := echo.New()
 	h := &api.Handler{
-		ProjectHandler: api.NewProjectHandler(svc),
+		ProjectHandler: api.NewProjectHandler(service),
 	}
 	strict := generated.NewStrictHandler(h, nil)
 	generated.RegisterHandlersWithBaseURL(e, strict, "/api/v1")
 	return e
 }
 
-// injectUser returns Echo middleware that injects a fixed caller UUID into the
-// request context, simulating what a future JWT middleware would do.
-func injectUser(id uuid.UUID) echo.MiddlewareFunc {
-	return func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) error {
-			ctx := api.WithUserID(c.Request().Context(), id)
-			c.SetRequest(c.Request().WithContext(ctx))
-			return next(c)
-		}
-	}
-}
-
 func Test_CreateProject_ValidBody_Returns201(t *testing.T) {
-	svc := &mockProjectService{}
+	service := &mockProjectService{}
 	now := time.Now().UTC()
 	ownerID := uuid.New()
 
-	svc.On("Create", mock.Anything, ownerID, "Acme", (*string)(nil)).
+	service.On("Create", mock.Anything, ownerID, "Acme", (*string)(nil)).
 		Return(&trackerdomain.Project{
 			ID:        uuid.New(),
 			Name:      "Acme",
@@ -72,7 +60,7 @@ func Test_CreateProject_ValidBody_Returns201(t *testing.T) {
 			UpdatedAt: now,
 		}, nil)
 
-	e := newTestServer(t, svc)
+	e := newTestServer(t, service)
 	e.Use(injectUser(ownerID))
 
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/projects", strings.NewReader(`{"name":"Acme"}`))
@@ -84,13 +72,13 @@ func Test_CreateProject_ValidBody_Returns201(t *testing.T) {
 	var got generated.Project
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &got))
 	assert.Equal(t, "Acme", got.Name)
-	svc.AssertExpectations(t)
+	service.AssertExpectations(t)
 }
 
 func Test_CreateProject_EmptyName_BadRequest(t *testing.T) {
-	svc := &mockProjectService{}
+	service := &mockProjectService{}
 
-	e := newTestServer(t, svc)
+	e := newTestServer(t, service)
 	e.Use(injectUser(uuid.New()))
 
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/projects", strings.NewReader(`{}`))
@@ -99,17 +87,17 @@ func Test_CreateProject_EmptyName_BadRequest(t *testing.T) {
 	e.ServeHTTP(rec, req)
 
 	require.Equal(t, http.StatusBadRequest, rec.Code)
-	svc.AssertNotCalled(t, "Create")
+	service.AssertNotCalled(t, "Create")
 }
 
 func Test_CreateProject_ServiceError_InternalServerError(t *testing.T) {
-	svc := &mockProjectService{}
+	service := &mockProjectService{}
 	ownerID := uuid.New()
 
-	svc.On("Create", mock.Anything, ownerID, "Acme", (*string)(nil)).
+	service.On("Create", mock.Anything, ownerID, "Acme", (*string)(nil)).
 		Return(nil, errors.New("db down"))
 
-	e := newTestServer(t, svc)
+	e := newTestServer(t, service)
 	e.Use(injectUser(ownerID))
 
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/projects", strings.NewReader(`{"name":"Acme"}`))
@@ -118,5 +106,19 @@ func Test_CreateProject_ServiceError_InternalServerError(t *testing.T) {
 	e.ServeHTTP(rec, req)
 
 	require.Equal(t, http.StatusInternalServerError, rec.Code)
-	svc.AssertExpectations(t)
+	service.AssertExpectations(t)
+}
+
+func Test_CreateProject_MissingUserID_InternalServerError(t *testing.T) {
+	service := &mockProjectService{}
+
+	e := newTestServer(t, service) // no injectUser — userID absent from context
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/projects", strings.NewReader(`{"name":"Acme"}`))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusInternalServerError, rec.Code)
+	service.AssertNotCalled(t, "Create")
 }
