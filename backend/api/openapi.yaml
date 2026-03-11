@@ -135,6 +135,7 @@ components:
 
     UpdateProjectRequest:
       type: object
+      required: [name]
       properties:
         name:        { type: string }
         description: { type: string, nullable: true }
@@ -347,9 +348,9 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
         "500": { $ref: "#/components/responses/InternalServerError" }
 
-    patch:
+    put:
       operationId: updateProject
-      summary: Partially update a project.
+      summary: Replace a project's mutable fields.
       tags: [projects]
       requestBody:
         required: true
