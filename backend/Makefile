@@ -43,10 +43,10 @@ tidy:
 	go mod tidy
 
 docker-up:
-	docker compose -f ../infrastructure/docker-compose.yml up -d
+	docker compose up -d
 
 docker-down:
-	docker compose -f ../infrastructure/docker-compose.yml down
+	docker compose down
 
 gen-jwt-key:
 	openssl genrsa 2048 | awk 'NF {sub(/\r/, ""); printf "%s\\n", $$0}' > jwt_private_key.txt

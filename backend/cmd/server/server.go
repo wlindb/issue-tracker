@@ -22,7 +22,7 @@ var staticFiles embed.FS
 func newServer(cfg *config.Config, pool *pgxpool.Pool) (*echo.Echo, error) {
 	userRepo := postgres.NewUserRepo(pool)
 
-	authSvc, err := domain.New(userRepo, cfg.JWTPrivateKey)
+	authService, err := domain.NewAutService(userRepo, cfg.JWTPrivateKey)
 	if err != nil {
 		return nil, fmt.Errorf("auth service: %w", err)
 	}
@@ -42,7 +42,7 @@ func newServer(cfg *config.Config, pool *pgxpool.Pool) (*echo.Echo, error) {
 	e.FileFS("/docs", "docs.html", echo.MustSubFS(staticFiles, "static"))
 
 	h := &api.Handler{
-		AuthHandler: api.NewAuthHandler(authSvc),
+		AuthHandler: api.NewAuthHandler(authService),
 	}
 	strict := generated.NewStrictHandler(h, nil)
 	generated.RegisterHandlersWithBaseURL(e, strict, "/api/v1")

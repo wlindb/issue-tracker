@@ -25,7 +25,7 @@ type AuthService struct {
 	privateKey *rsa.PrivateKey
 }
 
-func New(repo UserRepository, privateKeyPEM string) (*AuthService, error) {
+func NewAutService(repo UserRepository, privateKeyPEM string) (*AuthService, error) {
 	// Support \n-escaped PEM strings stored in env vars
 	pemStr := strings.ReplaceAll(privateKeyPEM, `\n`, "\n")
 
