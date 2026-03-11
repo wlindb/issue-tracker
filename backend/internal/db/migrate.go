@@ -17,7 +17,9 @@ var migrationsFS embed.FS
 // Migrate runs all pending up migrations against the database.
 func Migrate(ctx context.Context, pool *pgxpool.Pool) error {
 	db := stdlib.OpenDBFromPool(pool)
-	defer db.Close()
+	defer func() {
+		_ = db.Close()
+	}()
 
 	sub, err := fs.Sub(migrationsFS, "migrations")
 	if err != nil {
