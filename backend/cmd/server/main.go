@@ -40,6 +40,11 @@ func run() error {
 	defer pool.Close()
 	log.Println("database connected")
 
+	if err := db.Migrate(ctx, pool); err != nil {
+		return fmt.Errorf("migrate: %w", err)
+	}
+	log.Println("migrations applied")
+
 	userRepo := infrastructure.NewUserRepository(pool)
 
 	authService, err := domain.NewAutService(userRepo, cfg.JWTPrivateKey)
