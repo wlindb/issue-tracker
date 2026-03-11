@@ -4,16 +4,15 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/google/uuid"
 	openapi_types "github.com/oapi-codegen/runtime/types"
 	"github.com/wlindb/issue-tracker/internal/api/generated"
-	projectsdomain "github.com/wlindb/issue-tracker/internal/domain/projects"
-
-	"github.com/google/uuid"
+	trackerdomain "github.com/wlindb/issue-tracker/internal/domain/tracker/project"
 )
 
 // ProjectServicer is what the handler needs from the domain.
 type ProjectServicer interface {
-	Create(ctx context.Context, ownerID uuid.UUID, name string, description *string) (*projectsdomain.Project, error)
+	Create(ctx context.Context, ownerID uuid.UUID, name string, description *string) (*trackerdomain.Project, error)
 }
 
 type ProjectHandler struct {
@@ -37,8 +36,8 @@ func (h *Handler) CreateProject(ctx context.Context, req generated.CreateProject
 			}),
 		}, nil
 	}
-	callerID := callerIDFromContext(ctx)
-	project, err := h.ProjectHandler.service.Create(ctx, callerID, req.Body.Name, req.Body.Description)
+	userID := userIDFromContext(ctx)
+	project, err := h.ProjectHandler.service.Create(ctx, userID, req.Body.Name, req.Body.Description)
 	if err != nil {
 		return nil, fmt.Errorf("create project: %w", err)
 	}

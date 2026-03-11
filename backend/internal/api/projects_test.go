@@ -18,7 +18,7 @@ import (
 
 	"github.com/wlindb/issue-tracker/internal/api"
 	"github.com/wlindb/issue-tracker/internal/api/generated"
-	projectsdomain "github.com/wlindb/issue-tracker/internal/domain/projects"
+	trackerdomain "github.com/wlindb/issue-tracker/internal/domain/tracker/project"
 )
 
 // mockProjectService implements the projectServicer interface for testing.
@@ -26,9 +26,9 @@ type mockProjectService struct {
 	mock.Mock
 }
 
-func (m *mockProjectService) Create(ctx context.Context, ownerID uuid.UUID, name string, description *string) (*projectsdomain.Project, error) {
+func (m *mockProjectService) Create(ctx context.Context, ownerID uuid.UUID, name string, description *string) (*trackerdomain.Project, error) {
 	args := m.Called(ctx, ownerID, name, description)
-	if p, ok := args.Get(0).(*projectsdomain.Project); ok {
+	if p, ok := args.Get(0).(*trackerdomain.Project); ok {
 		return p, args.Error(1)
 	}
 	return nil, args.Error(1)
@@ -51,7 +51,7 @@ func newTestServer(t *testing.T, svc api.ProjectServicer) *echo.Echo {
 func injectUser(id uuid.UUID) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
-			ctx := api.WithCallerID(c.Request().Context(), id)
+			ctx := api.WithUserID(c.Request().Context(), id)
 			c.SetRequest(c.Request().WithContext(ctx))
 			return next(c)
 		}
@@ -64,7 +64,7 @@ func Test_CreateProject_ValidBody_Returns201(t *testing.T) {
 	ownerID := uuid.New()
 
 	svc.On("Create", mock.Anything, ownerID, "Acme", (*string)(nil)).
-		Return(&projectsdomain.Project{
+		Return(&trackerdomain.Project{
 			ID:        uuid.New(),
 			Name:      "Acme",
 			OwnerID:   ownerID,

@@ -8,18 +8,18 @@ import (
 
 type contextKey string
 
-const callerIDKey contextKey = "callerID"
+const userIDKey contextKey = "userID"
 
-func callerIDFromContext(ctx context.Context) uuid.UUID {
-	id, _ := ctx.Value(callerIDKey).(uuid.UUID)
+func userIDFromContext(ctx context.Context) uuid.UUID {
+	id, _ := ctx.Value(userIDKey).(uuid.UUID)
 	return id
 }
 
-func withCallerID(ctx context.Context, id uuid.UUID) context.Context {
-	return context.WithValue(ctx, callerIDKey, id)
+func withUserID(ctx context.Context, id uuid.UUID) context.Context {
+	return context.WithValue(ctx, userIDKey, id)
 }
 
-// WithCallerID is the exported form for use in tests and middleware.
-func WithCallerID(ctx context.Context, id uuid.UUID) context.Context {
-	return withCallerID(ctx, id)
+// WithUserID is the exported form for use in tests and middleware.
+func WithUserID(ctx context.Context, id uuid.UUID) context.Context {
+	return withUserID(ctx, id)
 }
