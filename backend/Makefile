@@ -32,11 +32,9 @@ migrate-down:
 	set -a && . ./.env && goose -dir internal/infrastructure/auth/migrations postgres "$$DATABASE_URL" down
 
 generate:
-	mkdir -p internal/api/generated
+	mkdir -p internal/api/model
 	go run github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen \
-		-generate types,strict-server,server,spec \
-		-package generated \
-		-o internal/api/generated/api.gen.go \
+		-config api/oapi-codegen.yaml \
 		api/openapi.yaml
 
 tidy:

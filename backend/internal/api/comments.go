@@ -3,21 +3,21 @@ package api
 import (
 	"context"
 
-	"github.com/wlindb/issue-tracker/internal/api/generated"
+	"github.com/wlindb/issue-tracker/internal/api/model"
 )
 
-func (h *Handler) ListComments(_ context.Context, _ generated.ListCommentsRequestObject) (generated.ListCommentsResponseObject, error) {
-	return generated.ListComments500JSONResponse{InternalServerErrorJSONResponse: generated.InternalServerErrorJSONResponse(notImplemented())}, nil
+func (h *Handler) ListComments(_ context.Context, _ model.ListCommentsRequestObject) (model.ListCommentsResponseObject, error) {
+	return model.ListComments500JSONResponse{InternalServerErrorJSONResponse: model.InternalServerErrorJSONResponse(notImplemented())}, nil
 }
 
-func (h *Handler) CreateComment(_ context.Context, _ generated.CreateCommentRequestObject) (generated.CreateCommentResponseObject, error) {
-	return generated.CreateComment500JSONResponse{InternalServerErrorJSONResponse: generated.InternalServerErrorJSONResponse(notImplemented())}, nil
+func (h *Handler) CreateComment(_ context.Context, _ model.CreateCommentRequestObject) (model.CreateCommentResponseObject, error) {
+	return model.CreateComment500JSONResponse{InternalServerErrorJSONResponse: model.InternalServerErrorJSONResponse(notImplemented())}, nil
 }
 
-func (h *Handler) UpdateComment(_ context.Context, _ generated.UpdateCommentRequestObject) (generated.UpdateCommentResponseObject, error) {
-	return generated.UpdateComment500JSONResponse{InternalServerErrorJSONResponse: generated.InternalServerErrorJSONResponse(notImplemented())}, nil
+func (h *Handler) UpdateComment(_ context.Context, _ model.UpdateCommentRequestObject) (model.UpdateCommentResponseObject, error) {
+	return model.UpdateComment500JSONResponse{InternalServerErrorJSONResponse: model.InternalServerErrorJSONResponse(notImplemented())}, nil
 }
 
-func (h *Handler) DeleteComment(_ context.Context, _ generated.DeleteCommentRequestObject) (generated.DeleteCommentResponseObject, error) {
-	return generated.DeleteComment500JSONResponse{InternalServerErrorJSONResponse: generated.InternalServerErrorJSONResponse(notImplemented())}, nil
+func (h *Handler) DeleteComment(_ context.Context, _ model.DeleteCommentRequestObject) (model.DeleteCommentResponseObject, error) {
+	return model.DeleteComment500JSONResponse{InternalServerErrorJSONResponse: model.InternalServerErrorJSONResponse(notImplemented())}, nil
 }

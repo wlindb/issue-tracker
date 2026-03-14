@@ -5,9 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	openapiTypes "github.com/oapi-codegen/runtime/types"
-
-	"github.com/wlindb/issue-tracker/internal/api/generated"
+	"github.com/wlindb/issue-tracker/internal/api/model"
 	authdomain "github.com/wlindb/issue-tracker/internal/domain/auth"
 )
 
@@ -19,12 +17,12 @@ func NewAuthHandler(service *authdomain.AuthService) AuthHandler {
 	return AuthHandler{service: service}
 }
 
-func (h AuthHandler) Login(ctx context.Context, request generated.LoginRequestObject) (generated.LoginResponseObject, error) {
-	user, token, err := h.service.Login(ctx, string(request.Body.Email), request.Body.Password)
+func (h AuthHandler) Login(ctx context.Context, request model.LoginRequestObject) (model.LoginResponseObject, error) {
+	user, token, err := h.service.Login(ctx, request.Body.Email, request.Body.Password)
 	if err != nil {
 		if errors.Is(err, authdomain.ErrInvalidCredentials) {
-			return generated.Login401JSONResponse{
-				UnauthorizedJSONResponse: generated.UnauthorizedJSONResponse{
+			return model.Login401JSONResponse{
+				UnauthorizedJSONResponse: model.UnauthorizedJSONResponse{
 					Code:    "invalid_credentials",
 					Message: "invalid email or password",
 				},
@@ -33,11 +31,11 @@ func (h AuthHandler) Login(ctx context.Context, request generated.LoginRequestOb
 		return nil, fmt.Errorf("login: %w", err)
 	}
 
-	return generated.Login200JSONResponse{
+	return model.Login200JSONResponse{
 		Token: token,
-		User: generated.User{
-			Id:        openapiTypes.UUID(user.ID),
-			Email:     openapiTypes.Email(user.Email),
+		User: model.User{
+			Id:        user.ID,
+			Email:     user.Email,
 			Name:      user.Name,
 			CreatedAt: user.CreatedAt,
 			UpdatedAt: user.UpdatedAt,
@@ -45,12 +43,12 @@ func (h AuthHandler) Login(ctx context.Context, request generated.LoginRequestOb
 	}, nil
 }
 
-func (h AuthHandler) Register(ctx context.Context, request generated.RegisterRequestObject) (generated.RegisterResponseObject, error) {
-	user, token, err := h.service.Register(ctx, string(request.Body.Email), request.Body.Name, request.Body.Password)
+func (h AuthHandler) Register(ctx context.Context, request model.RegisterRequestObject) (model.RegisterResponseObject, error) {
+	user, token, err := h.service.Register(ctx, request.Body.Email, request.Body.Name, request.Body.Password)
 	if err != nil {
 		if errors.Is(err, authdomain.ErrEmailTaken) {
-			return generated.Register422JSONResponse{
-				UnprocessableEntityJSONResponse: generated.UnprocessableEntityJSONResponse{
+			return model.Register422JSONResponse{
+				UnprocessableEntityJSONResponse: model.UnprocessableEntityJSONResponse{
 					Code:    "email_taken",
 					Message: "an account with this email already exists",
 				},
@@ -59,11 +57,11 @@ func (h AuthHandler) Register(ctx context.Context, request generated.RegisterReq
 		return nil, fmt.Errorf("register: %w", err)
 	}
 
-	return generated.Register201JSONResponse{
+	return model.Register201JSONResponse{
 		Token: token,
-		User: generated.User{
-			Id:        openapiTypes.UUID(user.ID),
-			Email:     openapiTypes.Email(user.Email),
+		User: model.User{
+			Id:        user.ID,
+			Email:     user.Email,
 			Name:      user.Name,
 			CreatedAt: user.CreatedAt,
 			UpdatedAt: user.UpdatedAt,

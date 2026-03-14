@@ -11,7 +11,7 @@ import (
 	"github.com/labstack/echo/v4/middleware"
 
 	"github.com/wlindb/issue-tracker/internal/api"
-	"github.com/wlindb/issue-tracker/internal/api/generated"
+	"github.com/wlindb/issue-tracker/internal/api/model"
 )
 
 //go:embed static
@@ -26,7 +26,7 @@ func newServer(h *api.Handler) (*echo.Echo, error) {
 	e.Use(middleware.Recover())
 
 	e.GET("/openapi.json", func(c echo.Context) error {
-		swagger, err := generated.GetSwagger()
+		swagger, err := model.GetSwagger()
 		if err != nil {
 			return fmt.Errorf("loading openapi spec: %w", err)
 		}
@@ -35,8 +35,8 @@ func newServer(h *api.Handler) (*echo.Echo, error) {
 
 	e.FileFS("/docs", "docs.html", echo.MustSubFS(staticFiles, "static"))
 
-	strict := generated.NewStrictHandler(h, nil)
-	generated.RegisterHandlersWithBaseURL(e, strict, "/api/v1")
+	strict := model.NewStrictHandler(h, nil)
+	model.RegisterHandlersWithBaseURL(e, strict, "/api/v1")
 
 	return e, nil
 }

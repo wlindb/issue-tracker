@@ -5,9 +5,8 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-	openapiTypes "github.com/oapi-codegen/runtime/types"
 
-	"github.com/wlindb/issue-tracker/internal/api/generated"
+	"github.com/wlindb/issue-tracker/internal/api/model"
 	trackerdomain "github.com/wlindb/issue-tracker/internal/domain/tracker/project"
 )
 
@@ -24,14 +23,14 @@ func NewProjectHandler(service ProjectService) ProjectHandler {
 	return ProjectHandler{service: service}
 }
 
-func (h *Handler) ListProjects(_ context.Context, _ generated.ListProjectsRequestObject) (generated.ListProjectsResponseObject, error) {
-	return generated.ListProjects500JSONResponse{InternalServerErrorJSONResponse: generated.InternalServerErrorJSONResponse(notImplemented())}, nil
+func (h *Handler) ListProjects(_ context.Context, _ model.ListProjectsRequestObject) (model.ListProjectsResponseObject, error) {
+	return model.ListProjects500JSONResponse{InternalServerErrorJSONResponse: model.InternalServerErrorJSONResponse(notImplemented())}, nil
 }
 
-func (h *Handler) CreateProject(ctx context.Context, req generated.CreateProjectRequestObject) (generated.CreateProjectResponseObject, error) {
+func (h *Handler) CreateProject(ctx context.Context, req model.CreateProjectRequestObject) (model.CreateProjectResponseObject, error) {
 	if req.Body.Name == "" {
-		return generated.CreateProject400JSONResponse{
-			BadRequestJSONResponse: generated.BadRequestJSONResponse(generated.Error{
+		return model.CreateProject400JSONResponse{
+			BadRequestJSONResponse: model.BadRequestJSONResponse(model.Error{
 				Code:    "invalid_input",
 				Message: "name is required",
 			}),
@@ -45,24 +44,24 @@ func (h *Handler) CreateProject(ctx context.Context, req generated.CreateProject
 	if err != nil {
 		return nil, fmt.Errorf("create project: %w", err)
 	}
-	return generated.CreateProject201JSONResponse{
-		Id:          openapiTypes.UUID(project.ID),
+	return model.CreateProject201JSONResponse{
+		Id:          project.ID,
 		Name:        project.Name,
 		Description: project.Description,
-		OwnerId:     openapiTypes.UUID(project.OwnerID),
+		OwnerId:     project.OwnerID,
 		CreatedAt:   project.CreatedAt,
 		UpdatedAt:   project.UpdatedAt,
 	}, nil
 }
 
-func (h *Handler) GetProject(_ context.Context, _ generated.GetProjectRequestObject) (generated.GetProjectResponseObject, error) {
-	return generated.GetProject500JSONResponse{InternalServerErrorJSONResponse: generated.InternalServerErrorJSONResponse(notImplemented())}, nil
+func (h *Handler) GetProject(_ context.Context, _ model.GetProjectRequestObject) (model.GetProjectResponseObject, error) {
+	return model.GetProject500JSONResponse{InternalServerErrorJSONResponse: model.InternalServerErrorJSONResponse(notImplemented())}, nil
 }
 
-func (h *Handler) UpdateProject(_ context.Context, _ generated.UpdateProjectRequestObject) (generated.UpdateProjectResponseObject, error) {
-	return generated.UpdateProject500JSONResponse{InternalServerErrorJSONResponse: generated.InternalServerErrorJSONResponse(notImplemented())}, nil
+func (h *Handler) UpdateProject(_ context.Context, _ model.UpdateProjectRequestObject) (model.UpdateProjectResponseObject, error) {
+	return model.UpdateProject500JSONResponse{InternalServerErrorJSONResponse: model.InternalServerErrorJSONResponse(notImplemented())}, nil
 }
 
-func (h *Handler) DeleteProject(_ context.Context, _ generated.DeleteProjectRequestObject) (generated.DeleteProjectResponseObject, error) {
-	return generated.DeleteProject500JSONResponse{InternalServerErrorJSONResponse: generated.InternalServerErrorJSONResponse(notImplemented())}, nil
+func (h *Handler) DeleteProject(_ context.Context, _ model.DeleteProjectRequestObject) (model.DeleteProjectResponseObject, error) {
+	return model.DeleteProject500JSONResponse{InternalServerErrorJSONResponse: model.InternalServerErrorJSONResponse(notImplemented())}, nil
 }

@@ -86,7 +86,7 @@ linters:
         linters: [wrapcheck, dupl, gosec, funlen]
       - path: internal/infrastructure/generated/
         linters: [wrapcheck, errcheck, gocritic, revive]
-      - path: internal/api/generated/
+      - path: internal/api/model/
         linters: [wrapcheck, errcheck, gocritic, revive]
 
 formatters:

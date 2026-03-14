@@ -17,7 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/wlindb/issue-tracker/internal/api"
-	"github.com/wlindb/issue-tracker/internal/api/generated"
+	"github.com/wlindb/issue-tracker/internal/api/model"
 	trackerdomain "github.com/wlindb/issue-tracker/internal/domain/tracker/project"
 )
 
@@ -41,8 +41,8 @@ func newTestServer(t *testing.T, service api.ProjectService) *echo.Echo {
 	h := &api.Handler{
 		ProjectHandler: api.NewProjectHandler(service),
 	}
-	strict := generated.NewStrictHandler(h, nil)
-	generated.RegisterHandlersWithBaseURL(e, strict, "/api/v1")
+	strict := model.NewStrictHandler(h, nil)
+	model.RegisterHandlersWithBaseURL(e, strict, "/api/v1")
 	return e
 }
 
@@ -69,7 +69,7 @@ func Test_CreateProject_ValidBody_Returns201(t *testing.T) {
 	e.ServeHTTP(rec, req)
 
 	require.Equal(t, http.StatusCreated, rec.Code)
-	var got generated.Project
+	var got model.Project
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &got))
 	assert.Equal(t, "Acme", got.Name)
 	service.AssertExpectations(t)

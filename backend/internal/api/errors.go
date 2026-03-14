@@ -6,7 +6,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 
-	"github.com/wlindb/issue-tracker/internal/api/generated"
+	"github.com/wlindb/issue-tracker/internal/api/model"
 )
 
 // HTTPErrorHandler is a custom Echo error handler that formats all unhandled
@@ -20,14 +20,14 @@ func HTTPErrorHandler(err error, c echo.Context) {
 	}
 
 	code := http.StatusInternalServerError
-	body := generated.Error{
+	body := model.Error{
 		Code:    "internal_error",
 		Message: "an unexpected error occurred",
 	}
 
 	if he, ok := err.(*echo.HTTPError); ok {
 		code = he.Code
-		body = generated.Error{
+		body = model.Error{
 			Code:    http.StatusText(code),
 			Message: fmt.Sprintf("%v", he.Message),
 		}

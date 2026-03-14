@@ -31,8 +31,16 @@ components:
       type: object
       required: [id, email, name, createdAt, updatedAt]
       properties:
-        id:          { type: string, format: uuid }
-        email:       { type: string, format: email }
+        id:
+          type: string
+          format: uuid
+          x-go-type: uuid.UUID
+          x-go-type-import:
+            path: github.com/google/uuid
+        email:
+          type: string
+          format: email
+          x-go-type: string
         name:        { type: string }
         createdAt:   { type: string, format: date-time }
         updatedAt:   { type: string, format: date-time }
@@ -41,10 +49,20 @@ components:
       type: object
       required: [id, name, ownerId, createdAt, updatedAt]
       properties:
-        id:          { type: string, format: uuid }
+        id:
+          type: string
+          format: uuid
+          x-go-type: uuid.UUID
+          x-go-type-import:
+            path: github.com/google/uuid
         name:        { type: string }
         description: { type: string, nullable: true }
-        ownerId:     { type: string, format: uuid }
+        ownerId:
+          type: string
+          format: uuid
+          x-go-type: uuid.UUID
+          x-go-type-import:
+            path: github.com/google/uuid
         createdAt:   { type: string, format: date-time }
         updatedAt:   { type: string, format: date-time }
 
@@ -52,14 +70,35 @@ components:
       type: object
       required: [id, projectId, title, status, priority, reporterId, createdAt, updatedAt]
       properties:
-        id:          { type: string, format: uuid }
-        projectId:   { type: string, format: uuid }
+        id:
+          type: string
+          format: uuid
+          x-go-type: uuid.UUID
+          x-go-type-import:
+            path: github.com/google/uuid
+        projectId:
+          type: string
+          format: uuid
+          x-go-type: uuid.UUID
+          x-go-type-import:
+            path: github.com/google/uuid
         title:       { type: string }
         description: { type: string, nullable: true }
         status:      { $ref: "#/components/schemas/IssueStatus" }
         priority:    { $ref: "#/components/schemas/IssuePriority" }
-        assigneeId:  { type: string, format: uuid, nullable: true }
-        reporterId:  { type: string, format: uuid }
+        assigneeId:
+          type: string
+          format: uuid
+          nullable: true
+          x-go-type: uuid.UUID
+          x-go-type-import:
+            path: github.com/google/uuid
+        reporterId:
+          type: string
+          format: uuid
+          x-go-type: uuid.UUID
+          x-go-type-import:
+            path: github.com/google/uuid
         createdAt:   { type: string, format: date-time }
         updatedAt:   { type: string, format: date-time }
 
@@ -67,9 +106,24 @@ components:
       type: object
       required: [id, issueId, authorId, body, createdAt, updatedAt]
       properties:
-        id:        { type: string, format: uuid }
-        issueId:   { type: string, format: uuid }
-        authorId:  { type: string, format: uuid }
+        id:
+          type: string
+          format: uuid
+          x-go-type: uuid.UUID
+          x-go-type-import:
+            path: github.com/google/uuid
+        issueId:
+          type: string
+          format: uuid
+          x-go-type: uuid.UUID
+          x-go-type-import:
+            path: github.com/google/uuid
+        authorId:
+          type: string
+          format: uuid
+          x-go-type: uuid.UUID
+          x-go-type-import:
+            path: github.com/google/uuid
         body:      { type: string }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
@@ -108,7 +162,10 @@ components:
       type: object
       required: [email, password, name]
       properties:
-        email:    { type: string, format: email }
+        email:
+          type: string
+          format: email
+          x-go-type: string
         password: { type: string, minLength: 8 }
         name:     { type: string }
 
@@ -116,7 +173,10 @@ components:
       type: object
       required: [email, password]
       properties:
-        email:    { type: string, format: email }
+        email:
+          type: string
+          format: email
+          x-go-type: string
         password: { type: string }
 
     AuthResponse:
@@ -148,7 +208,13 @@ components:
         description: { type: string, nullable: true }
         status:      { $ref: "#/components/schemas/IssueStatus" }
         priority:    { $ref: "#/components/schemas/IssuePriority" }
-        assigneeId:  { type: string, format: uuid, nullable: true }
+        assigneeId:
+          type: string
+          format: uuid
+          nullable: true
+          x-go-type: uuid.UUID
+          x-go-type-import:
+            path: github.com/google/uuid
 
     UpdateIssueRequest:
       type: object
@@ -157,7 +223,13 @@ components:
         description: { type: string, nullable: true }
         status:      { $ref: "#/components/schemas/IssueStatus" }
         priority:    { $ref: "#/components/schemas/IssuePriority" }
-        assigneeId:  { type: string, format: uuid, nullable: true }
+        assigneeId:
+          type: string
+          format: uuid
+          nullable: true
+          x-go-type: uuid.UUID
+          x-go-type-import:
+            path: github.com/google/uuid
 
     CreateCommentRequest:
       type: object
@@ -176,19 +248,34 @@ components:
       name: projectId
       in: path
       required: true
-      schema: { type: string, format: uuid }
+      schema:
+        type: string
+        format: uuid
+        x-go-type: uuid.UUID
+        x-go-type-import:
+          path: github.com/google/uuid
 
     IssueIdParam:
       name: issueId
       in: path
       required: true
-      schema: { type: string, format: uuid }
+      schema:
+        type: string
+        format: uuid
+        x-go-type: uuid.UUID
+        x-go-type-import:
+          path: github.com/google/uuid
 
     CommentIdParam:
       name: commentId
       in: path
       required: true
-      schema: { type: string, format: uuid }
+      schema:
+        type: string
+        format: uuid
+        x-go-type: uuid.UUID
+        x-go-type-import:
+          path: github.com/google/uuid
 
     CursorParam:
       name: cursor
@@ -402,7 +489,12 @@ paths:
         - name: assigneeId
           in: query
           required: false
-          schema: { type: string, format: uuid }
+          schema:
+            type: string
+            format: uuid
+            x-go-type: uuid.UUID
+            x-go-type-import:
+              path: github.com/google/uuid
       responses:
         "200":
           description: Paginated list of issues.
