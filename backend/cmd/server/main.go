@@ -14,7 +14,7 @@ import (
 
 	"github.com/wlindb/issue-tracker/internal/api"
 	"github.com/wlindb/issue-tracker/internal/config"
-	"github.com/wlindb/issue-tracker/internal/db"
+	"github.com/wlindb/issue-tracker/internal/infrastructure/db"
 	authdomain "github.com/wlindb/issue-tracker/internal/domain/auth"
 	authinfra "github.com/wlindb/issue-tracker/internal/infrastructure/auth"
 )
