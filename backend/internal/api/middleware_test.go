@@ -154,3 +154,48 @@ func Test_JwtMiddleware_ValidToken(t *testing.T) {
 
 	require.Equal(t, http.StatusOK, rec.Code)
 }
+
+func newPingServerWithUserID(t *testing.T, jwksURL string) *echo.Echo {
+	t.Helper()
+	e := echo.New()
+	e.Use(api.JwtMiddleware(jwksURL))
+	e.Use(api.UserIDMiddleware())
+	e.GET("/ping", func(c echo.Context) error {
+		id := api.UserIDFromContext(c.Request().Context())
+		return c.String(http.StatusOK, id.String())
+	})
+	return e
+}
+
+func Test_UserIDMiddleware_PopulatesContext(t *testing.T) {
+	key := generateTestKey(t)
+	srv := serveJWKS(t, &key.PublicKey)
+
+	token := mintToken(t, key, validClaims())
+
+	e := newPingServerWithUserID(t, srv.URL)
+	req := httptest.NewRequest(http.MethodGet, "/ping", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusOK, rec.Code)
+	require.Equal(t, "00000000-0000-0000-0000-000000000001", rec.Body.String())
+}
+
+func Test_UserIDMiddleware_NonUUIDSub(t *testing.T) {
+	key := generateTestKey(t)
+	srv := serveJWKS(t, &key.PublicKey)
+
+	claims := validClaims()
+	claims.Subject = "not-a-uuid"
+	token := mintToken(t, key, claims)
+
+	e := newPingServerWithUserID(t, srv.URL)
+	req := httptest.NewRequest(http.MethodGet, "/ping", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusUnauthorized, rec.Code)
+}

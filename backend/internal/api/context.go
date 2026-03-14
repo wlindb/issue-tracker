@@ -23,3 +23,8 @@ func withUserID(ctx context.Context, id uuid.UUID) context.Context {
 func WithUserID(ctx context.Context, id uuid.UUID) context.Context {
 	return withUserID(ctx, id)
 }
+
+// UserIDFromContext is the exported form for use in tests.
+func UserIDFromContext(ctx context.Context) uuid.UUID {
+	return userIDFromContext(ctx)
+}

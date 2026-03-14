@@ -8,7 +8,7 @@ import (
 	"os"
 
 	"github.com/labstack/echo/v4"
-	"github.com/labstack/echo/v4/middleware"
+	echomiddleware "github.com/labstack/echo/v4/middleware"
 
 	"github.com/wlindb/issue-tracker/internal/api"
 	"github.com/wlindb/issue-tracker/internal/api/model"
@@ -23,7 +23,7 @@ func newServer(h *api.Handler) (*echo.Echo, error) {
 	e := echo.New()
 	e.HTTPErrorHandler = api.HTTPErrorHandler
 	e.Use(api.RequestLogger(logger))
-	e.Use(middleware.Recover())
+	e.Use(echomiddleware.Recover())
 
 	e.GET("/openapi.json", func(c echo.Context) error {
 		swagger, err := model.GetSwagger()
