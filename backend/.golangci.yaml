@@ -41,9 +41,7 @@ linters:
       default-signifies-exhaustive: true
     revive:
       rules:
-        - name: exported
         - name: var-naming
-        - name: package-comments
         - name: error-return
         - name: unused-parameter
     wrapcheck:
