@@ -1,4 +1,4 @@
-package api
+package middleware
 
 import (
 	"log"
@@ -8,6 +8,8 @@ import (
 	"github.com/google/uuid"
 	echojwt "github.com/labstack/echo-jwt/v4"
 	"github.com/labstack/echo/v4"
+
+	"github.com/wlindb/issue-tracker/internal/api"
 )
 
 // UserIDMiddleware extracts the `sub` claim from the validated JWT (set by
@@ -32,7 +34,7 @@ func UserIDMiddleware() echo.MiddlewareFunc {
 			if err != nil {
 				return echo.ErrUnauthorized
 			}
-			ctx := withUserID(c.Request().Context(), id)
+			ctx := api.WithUserID(c.Request().Context(), id)
 			c.SetRequest(c.Request().WithContext(ctx))
 			return next(c)
 		}

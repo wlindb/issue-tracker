@@ -1,4 +1,4 @@
-package api_test
+package middleware_test
 
 import (
 	"crypto/rand"
@@ -16,6 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/wlindb/issue-tracker/internal/api"
+	"github.com/wlindb/issue-tracker/internal/api/middleware"
 )
 
 func generateTestKey(t *testing.T) *rsa.PrivateKey {
@@ -54,7 +55,7 @@ func mintToken(t *testing.T, priv *rsa.PrivateKey, claims jwt.RegisteredClaims) 
 func newPingServer(t *testing.T, jwksURL string) *echo.Echo {
 	t.Helper()
 	e := echo.New()
-	e.Use(api.JwtMiddleware(jwksURL))
+	e.Use(middleware.JwtMiddleware(jwksURL))
 	e.GET("/ping", func(c echo.Context) error {
 		return c.String(http.StatusOK, "pong")
 	})
@@ -158,8 +159,8 @@ func Test_JwtMiddleware_ValidToken(t *testing.T) {
 func newPingServerWithUserID(t *testing.T, jwksURL string) *echo.Echo {
 	t.Helper()
 	e := echo.New()
-	e.Use(api.JwtMiddleware(jwksURL))
-	e.Use(api.UserIDMiddleware())
+	e.Use(middleware.JwtMiddleware(jwksURL))
+	e.Use(middleware.UserIDMiddleware())
 	e.GET("/ping", func(c echo.Context) error {
 		id := api.UserIDFromContext(c.Request().Context())
 		return c.String(http.StatusOK, id.String())
