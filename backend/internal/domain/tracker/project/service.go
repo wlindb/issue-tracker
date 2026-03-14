@@ -2,6 +2,7 @@ package project
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/google/uuid"
 )
@@ -15,5 +16,9 @@ func NewProjectService(repo ProjectRepository) *ProjectService {
 }
 
 func (s *ProjectService) Create(ctx context.Context, ownerID uuid.UUID, name string, description *string) (*Project, error) {
-	return s.repo.Create(ctx, ownerID, name, description)
+	p, err := s.repo.Create(ctx, ownerID, name, description)
+	if err != nil {
+		return nil, fmt.Errorf("create project: %w", err)
+	}
+	return p, nil
 }

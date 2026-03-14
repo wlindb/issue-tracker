@@ -5,7 +5,8 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-	openapi_types "github.com/oapi-codegen/runtime/types"
+	openapiTypes "github.com/oapi-codegen/runtime/types"
+
 	"github.com/wlindb/issue-tracker/internal/api/generated"
 	trackerdomain "github.com/wlindb/issue-tracker/internal/domain/tracker/project"
 )
@@ -23,7 +24,7 @@ func NewProjectHandler(service ProjectService) ProjectHandler {
 	return ProjectHandler{service: service}
 }
 
-func (h *Handler) ListProjects(ctx context.Context, request generated.ListProjectsRequestObject) (generated.ListProjectsResponseObject, error) {
+func (h *Handler) ListProjects(_ context.Context, _ generated.ListProjectsRequestObject) (generated.ListProjectsResponseObject, error) {
 	return generated.ListProjects500JSONResponse{InternalServerErrorJSONResponse: generated.InternalServerErrorJSONResponse(notImplemented())}, nil
 }
 
@@ -45,23 +46,23 @@ func (h *Handler) CreateProject(ctx context.Context, req generated.CreateProject
 		return nil, fmt.Errorf("create project: %w", err)
 	}
 	return generated.CreateProject201JSONResponse{
-		Id:          openapi_types.UUID(project.ID),
+		Id:          openapiTypes.UUID(project.ID),
 		Name:        project.Name,
 		Description: project.Description,
-		OwnerId:     openapi_types.UUID(project.OwnerID),
+		OwnerId:     openapiTypes.UUID(project.OwnerID),
 		CreatedAt:   project.CreatedAt,
 		UpdatedAt:   project.UpdatedAt,
 	}, nil
 }
 
-func (h *Handler) GetProject(ctx context.Context, request generated.GetProjectRequestObject) (generated.GetProjectResponseObject, error) {
+func (h *Handler) GetProject(_ context.Context, _ generated.GetProjectRequestObject) (generated.GetProjectResponseObject, error) {
 	return generated.GetProject500JSONResponse{InternalServerErrorJSONResponse: generated.InternalServerErrorJSONResponse(notImplemented())}, nil
 }
 
-func (h *Handler) UpdateProject(ctx context.Context, request generated.UpdateProjectRequestObject) (generated.UpdateProjectResponseObject, error) {
+func (h *Handler) UpdateProject(_ context.Context, _ generated.UpdateProjectRequestObject) (generated.UpdateProjectResponseObject, error) {
 	return generated.UpdateProject500JSONResponse{InternalServerErrorJSONResponse: generated.InternalServerErrorJSONResponse(notImplemented())}, nil
 }
 
-func (h *Handler) DeleteProject(ctx context.Context, request generated.DeleteProjectRequestObject) (generated.DeleteProjectResponseObject, error) {
+func (h *Handler) DeleteProject(_ context.Context, _ generated.DeleteProjectRequestObject) (generated.DeleteProjectResponseObject, error) {
 	return generated.DeleteProject500JSONResponse{InternalServerErrorJSONResponse: generated.InternalServerErrorJSONResponse(notImplemented())}, nil
 }

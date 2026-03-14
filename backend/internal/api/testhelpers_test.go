@@ -3,6 +3,7 @@ package api_test
 import (
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
+
 	"github.com/wlindb/issue-tracker/internal/api"
 )
 

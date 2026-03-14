@@ -5,7 +5,8 @@ import (
 	"errors"
 	"fmt"
 
-	openapi_types "github.com/oapi-codegen/runtime/types"
+	openapiTypes "github.com/oapi-codegen/runtime/types"
+
 	"github.com/wlindb/issue-tracker/internal/api/generated"
 	authdomain "github.com/wlindb/issue-tracker/internal/domain/auth"
 )
@@ -35,8 +36,8 @@ func (h AuthHandler) Login(ctx context.Context, request generated.LoginRequestOb
 	return generated.Login200JSONResponse{
 		Token: token,
 		User: generated.User{
-			Id:        openapi_types.UUID(user.ID),
-			Email:     openapi_types.Email(user.Email),
+			Id:        openapiTypes.UUID(user.ID),
+			Email:     openapiTypes.Email(user.Email),
 			Name:      user.Name,
 			CreatedAt: user.CreatedAt,
 			UpdatedAt: user.UpdatedAt,
@@ -61,8 +62,8 @@ func (h AuthHandler) Register(ctx context.Context, request generated.RegisterReq
 	return generated.Register201JSONResponse{
 		Token: token,
 		User: generated.User{
-			Id:        openapi_types.UUID(user.ID),
-			Email:     openapi_types.Email(user.Email),
+			Id:        openapiTypes.UUID(user.ID),
+			Email:     openapiTypes.Email(user.Email),
 			Name:      user.Name,
 			CreatedAt: user.CreatedAt,
 			UpdatedAt: user.UpdatedAt,

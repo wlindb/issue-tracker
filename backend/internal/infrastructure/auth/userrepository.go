@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+
 	authdomain "github.com/wlindb/issue-tracker/internal/domain/auth"
 	authdb "github.com/wlindb/issue-tracker/internal/infrastructure/auth/generated"
 )
