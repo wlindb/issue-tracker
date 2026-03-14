@@ -7,7 +7,6 @@ import (
 // Handler composes per-domain-area handlers and implements StrictServerInterface.
 // Stub methods for unimplemented areas remain directly on Handler.
 type Handler struct {
-	AuthHandler
 	ProjectHandler
 }
 

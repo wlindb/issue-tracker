@@ -1,7 +1,7 @@
 BINARY := issue-tracker
 CMD     := ./cmd/server
 
-.PHONY: build run dev test lint fmt sqlc migrate-up migrate-down generate tidy docker-up docker-down gen-jwt-key
+.PHONY: build run dev test test-integration lint fmt generate tidy docker-up docker-down
 
 build: lint
 	go build -o bin/$(BINARY) $(CMD)
@@ -15,21 +15,15 @@ dev: docker-up
 test:
 	go test ./...
 
+test-integration:
+	go test -tags integration ./internal/api/middleware/...
+
 lint:
 	golangci-lint run ./...
 
 fmt:
 	gofmt -w .
 	goimports -w .
-
-sqlc:
-	cd internal/infrastructure/auth && sqlc generate
-
-migrate-up: docker-up
-	set -a && . ./.env && goose -dir internal/infrastructure/auth/migrations postgres "$$DATABASE_URL" up
-
-migrate-down:
-	set -a && . ./.env && goose -dir internal/infrastructure/auth/migrations postgres "$$DATABASE_URL" down
 
 generate:
 	mkdir -p internal/api/model
@@ -45,7 +39,3 @@ docker-up:
 
 docker-down:
 	docker compose down
-
-gen-jwt-key:
-	openssl genrsa 2048 | awk 'NF {sub(/\r/, ""); printf "%s\\n", $$0}' > jwt_private_key.txt
-	@echo "Paste the contents of jwt_private_key.txt into .env as JWT_PRIVATE_KEY=\"...\""

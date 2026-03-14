@@ -158,34 +158,6 @@ components:
         message: { type: string }
 
     # ── Request bodies ──────────────────────────────────────────────────────
-    RegisterRequest:
-      type: object
-      required: [email, password, name]
-      properties:
-        email:
-          type: string
-          format: email
-          x-go-type: string
-        password: { type: string, minLength: 8 }
-        name:     { type: string }
-
-    LoginRequest:
-      type: object
-      required: [email, password]
-      properties:
-        email:
-          type: string
-          format: email
-          x-go-type: string
-        password: { type: string }
-
-    AuthResponse:
-      type: object
-      required: [token, user]
-      properties:
-        token: { type: string }
-        user:  { $ref: "#/components/schemas/User" }
-
     CreateProjectRequest:
       type: object
       required: [name]
@@ -322,48 +294,6 @@ components:
           schema: { $ref: "#/components/schemas/Error" }
 
 paths:
-
-  /auth/register:
-    post:
-      operationId: register
-      summary: Register a new user account.
-      security: []
-      tags: [auth]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: "#/components/schemas/RegisterRequest" }
-      responses:
-        "201":
-          description: Account created.
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/AuthResponse" }
-        "400": { $ref: "#/components/responses/BadRequest" }
-        "422": { $ref: "#/components/responses/UnprocessableEntity" }
-        "500": { $ref: "#/components/responses/InternalServerError" }
-
-  /auth/login:
-    post:
-      operationId: login
-      summary: Authenticate and obtain a JWT.
-      security: []
-      tags: [auth]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: "#/components/schemas/LoginRequest" }
-      responses:
-        "200":
-          description: Authentication successful.
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/AuthResponse" }
-        "400": { $ref: "#/components/responses/BadRequest" }
-        "401": { $ref: "#/components/responses/Unauthorized" }
-        "500": { $ref: "#/components/responses/InternalServerError" }
 
   /users/me:
     get:

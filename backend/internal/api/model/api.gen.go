@@ -81,12 +81,6 @@ func (e IssueStatus) Valid() bool {
 	}
 }
 
-// AuthResponse defines model for AuthResponse.
-type AuthResponse struct {
-	Token string `json:"token"`
-	User  User   `json:"user"`
-}
-
 // Comment defines model for Comment.
 type Comment struct {
 	AuthorId  uuid.UUID `json:"authorId"`
@@ -155,12 +149,6 @@ type IssuePriority string
 // IssueStatus defines model for IssueStatus.
 type IssueStatus string
 
-// LoginRequest defines model for LoginRequest.
-type LoginRequest struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
-}
-
 // Project defines model for Project.
 type Project struct {
 	CreatedAt   time.Time `json:"createdAt"`
@@ -175,13 +163,6 @@ type Project struct {
 type ProjectPage struct {
 	Items      []Project `json:"items"`
 	NextCursor *string   `json:"nextCursor,omitempty"`
-}
-
-// RegisterRequest defines model for RegisterRequest.
-type RegisterRequest struct {
-	Email    string `json:"email"`
-	Name     string `json:"name"`
-	Password string `json:"password"`
 }
 
 // UpdateCommentRequest defines model for UpdateCommentRequest.
@@ -267,12 +248,6 @@ type ListIssuesParams struct {
 	AssigneeId *uuid.UUID     `form:"assigneeId,omitempty" json:"assigneeId,omitempty"`
 }
 
-// LoginJSONRequestBody defines body for Login for application/json ContentType.
-type LoginJSONRequestBody = LoginRequest
-
-// RegisterJSONRequestBody defines body for Register for application/json ContentType.
-type RegisterJSONRequestBody = RegisterRequest
-
 // UpdateCommentJSONRequestBody defines body for UpdateComment for application/json ContentType.
 type UpdateCommentJSONRequestBody = UpdateCommentRequest
 
@@ -293,12 +268,6 @@ type CreateIssueJSONRequestBody = CreateIssueRequest
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
-	// Authenticate and obtain a JWT.
-	// (POST /auth/login)
-	Login(ctx echo.Context) error
-	// Register a new user account.
-	// (POST /auth/register)
-	Register(ctx echo.Context) error
 	// Delete a comment.
 	// (DELETE /comments/{commentId})
 	DeleteComment(ctx echo.Context, commentId CommentIdParam) error
@@ -349,24 +318,6 @@ type ServerInterface interface {
 // ServerInterfaceWrapper converts echo contexts to parameters.
 type ServerInterfaceWrapper struct {
 	Handler ServerInterface
-}
-
-// Login converts echo context to params.
-func (w *ServerInterfaceWrapper) Login(ctx echo.Context) error {
-	var err error
-
-	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.Login(ctx)
-	return err
-}
-
-// Register converts echo context to params.
-func (w *ServerInterfaceWrapper) Register(ctx echo.Context) error {
-	var err error
-
-	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.Register(ctx)
-	return err
 }
 
 // DeleteComment converts echo context to params.
@@ -715,8 +666,6 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 		Handler: si,
 	}
 
-	router.POST(baseURL+"/auth/login", wrapper.Login)
-	router.POST(baseURL+"/auth/register", wrapper.Register)
 	router.DELETE(baseURL+"/comments/:commentId", wrapper.DeleteComment)
 	router.PATCH(baseURL+"/comments/:commentId", wrapper.UpdateComment)
 	router.DELETE(baseURL+"/issues/:issueId", wrapper.DeleteIssue)
@@ -746,100 +695,6 @@ type NotFoundJSONResponse Error
 type UnauthorizedJSONResponse Error
 
 type UnprocessableEntityJSONResponse Error
-
-type LoginRequestObject struct {
-	Body *LoginJSONRequestBody
-}
-
-type LoginResponseObject interface {
-	VisitLoginResponse(w http.ResponseWriter) error
-}
-
-type Login200JSONResponse AuthResponse
-
-func (response Login200JSONResponse) VisitLoginResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
-type Login400JSONResponse struct{ BadRequestJSONResponse }
-
-func (response Login400JSONResponse) VisitLoginResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(400)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
-type Login401JSONResponse struct{ UnauthorizedJSONResponse }
-
-func (response Login401JSONResponse) VisitLoginResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(401)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
-type Login500JSONResponse struct {
-	InternalServerErrorJSONResponse
-}
-
-func (response Login500JSONResponse) VisitLoginResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(500)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
-type RegisterRequestObject struct {
-	Body *RegisterJSONRequestBody
-}
-
-type RegisterResponseObject interface {
-	VisitRegisterResponse(w http.ResponseWriter) error
-}
-
-type Register201JSONResponse AuthResponse
-
-func (response Register201JSONResponse) VisitRegisterResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(201)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
-type Register400JSONResponse struct{ BadRequestJSONResponse }
-
-func (response Register400JSONResponse) VisitRegisterResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(400)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
-type Register422JSONResponse struct {
-	UnprocessableEntityJSONResponse
-}
-
-func (response Register422JSONResponse) VisitRegisterResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(422)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
-type Register500JSONResponse struct {
-	InternalServerErrorJSONResponse
-}
-
-func (response Register500JSONResponse) VisitRegisterResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(500)
-
-	return json.NewEncoder(w).Encode(response)
-}
 
 type DeleteCommentRequestObject struct {
 	CommentId CommentIdParam `json:"commentId"`
@@ -1715,12 +1570,6 @@ func (response GetMe500JSONResponse) VisitGetMeResponse(w http.ResponseWriter) e
 
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
-	// Authenticate and obtain a JWT.
-	// (POST /auth/login)
-	Login(ctx context.Context, request LoginRequestObject) (LoginResponseObject, error)
-	// Register a new user account.
-	// (POST /auth/register)
-	Register(ctx context.Context, request RegisterRequestObject) (RegisterResponseObject, error)
 	// Delete a comment.
 	// (DELETE /comments/{commentId})
 	DeleteComment(ctx context.Context, request DeleteCommentRequestObject) (DeleteCommentResponseObject, error)
@@ -1778,64 +1627,6 @@ func NewStrictHandler(ssi StrictServerInterface, middlewares []StrictMiddlewareF
 type strictHandler struct {
 	ssi         StrictServerInterface
 	middlewares []StrictMiddlewareFunc
-}
-
-// Login operation middleware
-func (sh *strictHandler) Login(ctx echo.Context) error {
-	var request LoginRequestObject
-
-	var body LoginJSONRequestBody
-	if err := ctx.Bind(&body); err != nil {
-		return err
-	}
-	request.Body = &body
-
-	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
-		return sh.ssi.Login(ctx.Request().Context(), request.(LoginRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "Login")
-	}
-
-	response, err := handler(ctx, request)
-
-	if err != nil {
-		return err
-	} else if validResponse, ok := response.(LoginResponseObject); ok {
-		return validResponse.VisitLoginResponse(ctx.Response())
-	} else if response != nil {
-		return fmt.Errorf("unexpected response type: %T", response)
-	}
-	return nil
-}
-
-// Register operation middleware
-func (sh *strictHandler) Register(ctx echo.Context) error {
-	var request RegisterRequestObject
-
-	var body RegisterJSONRequestBody
-	if err := ctx.Bind(&body); err != nil {
-		return err
-	}
-	request.Body = &body
-
-	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
-		return sh.ssi.Register(ctx.Request().Context(), request.(RegisterRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "Register")
-	}
-
-	response, err := handler(ctx, request)
-
-	if err != nil {
-		return err
-	} else if validResponse, ok := response.(RegisterResponseObject); ok {
-		return validResponse.VisitRegisterResponse(ctx.Response())
-	} else if response != nil {
-		return fmt.Errorf("unexpected response type: %T", response)
-	}
-	return nil
 }
 
 // DeleteComment operation middleware
@@ -2250,42 +2041,39 @@ func (sh *strictHandler) GetMe(ctx echo.Context) error {
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
+	"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",
+	"lQyPsE8S6t8d4+wm+z8AAP//zFKeWbE7AAA=",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file
