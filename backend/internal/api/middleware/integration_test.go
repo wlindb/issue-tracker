@@ -50,7 +50,7 @@ func TestMain(m *testing.M) {
 
 func startKeycloakContainer(ctx context.Context) (*keycloakContainer, error) {
 	req := testcontainers.ContainerRequest{
-		Image: "quay.io/keycloak/keycloak:26",
+		Image: "quay.io/keycloak/keycloak:26.2",
 		Cmd:   []string{"start-dev", "--import-realm"},
 		Env: map[string]string{
 			"KEYCLOAK_ADMIN":          "admin",
