@@ -26,8 +26,8 @@ type mockProjectService struct {
 	mock.Mock
 }
 
-func (m *mockProjectService) Create(ctx context.Context, ownerID uuid.UUID, name string, description *string) (*trackerdomain.Project, error) {
-	args := m.Called(ctx, ownerID, name, description)
+func (m *mockProjectService) Create(ctx context.Context, id uuid.UUID, ownerID uuid.UUID, name string, description *string) (*trackerdomain.Project, error) {
+	args := m.Called(ctx, id, ownerID, name, description)
 	if p, ok := args.Get(0).(*trackerdomain.Project); ok {
 		return p, args.Error(1)
 	}
@@ -51,7 +51,7 @@ func Test_CreateProject_ValidBody_Returns201(t *testing.T) {
 	now := time.Now().UTC()
 	ownerID := uuid.New()
 
-	service.On("Create", mock.Anything, ownerID, "Acme", (*string)(nil)).
+	service.On("Create", mock.Anything, mock.Anything, ownerID, "Acme", (*string)(nil)).
 		Return(&trackerdomain.Project{
 			ID:        uuid.New(),
 			Name:      "Acme",
@@ -94,7 +94,7 @@ func Test_CreateProject_ServiceError_InternalServerError(t *testing.T) {
 	service := &mockProjectService{}
 	ownerID := uuid.New()
 
-	service.On("Create", mock.Anything, ownerID, "Acme", (*string)(nil)).
+	service.On("Create", mock.Anything, mock.Anything, ownerID, "Acme", (*string)(nil)).
 		Return(nil, errors.New("db down"))
 
 	e := newTestServer(t, service)

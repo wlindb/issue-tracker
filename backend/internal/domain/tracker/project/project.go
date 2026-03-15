@@ -18,7 +18,8 @@ type Project struct {
 }
 
 type ProjectRepository interface {
-	Create(ctx context.Context, ownerID uuid.UUID, name string, description *string) (*Project, error)
+	Create(ctx context.Context, id uuid.UUID, ownerID uuid.UUID, name string, description *string) (*Project, error)
 }
 
 var ErrProjectNotFound = errors.New("project not found")
+var ErrInvalidProject = errors.New("invalid project")

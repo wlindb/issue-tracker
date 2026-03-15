@@ -15,6 +15,7 @@ import (
 	"github.com/wlindb/issue-tracker/internal/api"
 	"github.com/wlindb/issue-tracker/internal/config"
 	"github.com/wlindb/issue-tracker/internal/infrastructure/db"
+	trackerdomain "github.com/wlindb/issue-tracker/internal/domain/tracker/project"
 )
 
 func main() {
@@ -39,7 +40,7 @@ func run() error {
 	log.Println("database connected")
 
 	h := &api.Handler{
-		ProjectHandler: api.NewProjectHandler(nil), // TODO: wire real service
+		ProjectHandler: api.NewProjectHandler(trackerdomain.NewProjectService(trackerdomain.StubRepository{})),
 	}
 
 	e, err := newServer(h, cfg)

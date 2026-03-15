@@ -12,7 +12,7 @@ import (
 
 // ProjectService is what the handler needs from the domain.
 type ProjectService interface {
-	Create(ctx context.Context, ownerID uuid.UUID, name string, description *string) (*trackerdomain.Project, error)
+	Create(ctx context.Context, id uuid.UUID, ownerID uuid.UUID, name string, description *string) (*trackerdomain.Project, error)
 }
 
 type ProjectHandler struct {
@@ -40,7 +40,8 @@ func (h *Handler) CreateProject(ctx context.Context, req model.CreateProjectRequ
 	if userID == uuid.Nil {
 		return nil, fmt.Errorf("missing user ID in context")
 	}
-	project, err := h.ProjectHandler.service.Create(ctx, userID, req.Body.Name, req.Body.Description)
+	id := uuid.New()
+	project, err := h.ProjectHandler.service.Create(ctx, id, userID, req.Body.Name, req.Body.Description)
 	if err != nil {
 		return nil, fmt.Errorf("create project: %w", err)
 	}
