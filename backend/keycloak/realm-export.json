@@ -24,6 +24,8 @@
     {
       "id": "00000000-0000-0000-0000-000000000001",
       "username": "testuser",
+      "firstName": "Test",
+      "lastName": "User",
       "email": "test@example.com",
       "emailVerified": true,
       "enabled": true,
