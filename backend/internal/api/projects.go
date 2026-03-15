@@ -41,7 +41,7 @@ func (h *Handler) CreateProject(ctx context.Context, req model.CreateProjectRequ
 		return nil, fmt.Errorf("missing user ID in context")
 	}
 	id := uuid.New()
-	project, err := h.ProjectHandler.service.Create(ctx, id, userID, req.Body.Name, req.Body.Description)
+	project, err := h.service.Create(ctx, id, userID, req.Body.Name, req.Body.Description)
 	if err != nil {
 		return nil, fmt.Errorf("create project: %w", err)
 	}
