@@ -1,7 +1,7 @@
 BINARY := issue-tracker
 CMD     := ./cmd/server
 
-.PHONY: build run dev test test-integration lint fmt generate tidy docker-up docker-down
+.PHONY: build run dev test test-integration lint fmt generate tidy docker-up docker-down wait-keycloak
 
 build: lint
 	go build -o bin/$(BINARY) $(CMD)
@@ -9,7 +9,7 @@ build: lint
 run:
 	go run $(CMD)
 
-dev: docker-up
+dev: docker-up wait-keycloak
 	set -a && . ./.env && air
 
 test:
@@ -36,6 +36,13 @@ tidy:
 
 docker-up:
 	docker compose up -d
+
+wait-keycloak:
+	@printf 'Waiting for Keycloak JWKS'
+	@until curl -sf http://localhost:8180/realms/issue-tracker/protocol/openid-connect/certs > /dev/null 2>&1; do \
+		printf '.'; sleep 2; \
+	done
+	@echo ' ready.'
 
 docker-down:
 	docker compose down
