@@ -38,7 +38,7 @@ jobs:
       - env:
           auth_token: ${{ secrets.DOCKERHUB_TOKEN }}
         run: |
-          echo "${auth_token}" | ko login https://index.docker.io \
+          echo "${auth_token}" | ko login index.docker.io \
             --username ${{ vars.DOCKERHUB_USERNAME }} \
             --password-stdin
           ko build --bare ./cmd/server --tags ${{ github.sha }},latest
