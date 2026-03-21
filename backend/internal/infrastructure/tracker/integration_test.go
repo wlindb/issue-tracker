@@ -1,5 +1,3 @@
-//go:build integration
-
 package tracker_test
 
 import (
@@ -30,10 +28,6 @@ func TestMain(m *testing.M) {
 	}
 	defer terminate()
 
-	if err := tracker.Migrate(ctx, pool); err != nil {
-		fmt.Fprintf(os.Stderr, "migrate: %v\n", err)
-		os.Exit(1)
-	}
 	testPool = pool
 	os.Exit(m.Run())
 }
@@ -74,34 +68,34 @@ func startPostgres(ctx context.Context) (*pgxpool.Pool, func(), error) {
 	return pool, func() { pool.Close(); c.Terminate(ctx) }, nil //nolint:errcheck
 }
 
-func TestProjectRepository_Create_Success(t *testing.T) {
+func Test_Create_NoDescription_SuccessfulProjectCreation(t *testing.T) {
 	repo := tracker.NewProjectRepository(testPool)
 	id, ownerID := uuid.New(), uuid.New()
 
-	got, err := repo.Create(context.Background(), id, ownerID, "Acme", nil)
+	actual, err := repo.Create(context.Background(), id, ownerID, "Acme", nil)
 
 	require.NoError(t, err)
-	require.NotNil(t, got)
-	assert.Equal(t, id, got.ID)
-	assert.Equal(t, ownerID, got.OwnerID)
-	assert.Equal(t, "Acme", got.Name)
-	assert.Nil(t, got.Description)
-	assert.False(t, got.CreatedAt.IsZero())
-	assert.False(t, got.UpdatedAt.IsZero())
+	require.NotNil(t, actual)
+	assert.Equal(t, id, actual.ID)
+	assert.Equal(t, ownerID, actual.OwnerID)
+	assert.Equal(t, "Acme", actual.Name)
+	assert.Nil(t, actual.Description)
+	assert.False(t, actual.CreatedAt.IsZero())
+	assert.False(t, actual.UpdatedAt.IsZero())
 }
 
-func TestProjectRepository_Create_WithDescription(t *testing.T) {
+func Test_Create_WithDescription_SuccessfulProjectCreation(t *testing.T) {
 	repo := tracker.NewProjectRepository(testPool)
 	desc := "My description"
 
-	got, err := repo.Create(context.Background(), uuid.New(), uuid.New(), "Described", &desc)
+	actual, err := repo.Create(context.Background(), uuid.New(), uuid.New(), "Described", &desc)
 
 	require.NoError(t, err)
-	require.NotNil(t, got.Description)
-	assert.Equal(t, desc, *got.Description)
+	require.NotNil(t, actual.Description)
+	assert.Equal(t, desc, *actual.Description)
 }
 
-func TestProjectRepository_Create_DuplicateID_ReturnsError(t *testing.T) {
+func Test_Create_DuplicateID_ReturnsError(t *testing.T) {
 	repo := tracker.NewProjectRepository(testPool)
 	ctx := context.Background()
 	id := uuid.New()
