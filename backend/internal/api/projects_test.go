@@ -34,13 +34,10 @@ func (m *mockProjectService) Create(ctx context.Context, id uuid.UUID, ownerID u
 	return nil, args.Error(1)
 }
 
-func (m *mockProjectService) List(ctx context.Context, ownerID uuid.UUID, cursor *string, limit *int) ([]trackerdomain.Project, *string, error) {
-	args := m.Called(ctx, ownerID, cursor, limit)
-	if projects, ok := args.Get(0).([]trackerdomain.Project); ok {
-		next, _ := args.Get(1).(*string)
-		return projects, next, args.Error(2)
-	}
-	return nil, nil, args.Error(2)
+func (m *mockProjectService) List(ctx context.Context, query trackerdomain.ListProjectQuery) (trackerdomain.Projects, error) {
+	args := m.Called(ctx, query)
+	projects, _ := args.Get(0).(trackerdomain.Projects)
+	return projects, args.Error(1)
 }
 
 // newTestServer builds a minimal Echo server wired to the given project service.
@@ -137,8 +134,8 @@ func Test_ListProjects_ProjectsExist_Returns200(t *testing.T) {
 	ownerID := uuid.New()
 	now := time.Now().UTC()
 
-	service.On("List", mock.Anything, ownerID, (*string)(nil), (*int)(nil)).
-		Return([]trackerdomain.Project{
+	service.On("List", mock.Anything, trackerdomain.ListProjectQuery{OwnerID: ownerID}).
+		Return(trackerdomain.NewProjects([]trackerdomain.Project{
 			{
 				ID:        uuid.New(),
 				Name:      "Alpha",
@@ -146,7 +143,7 @@ func Test_ListProjects_ProjectsExist_Returns200(t *testing.T) {
 				CreatedAt: now,
 				UpdatedAt: now,
 			},
-		}, (*string)(nil), nil)
+		}, nil), nil)
 
 	e := newTestServer(t, service)
 	e.Use(injectUser(ownerID))
@@ -168,8 +165,8 @@ func Test_ListProjects_EmptyList_Returns200(t *testing.T) {
 	service := &mockProjectService{}
 	ownerID := uuid.New()
 
-	service.On("List", mock.Anything, ownerID, (*string)(nil), (*int)(nil)).
-		Return([]trackerdomain.Project{}, (*string)(nil), nil)
+	service.On("List", mock.Anything, trackerdomain.ListProjectQuery{OwnerID: ownerID}).
+		Return(trackerdomain.NewProjects([]trackerdomain.Project{}, nil), nil)
 
 	e := newTestServer(t, service)
 	e.Use(injectUser(ownerID))
@@ -202,8 +199,8 @@ func Test_ListProjects_ServiceError_Returns500(t *testing.T) {
 	service := &mockProjectService{}
 	ownerID := uuid.New()
 
-	service.On("List", mock.Anything, ownerID, (*string)(nil), (*int)(nil)).
-		Return(nil, nil, errors.New("db down"))
+	service.On("List", mock.Anything, trackerdomain.ListProjectQuery{OwnerID: ownerID}).
+		Return(trackerdomain.Projects{}, errors.New("db down"))
 
 	e := newTestServer(t, service)
 	e.Use(injectUser(ownerID))

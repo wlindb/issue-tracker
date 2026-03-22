@@ -13,7 +13,7 @@ import (
 // ProjectService is what the handler needs from the domain.
 type ProjectService interface {
 	Create(ctx context.Context, id uuid.UUID, ownerID uuid.UUID, name string, description *string) (*trackerdomain.Project, error)
-	List(ctx context.Context, ownerID uuid.UUID, cursor *string, limit *int) ([]trackerdomain.Project, *string, error)
+	List(ctx context.Context, query trackerdomain.ListProjectQuery) (trackerdomain.Projects, error)
 }
 
 type ProjectHandler struct {
@@ -34,24 +34,18 @@ func (h *Handler) ListProjects(ctx context.Context, req model.ListProjectsReques
 			}),
 		}, nil
 	}
-	projects, nextCursor, err := h.service.List(ctx, userID, req.Params.Cursor, req.Params.Limit)
+	query := trackerdomain.ListProjectQuery{
+		OwnerID: userID,
+		Cursor:  req.Params.Cursor,
+		Limit:   req.Params.Limit,
+	}
+	projects, err := h.service.List(ctx, query)
 	if err != nil {
 		return nil, fmt.Errorf("list projects: %w", err)
 	}
-	items := make([]model.Project, len(projects))
-	for i, p := range projects {
-		items[i] = model.Project{
-			Id:          p.ID,
-			Name:        p.Name,
-			Description: p.Description,
-			OwnerId:     p.OwnerID,
-			CreatedAt:   p.CreatedAt,
-			UpdatedAt:   p.UpdatedAt,
-		}
-	}
 	return model.ListProjects200JSONResponse{
-		Items:      items,
-		NextCursor: nextCursor,
+		Items:      projectsToModel(projects.Items),
+		NextCursor: projects.Cursor(),
 	}, nil
 }
 
@@ -73,14 +67,7 @@ func (h *Handler) CreateProject(ctx context.Context, req model.CreateProjectRequ
 	if err != nil {
 		return nil, fmt.Errorf("create project: %w", err)
 	}
-	return model.CreateProject201JSONResponse{
-		Id:          project.ID,
-		Name:        project.Name,
-		Description: project.Description,
-		OwnerId:     project.OwnerID,
-		CreatedAt:   project.CreatedAt,
-		UpdatedAt:   project.UpdatedAt,
-	}, nil
+	return model.CreateProject201JSONResponse(projectToModel(*project)), nil
 }
 
 func (h *Handler) GetProject(_ context.Context, _ model.GetProjectRequestObject) (model.GetProjectResponseObject, error) {
