@@ -44,7 +44,7 @@ func TestMain(m *testing.M) {
 		fmt.Fprintf(os.Stderr, "failed to start keycloak container: %v\n", err)
 		os.Exit(1)
 	}
-	defer kc.container.Terminate(ctx) //nolint:errcheck
+	defer kc.container.Terminate(ctx)
 	os.Exit(m.Run())
 }
 
@@ -145,7 +145,7 @@ func localJWKSServer(t *testing.T, pub *rsa.PublicKey) *httptest.Server {
 	require.NoError(t, err)
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		w.Write(body) //nolint:errcheck
+		w.Write(body)
 	}))
 	t.Cleanup(srv.Close)
 	return srv

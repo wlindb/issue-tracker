@@ -2,6 +2,7 @@ package tracker_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"testing"
@@ -26,10 +27,11 @@ func TestMain(m *testing.M) {
 		fmt.Fprintf(os.Stderr, "start postgres: %v\n", err)
 		os.Exit(1)
 	}
-	defer terminate()
 
 	testPool = pool
-	os.Exit(m.Run())
+	code := m.Run()
+	terminate()
+	os.Exit(code)
 }
 
 func startPostgres(ctx context.Context) (*pgxpool.Pool, func(), error) {
@@ -51,21 +53,23 @@ func startPostgres(ctx context.Context) (*pgxpool.Pool, func(), error) {
 	}
 	port, err := c.MappedPort(ctx, "5432")
 	if err != nil {
-		c.Terminate(ctx) //nolint:errcheck
-		return nil, nil, fmt.Errorf("mapped port: %w", err)
+		return nil, nil, errors.Join(fmt.Errorf("mapped port: %w", err), c.Terminate(ctx))
 	}
 	host, err := c.Host(ctx)
 	if err != nil {
-		c.Terminate(ctx) //nolint:errcheck
-		return nil, nil, fmt.Errorf("host: %w", err)
+		return nil, nil, errors.Join(fmt.Errorf("host: %w", err), c.Terminate(ctx))
 	}
 	dsn := fmt.Sprintf("postgres://test:test@%s:%s/test", host, port.Port())
 	pool, err := infradb.New(ctx, dsn)
 	if err != nil {
-		c.Terminate(ctx) //nolint:errcheck
-		return nil, nil, fmt.Errorf("connect: %w", err)
+		return nil, nil, errors.Join(fmt.Errorf("connect: %w", err), c.Terminate(ctx))
 	}
-	return pool, func() { pool.Close(); c.Terminate(ctx) }, nil //nolint:errcheck
+	return pool, func() {
+		pool.Close()
+		if err := c.Terminate(ctx); err != nil {
+			fmt.Fprintf(os.Stderr, "terminate container: %v\n", err)
+		}
+	}, nil
 }
 
 func Test_Create_NoDescription_SuccessfulProjectCreation(t *testing.T) {

@@ -38,7 +38,8 @@ func serveJWKS(t *testing.T, pub *rsa.PublicKey) *httptest.Server {
 	require.NoError(t, err)
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		w.Write(body) //nolint:errcheck
+		_, err = w.Write(body)
+		require.NoError(t, err)
 	}))
 	t.Cleanup(srv.Close)
 	return srv
