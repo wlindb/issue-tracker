@@ -13,6 +13,7 @@ import (
 // ProjectService is what the handler needs from the domain.
 type ProjectService interface {
 	Create(ctx context.Context, id uuid.UUID, ownerID uuid.UUID, name string, description *string) (*trackerdomain.Project, error)
+	List(ctx context.Context, ownerID uuid.UUID, cursor *string, limit *int) ([]trackerdomain.Project, *string, error)
 }
 
 type ProjectHandler struct {
@@ -23,8 +24,35 @@ func NewProjectHandler(service ProjectService) ProjectHandler {
 	return ProjectHandler{service: service}
 }
 
-func (h *Handler) ListProjects(_ context.Context, _ model.ListProjectsRequestObject) (model.ListProjectsResponseObject, error) {
-	return model.ListProjects500JSONResponse{InternalServerErrorJSONResponse: model.InternalServerErrorJSONResponse(notImplemented())}, nil
+func (h *Handler) ListProjects(ctx context.Context, req model.ListProjectsRequestObject) (model.ListProjectsResponseObject, error) {
+	userID := userIDFromContext(ctx)
+	if userID == uuid.Nil {
+		return model.ListProjects401JSONResponse{
+			UnauthorizedJSONResponse: model.UnauthorizedJSONResponse(model.Error{
+				Code:    "unauthorized",
+				Message: "authentication required",
+			}),
+		}, nil
+	}
+	projects, nextCursor, err := h.service.List(ctx, userID, req.Params.Cursor, req.Params.Limit)
+	if err != nil {
+		return nil, fmt.Errorf("list projects: %w", err)
+	}
+	items := make([]model.Project, len(projects))
+	for i, p := range projects {
+		items[i] = model.Project{
+			Id:          p.ID,
+			Name:        p.Name,
+			Description: p.Description,
+			OwnerId:     p.OwnerID,
+			CreatedAt:   p.CreatedAt,
+			UpdatedAt:   p.UpdatedAt,
+		}
+	}
+	return model.ListProjects200JSONResponse{
+		Items:      items,
+		NextCursor: nextCursor,
+	}, nil
 }
 
 func (h *Handler) CreateProject(ctx context.Context, req model.CreateProjectRequestObject) (model.CreateProjectResponseObject, error) {
