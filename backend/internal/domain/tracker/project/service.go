@@ -25,3 +25,7 @@ func (s *ProjectService) Create(ctx context.Context, id uuid.UUID, ownerID uuid.
 	}
 	return p, nil
 }
+
+func (s *ProjectService) List(_ context.Context, _ ListProjectQuery) (Projects, error) {
+	return Projects{}, fmt.Errorf("not implemented")
+}

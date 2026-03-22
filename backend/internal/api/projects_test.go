@@ -34,6 +34,12 @@ func (m *mockProjectService) Create(ctx context.Context, id uuid.UUID, ownerID u
 	return nil, args.Error(1)
 }
 
+func (m *mockProjectService) List(ctx context.Context, query trackerdomain.ListProjectQuery) (trackerdomain.Projects, error) {
+	args := m.Called(ctx, query)
+	projects, _ := args.Get(0).(trackerdomain.Projects)
+	return projects, args.Error(1)
+}
+
 // newTestServer builds a minimal Echo server wired to the given project service.
 func newTestServer(t *testing.T, service api.ProjectService) *echo.Echo {
 	t.Helper()
@@ -121,4 +127,103 @@ func Test_CreateProject_MissingUserID_InternalServerError(t *testing.T) {
 
 	require.Equal(t, http.StatusInternalServerError, rec.Code)
 	service.AssertNotCalled(t, "Create")
+}
+
+func Test_ListProjects_ProjectsExist_Returns200(t *testing.T) {
+	service := &mockProjectService{}
+	ownerID := uuid.New()
+	now := time.Now().UTC()
+
+	service.On("List", mock.Anything, trackerdomain.ListProjectQuery{OwnerID: ownerID}).
+		Return(trackerdomain.NewProjects([]trackerdomain.Project{
+			{
+				ID:        uuid.New(),
+				Name:      "Alpha",
+				OwnerID:   ownerID,
+				CreatedAt: now,
+				UpdatedAt: now,
+			},
+		}, nil), nil)
+
+	e := newTestServer(t, service)
+	e.Use(injectUser(ownerID))
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/projects", nil)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusOK, rec.Code)
+	var got model.ProjectPage
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &got))
+	require.Len(t, got.Items, 1)
+	assert.Equal(t, "Alpha", got.Items[0].Name)
+	assert.Equal(t, ownerID, got.Items[0].OwnerId)
+	service.AssertExpectations(t)
+}
+
+func Test_ListProjects_EmptyList_Returns200(t *testing.T) {
+	service := &mockProjectService{}
+	ownerID := uuid.New()
+
+	service.On("List", mock.Anything, trackerdomain.ListProjectQuery{OwnerID: ownerID}).
+		Return(trackerdomain.NewProjects([]trackerdomain.Project{}, nil), nil)
+
+	e := newTestServer(t, service)
+	e.Use(injectUser(ownerID))
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/projects", nil)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusOK, rec.Code)
+	var got model.ProjectPage
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &got))
+	assert.Empty(t, got.Items)
+	service.AssertExpectations(t)
+}
+
+func Test_ListProjects_NoUserID_Returns401(t *testing.T) {
+	service := &mockProjectService{}
+
+	e := newTestServer(t, service) // no injectUser — userID absent from context
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/projects", nil)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusUnauthorized, rec.Code)
+	service.AssertNotCalled(t, "List")
+}
+
+func Test_ListProjects_ServiceError_Returns500(t *testing.T) {
+	service := &mockProjectService{}
+	ownerID := uuid.New()
+
+	service.On("List", mock.Anything, trackerdomain.ListProjectQuery{OwnerID: ownerID}).
+		Return(trackerdomain.Projects{}, errors.New("db down"))
+
+	e := newTestServer(t, service)
+	e.Use(injectUser(ownerID))
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/projects", nil)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusInternalServerError, rec.Code)
+	service.AssertExpectations(t)
+}
+
+func Test_ListProjects_InvalidLimitParam_Returns400(t *testing.T) {
+	service := &mockProjectService{}
+	ownerID := uuid.New()
+
+	e := newTestServer(t, service)
+	e.Use(injectUser(ownerID))
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/projects?limit=notanumber", nil)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusBadRequest, rec.Code)
+	service.AssertNotCalled(t, "List")
 }

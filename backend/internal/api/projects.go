@@ -13,6 +13,7 @@ import (
 // ProjectService is what the handler needs from the domain.
 type ProjectService interface {
 	Create(ctx context.Context, id uuid.UUID, ownerID uuid.UUID, name string, description *string) (*trackerdomain.Project, error)
+	List(ctx context.Context, query trackerdomain.ListProjectQuery) (trackerdomain.Projects, error)
 }
 
 type ProjectHandler struct {
@@ -23,8 +24,29 @@ func NewProjectHandler(service ProjectService) ProjectHandler {
 	return ProjectHandler{service: service}
 }
 
-func (h *Handler) ListProjects(_ context.Context, _ model.ListProjectsRequestObject) (model.ListProjectsResponseObject, error) {
-	return model.ListProjects500JSONResponse{InternalServerErrorJSONResponse: model.InternalServerErrorJSONResponse(notImplemented())}, nil
+func (h *Handler) ListProjects(ctx context.Context, req model.ListProjectsRequestObject) (model.ListProjectsResponseObject, error) {
+	userID := userIDFromContext(ctx)
+	if userID == uuid.Nil {
+		return model.ListProjects401JSONResponse{
+			UnauthorizedJSONResponse: model.UnauthorizedJSONResponse(model.Error{
+				Code:    "unauthorized",
+				Message: "authentication required",
+			}),
+		}, nil
+	}
+	query := trackerdomain.ListProjectQuery{
+		OwnerID: userID,
+		Cursor:  req.Params.Cursor,
+		Limit:   req.Params.Limit,
+	}
+	projects, err := h.service.List(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("list projects: %w", err)
+	}
+	return model.ListProjects200JSONResponse{
+		Items:      projectsToModel(projects.Items),
+		NextCursor: projects.Cursor(),
+	}, nil
 }
 
 func (h *Handler) CreateProject(ctx context.Context, req model.CreateProjectRequestObject) (model.CreateProjectResponseObject, error) {
@@ -45,14 +67,7 @@ func (h *Handler) CreateProject(ctx context.Context, req model.CreateProjectRequ
 	if err != nil {
 		return nil, fmt.Errorf("create project: %w", err)
 	}
-	return model.CreateProject201JSONResponse{
-		Id:          project.ID,
-		Name:        project.Name,
-		Description: project.Description,
-		OwnerId:     project.OwnerID,
-		CreatedAt:   project.CreatedAt,
-		UpdatedAt:   project.UpdatedAt,
-	}, nil
+	return model.CreateProject201JSONResponse(projectToModel(*project)), nil
 }
 
 func (h *Handler) GetProject(_ context.Context, _ model.GetProjectRequestObject) (model.GetProjectResponseObject, error) {
