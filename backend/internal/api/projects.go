@@ -39,7 +39,7 @@ func (h *Handler) ListProjects(ctx context.Context, req model.ListProjectsReques
 		return nil, fmt.Errorf("list projects: %w", err)
 	}
 	return model.ListProjects200JSONResponse{
-		Items:      projectsFromDoman(projects.Items),
+		Items:      projectsFromDomain(projects.Items),
 		NextCursor: nil,
 	}, nil
 }
