@@ -25,13 +25,9 @@ func NewProjectHandler(service ProjectService) ProjectHandler {
 }
 
 func (h *Handler) ListProjects(ctx context.Context, req model.ListProjectsRequestObject) (model.ListProjectsResponseObject, error) {
-	userID := userIDFromContext(ctx)
-	if userID == uuid.Nil {
+	if _, err := userIDFromContext(ctx); err != nil {
 		return model.ListProjects401JSONResponse{
-			UnauthorizedJSONResponse: model.UnauthorizedJSONResponse(model.Error{
-				Code:    "unauthorized",
-				Message: "authentication required",
-			}),
+			UnauthorizedJSONResponse: newUnauthorized("unauthorized", "authentication required"),
 		}, nil
 	}
 	projects, err := h.service.List(ctx, listProjectQueryFromRequest(req.Params))
@@ -47,15 +43,12 @@ func (h *Handler) ListProjects(ctx context.Context, req model.ListProjectsReques
 func (h *Handler) CreateProject(ctx context.Context, req model.CreateProjectRequestObject) (model.CreateProjectResponseObject, error) {
 	if req.Body.Name == "" {
 		return model.CreateProject400JSONResponse{
-			BadRequestJSONResponse: model.BadRequestJSONResponse(model.Error{
-				Code:    "invalid_input",
-				Message: "name is required",
-			}),
+			BadRequestJSONResponse: newBadRequest("invalid_input", "name is required"),
 		}, nil
 	}
-	userID := userIDFromContext(ctx)
-	if userID == uuid.Nil {
-		return nil, fmt.Errorf("missing user ID in context")
+	userID, err := userIDFromContext(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("create project: %w", err)
 	}
 	id := uuid.New()
 	project, err := h.service.Create(ctx, id, userID, req.Body.Name, req.Body.Description)
@@ -76,3 +69,4 @@ func (h *Handler) UpdateProject(_ context.Context, _ model.UpdateProjectRequestO
 func (h *Handler) DeleteProject(_ context.Context, _ model.DeleteProjectRequestObject) (model.DeleteProjectResponseObject, error) {
 	return model.DeleteProject500JSONResponse{InternalServerErrorJSONResponse: model.InternalServerErrorJSONResponse(notImplemented())}, nil
 }
+
