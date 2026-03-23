@@ -12,6 +12,8 @@ jobs:
 
     permissions:
       contents: read
+      checks: write
+      pull-requests: write
 
     defaults:
       run:
@@ -31,4 +33,20 @@ jobs:
         run: make lint
 
       - name: Run tests
-        run: make test
+        run: go test -v -json -coverprofile=coverage.out ./... > test-results.json 2>&1
+
+      - name: Publish test report
+        uses: dorny/test-reporter@v1
+        if: always()
+        with:
+          name: Go Tests
+          path: backend/test-results.json
+          reporter: golang-json
+          fail-on-error: false
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report
+          path: backend/coverage.out
