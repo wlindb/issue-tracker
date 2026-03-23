@@ -34,18 +34,13 @@ func (h *Handler) ListProjects(ctx context.Context, req model.ListProjectsReques
 			}),
 		}, nil
 	}
-	query := trackerdomain.ListProjectQuery{
-		OwnerID: userID,
-		Cursor:  req.Params.Cursor,
-		Limit:   req.Params.Limit,
-	}
-	projects, err := h.service.List(ctx, query)
+	projects, err := h.service.List(ctx, listProjectQueryFromRequest(req.Params))
 	if err != nil {
 		return nil, fmt.Errorf("list projects: %w", err)
 	}
 	return model.ListProjects200JSONResponse{
-		Items:      projectsToModel(projects.Items),
-		NextCursor: projects.Cursor(),
+		Items:      projectsFromDoman(projects.Items),
+		NextCursor: nil,
 	}, nil
 }
 
@@ -67,7 +62,7 @@ func (h *Handler) CreateProject(ctx context.Context, req model.CreateProjectRequ
 	if err != nil {
 		return nil, fmt.Errorf("create project: %w", err)
 	}
-	return model.CreateProject201JSONResponse(projectToModel(*project)), nil
+	return model.CreateProject201JSONResponse(projectFromDomain(*project)), nil
 }
 
 func (h *Handler) GetProject(_ context.Context, _ model.GetProjectRequestObject) (model.GetProjectResponseObject, error) {
