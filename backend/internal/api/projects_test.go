@@ -134,16 +134,18 @@ func Test_ListProjects_ProjectsExist_Returns200(t *testing.T) {
 	ownerID := uuid.New()
 	now := time.Now().UTC()
 
-	service.On("List", mock.Anything, trackerdomain.ListProjectQuery{OwnerID: ownerID}).
-		Return(trackerdomain.NewProjects([]trackerdomain.Project{
-			{
-				ID:        uuid.New(),
-				Name:      "Alpha",
-				OwnerID:   ownerID,
-				CreatedAt: now,
-				UpdatedAt: now,
+	service.On("List", mock.Anything, trackerdomain.ListProjectQuery{}).
+		Return(trackerdomain.Projects{
+			Items: []trackerdomain.Project{
+				{
+					ID:        uuid.New(),
+					Name:      "Alpha",
+					OwnerID:   ownerID,
+					CreatedAt: now,
+					UpdatedAt: now,
+				},
 			},
-		}, nil), nil)
+		}, nil)
 
 	e := newTestServer(t, service)
 	e.Use(injectUser(ownerID))
@@ -165,8 +167,8 @@ func Test_ListProjects_EmptyList_Returns200(t *testing.T) {
 	service := &mockProjectService{}
 	ownerID := uuid.New()
 
-	service.On("List", mock.Anything, trackerdomain.ListProjectQuery{OwnerID: ownerID}).
-		Return(trackerdomain.NewProjects([]trackerdomain.Project{}, nil), nil)
+	service.On("List", mock.Anything, trackerdomain.ListProjectQuery{}).
+		Return(trackerdomain.Projects{Items: []trackerdomain.Project{}}, nil)
 
 	e := newTestServer(t, service)
 	e.Use(injectUser(ownerID))
@@ -199,7 +201,7 @@ func Test_ListProjects_ServiceError_Returns500(t *testing.T) {
 	service := &mockProjectService{}
 	ownerID := uuid.New()
 
-	service.On("List", mock.Anything, trackerdomain.ListProjectQuery{OwnerID: ownerID}).
+	service.On("List", mock.Anything, trackerdomain.ListProjectQuery{}).
 		Return(trackerdomain.Projects{}, errors.New("db down"))
 
 	e := newTestServer(t, service)
