@@ -28,6 +28,11 @@ func TestMain(m *testing.M) {
 		os.Exit(1)
 	}
 
+	if err := tracker.Migrate(ctx, pool); err != nil {
+		fmt.Fprintf(os.Stderr, "migrate: %v\n", err)
+		os.Exit(1)
+	}
+
 	testPool = pool
 	code := m.Run()
 	terminate()
