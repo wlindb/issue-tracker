@@ -16,7 +16,7 @@ func projectFromDomain(domain trackerdomain.Project) model.Project {
 	}
 }
 
-func projectsFromDoman(domain []trackerdomain.Project) []model.Project {
+func projectsFromDomain(domain []trackerdomain.Project) []model.Project {
 	items := make([]model.Project, len(domain))
 	for i, p := range domain {
 		items[i] = projectFromDomain(p)
