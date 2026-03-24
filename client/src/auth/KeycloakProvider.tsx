@@ -1,5 +1,5 @@
 import Keycloak from 'keycloak-js'
-import { createContext, useContext, useEffect, useState } from 'react'
+import { createContext, useContext, useEffect, useRef, useState } from 'react'
 import { keycloak } from '../keycloak'
 
 interface KeycloakContextValue {
@@ -24,8 +24,13 @@ interface KeycloakProviderProps {
 export function KeycloakProvider({ children }: KeycloakProviderProps) {
   const [initialized, setInitialized] = useState(false)
   const [authenticated, setAuthenticated] = useState(false)
+  const [error, setError] = useState<Error | null>(null)
+  const initCalled = useRef(false)
 
   useEffect(() => {
+    if (initCalled.current) return
+    initCalled.current = true
+
     keycloak.onTokenExpired = () => {
       keycloak.updateToken(30).catch(() => {
         keycloak.login()
@@ -38,12 +43,17 @@ export function KeycloakProvider({ children }: KeycloakProviderProps) {
         setAuthenticated(result)
         setInitialized(true)
       })
-      .catch(() => {
-        setInitialized(true)
+      .catch((err: unknown) => {
+        setError(err instanceof Error ? err : new Error('Keycloak initialization failed'))
+        // No setInitialized — there is no recovery from a failed init
       })
   }, [])
 
-  if (!initialized) {
+  if (error !== null) {
+    throw error
+  }
+
+  if (!initialized || !authenticated) {
     return <div>Loading...</div>
   }
 
