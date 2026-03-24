@@ -69,4 +69,3 @@ func (h *Handler) UpdateProject(_ context.Context, _ model.UpdateProjectRequestO
 func (h *Handler) DeleteProject(_ context.Context, _ model.DeleteProjectRequestObject) (model.DeleteProjectResponseObject, error) {
 	return model.DeleteProject500JSONResponse{InternalServerErrorJSONResponse: model.InternalServerErrorJSONResponse(notImplemented())}, nil
 }
-
