@@ -18,6 +18,19 @@
       "bearerOnly": false,
       "publicClient": false,
       "protocol": "openid-connect"
+    },
+    {
+      "clientId": "issue-tracker-frontend",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "implicitFlowEnabled": false,
+      "bearerOnly": false,
+      "protocol": "openid-connect",
+      "redirectUris": ["http://localhost:5173/*"],
+      "webOrigins": ["http://localhost:5173"]
     }
   ],
   "users": [
