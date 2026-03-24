@@ -30,13 +30,15 @@ jobs:
           cache-dependency-path: backend/go.sum
 
       - name: Run lint
-        run: make lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          working-directory: backend
 
       - name: Run tests
         run: go test -v -json -coverprofile=coverage.out ./... > test-results.json 2>&1
 
       - name: Publish test report
-        uses: dorny/test-reporter@v1
+        uses: dorny/test-reporter@v2
         if: always()
         with:
           name: Go Tests
