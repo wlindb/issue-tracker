@@ -8,24 +8,28 @@ import (
 )
 
 type ProjectService struct {
-	repo ProjectRepository
+	repository ProjectRepository
 }
 
-func NewProjectService(repo ProjectRepository) *ProjectService {
-	return &ProjectService{repo: repo}
+func NewProjectService(repository ProjectRepository) *ProjectService {
+	return &ProjectService{repository: repository}
 }
 
 func (s *ProjectService) Create(ctx context.Context, id uuid.UUID, ownerID uuid.UUID, name string, description *string) (*Project, error) {
 	if name == "" {
 		return nil, fmt.Errorf("%w: name is required", ErrInvalidProject)
 	}
-	p, err := s.repo.Create(ctx, id, ownerID, name, description)
+	p, err := s.repository.Create(ctx, id, ownerID, name, description)
 	if err != nil {
 		return nil, fmt.Errorf("create project: %w", err)
 	}
 	return p, nil
 }
 
-func (s *ProjectService) List(_ context.Context, _ ListProjectQuery) (Projects, error) {
-	return Projects{}, fmt.Errorf("not implemented")
+func (s *ProjectService) List(ctx context.Context, query ListProjectQuery) (Projects, error) {
+	projects, err := s.repository.List(ctx, query)
+	if err != nil {
+		return Projects{}, fmt.Errorf("list projects: %w", err)
+	}
+	return projects, nil
 }

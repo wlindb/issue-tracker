@@ -3,6 +3,7 @@ package tracker
 import (
 	"context"
 	"fmt"
+	"math"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -12,27 +13,30 @@ import (
 	trackerdb "github.com/wlindb/issue-tracker/internal/infrastructure/tracker/generated"
 )
 
+// Compile-time: *ProjectRepository must satisfy domain interface.
+var _ projectdomain.ProjectRepository = (*ProjectRepository)(nil)
+
 // ProjectRepository is a PostgreSQL-backed implementation of projectdomain.ProjectRepository.
 type ProjectRepository struct {
-	q *trackerdb.Queries
+	queries *trackerdb.Queries
 }
 
 // NewProjectRepository returns a ProjectRepository backed by the given pool.
 func NewProjectRepository(pool *pgxpool.Pool) *ProjectRepository {
-	return &ProjectRepository{q: trackerdb.New(pool)}
+	return &ProjectRepository{queries: trackerdb.New(pool)}
 }
 
 // Create inserts a new project row and returns the domain model.
 func (r *ProjectRepository) Create(ctx context.Context, id, ownerID uuid.UUID, name string, description *string) (*projectdomain.Project, error) {
-	var desc pgtype.Text
+	var pgDescription pgtype.Text
 	if description != nil {
-		desc = pgtype.Text{String: *description, Valid: true}
+		pgDescription = pgtype.Text{String: *description, Valid: true}
 	}
-	row, err := r.q.CreateProject(ctx, trackerdb.CreateProjectParams{
+	row, err := r.queries.CreateProject(ctx, trackerdb.CreateProjectParams{
 		ID:          id,
 		OwnerID:     ownerID,
 		Name:        name,
-		Description: desc,
+		Description: pgDescription,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("create project: %w", err)
@@ -40,17 +44,15 @@ func (r *ProjectRepository) Create(ctx context.Context, id, ownerID uuid.UUID, n
 	return rowToProject(row), nil
 }
 
-func rowToProject(row trackerdb.Project) *projectdomain.Project {
-	p := &projectdomain.Project{
-		ID:        row.ID,
-		OwnerID:   row.OwnerID,
-		Name:      row.Name,
-		CreatedAt: row.CreatedAt.Time,
-		UpdatedAt: row.UpdatedAt.Time,
+// List returns up to query.Limit projects ordered by created_at descending.
+func (r *ProjectRepository) List(ctx context.Context, query projectdomain.ListProjectQuery) (projectdomain.Projects, error) {
+	limit := *query.Limit
+	if limit < 0 || limit > math.MaxInt32 {
+		return projectdomain.Projects{}, fmt.Errorf("list projects: limit out of range: %d", limit)
 	}
-	if row.Description.Valid {
-		s := row.Description.String
-		p.Description = &s
+	rows, err := r.queries.ListProjects(ctx, int32(limit))
+	if err != nil {
+		return projectdomain.Projects{}, fmt.Errorf("list projects: %w", err)
 	}
-	return p
+	return projectdomain.Projects{Items: rowsToProjects(rows)}, nil
 }

@@ -25,8 +25,5 @@ func projectsFromDomain(domain []trackerdomain.Project) []model.Project {
 }
 
 func listProjectQueryFromRequest(params model.ListProjectsParams) trackerdomain.ListProjectQuery {
-	return trackerdomain.ListProjectQuery{
-		Cursor: params.Cursor,
-		Limit:  params.Limit,
-	}
+	return trackerdomain.NewListProjectQuery(params.Cursor, params.Limit)
 }

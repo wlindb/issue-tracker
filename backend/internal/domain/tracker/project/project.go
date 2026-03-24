@@ -28,9 +28,22 @@ type Projects struct {
 	Items []Project
 }
 
-type ProjectRepository interface {
-	Create(ctx context.Context, id uuid.UUID, ownerID uuid.UUID, name string, description *string) (*Project, error)
+const defaultLimit = 20
+
+func NewListProjectQuery(cursor *string, limit *int) ListProjectQuery {
+	if limit == nil {
+		l := defaultLimit
+		limit = &l
+	}
+	return ListProjectQuery{Cursor: cursor, Limit: limit}
 }
 
-var ErrProjectNotFound = errors.New("project not found")
-var ErrInvalidProject = errors.New("invalid project")
+type ProjectRepository interface {
+	Create(ctx context.Context, id uuid.UUID, ownerID uuid.UUID, name string, description *string) (*Project, error)
+	List(ctx context.Context, query ListProjectQuery) (Projects, error)
+}
+
+var (
+	ErrProjectNotFound = errors.New("project not found")
+	ErrInvalidProject  = errors.New("invalid project")
+)

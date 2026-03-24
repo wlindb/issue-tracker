@@ -14,6 +14,7 @@ import (
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 
+	projectdomain "github.com/wlindb/issue-tracker/internal/domain/tracker/project"
 	infradb "github.com/wlindb/issue-tracker/internal/infrastructure/db"
 	tracker "github.com/wlindb/issue-tracker/internal/infrastructure/tracker"
 )
@@ -78,10 +79,10 @@ func startPostgres(ctx context.Context) (*pgxpool.Pool, func(), error) {
 }
 
 func Test_Create_NoDescription_SuccessfulProjectCreation(t *testing.T) {
-	repo := tracker.NewProjectRepository(testPool)
+	repository := tracker.NewProjectRepository(testPool)
 	id, ownerID := uuid.New(), uuid.New()
 
-	actual, err := repo.Create(context.Background(), id, ownerID, "Acme", nil)
+	actual, err := repository.Create(context.Background(), id, ownerID, "Acme", nil)
 
 	require.NoError(t, err)
 	require.NotNil(t, actual)
@@ -94,24 +95,64 @@ func Test_Create_NoDescription_SuccessfulProjectCreation(t *testing.T) {
 }
 
 func Test_Create_WithDescription_SuccessfulProjectCreation(t *testing.T) {
-	repo := tracker.NewProjectRepository(testPool)
-	desc := "My description"
+	repository := tracker.NewProjectRepository(testPool)
+	description := "My description"
 
-	actual, err := repo.Create(context.Background(), uuid.New(), uuid.New(), "Described", &desc)
+	actual, err := repository.Create(context.Background(), uuid.New(), uuid.New(), "Described", &description)
 
 	require.NoError(t, err)
 	require.NotNil(t, actual.Description)
-	assert.Equal(t, desc, *actual.Description)
+	assert.Equal(t, description, *actual.Description)
 }
 
 func Test_Create_DuplicateID_ReturnsError(t *testing.T) {
-	repo := tracker.NewProjectRepository(testPool)
+	repository := tracker.NewProjectRepository(testPool)
 	ctx := context.Background()
 	id := uuid.New()
 
-	_, err := repo.Create(ctx, id, uuid.New(), "First", nil)
+	_, err := repository.Create(ctx, id, uuid.New(), "First", nil)
 	require.NoError(t, err)
 
-	_, err = repo.Create(ctx, id, uuid.New(), "Second", nil)
+	_, err = repository.Create(ctx, id, uuid.New(), "Second", nil)
 	require.Error(t, err) // PK violation
+}
+
+func Test_List_WithLimit_ReturnsLimitedProjects(t *testing.T) {
+	repository := tracker.NewProjectRepository(testPool)
+	ctx := context.Background()
+
+	for i := 0; i < 3; i++ {
+		_, err := repository.Create(ctx, uuid.New(), uuid.New(), "LimitTest", nil)
+		require.NoError(t, err)
+	}
+
+	limit := 2
+	query := projectdomain.NewListProjectQuery(nil, &limit)
+	actual, err := repository.List(ctx, query)
+
+	require.NoError(t, err)
+	assert.Len(t, actual.Items, 2)
+}
+
+func Test_List_LimitExceedsTotal_ReturnsAllProjects(t *testing.T) {
+	repository := tracker.NewProjectRepository(testPool)
+	ctx := context.Background()
+
+	id1, id2 := uuid.New(), uuid.New()
+	_, err := repository.Create(ctx, id1, uuid.New(), "ExceedA", nil)
+	require.NoError(t, err)
+	_, err = repository.Create(ctx, id2, uuid.New(), "ExceedB", nil)
+	require.NoError(t, err)
+
+	limit := 100
+	query := projectdomain.NewListProjectQuery(nil, &limit)
+	actual, err := repository.List(ctx, query)
+
+	require.NoError(t, err)
+	ids := make([]uuid.UUID, len(actual.Items))
+	for i, p := range actual.Items {
+		ids[i] = p.ID
+	}
+	assert.Contains(t, ids, id1)
+	assert.Contains(t, ids, id2)
 }
