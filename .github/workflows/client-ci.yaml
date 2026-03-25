@@ -19,12 +19,20 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup Node.js LTS
+        # Ensures the runner has the latest LTS Node.js available for any
+        # runner-level scripts and satisfies CI tooling requirements.
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+
       - name: Install Nixpacks
         run: |
-          curl -fsSL "https://github.com/railwayapp/nixpacks/releases/download/v1.29.1/nixpacks-v1.29.1-x86_64-unknown-linux-musl.tar.gz" \
+          curl -fsSL "https://github.com/railwayapp/nixpacks/releases/download/v1.41.0/nixpacks-v1.41.0-x86_64-unknown-linux-musl.tar.gz" \
             -o /tmp/nixpacks.tar.gz
           tar -xzf /tmp/nixpacks.tar.gz -C /tmp
           sudo mv /tmp/nixpacks /usr/local/bin/nixpacks
+          echo "Nixpacks version: $(nixpacks --version)"
 
       - name: Build Docker image
         run: nixpacks build ./client --name issue-tracker-client
@@ -41,3 +49,4 @@ jobs:
           docker tag issue-tracker-client ${{ vars.DOCKERHUB_USERNAME }}/issue-tracker-client:latest
           docker push ${{ vars.DOCKERHUB_USERNAME }}/issue-tracker-client:${{ github.sha }}
           docker push ${{ vars.DOCKERHUB_USERNAME }}/issue-tracker-client:latest
+
