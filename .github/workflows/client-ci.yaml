@@ -6,38 +6,62 @@ on:
       - main
     paths:
       - "client/**"
+  pull_request:
+    paths:
+      - "client/**"
 
 jobs:
   build:
-    name: Build and Publish
+    name: Build and Test
     runs-on: ubuntu-latest
 
     permissions:
       contents: read
 
+    defaults:
+      run:
+        working-directory: client
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install Nixpacks
-        run: |
-          curl -fsSL "https://github.com/railwayapp/nixpacks/releases/download/v1.29.1/nixpacks-v1.29.1-x86_64-unknown-linux-musl.tar.gz" \
-            -o /tmp/nixpacks.tar.gz
-          tar -xzf /tmp/nixpacks.tar.gz -C /tmp
-          sudo mv /tmp/nixpacks /usr/local/bin/nixpacks
-
-      - name: Build Docker image
-        run: nixpacks build ./client --name issue-tracker-client
-
-      - name: Log in to Docker Hub
-        uses: docker/login-action@v3
+      - name: Setup Node.js LTS
+        uses: actions/setup-node@v4
         with:
-          username: ${{ vars.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          node-version: lts/*
 
-      - name: Tag and push image
+      - name: Setup Bun (setup phase)
+        uses: oven-sh/setup-bun@v2
+
+      - name: Validate Bun version
         run: |
-          docker tag issue-tracker-client ${{ vars.DOCKERHUB_USERNAME }}/issue-tracker-client:${{ github.sha }}
-          docker tag issue-tracker-client ${{ vars.DOCKERHUB_USERNAME }}/issue-tracker-client:latest
-          docker push ${{ vars.DOCKERHUB_USERNAME }}/issue-tracker-client:${{ github.sha }}
-          docker push ${{ vars.DOCKERHUB_USERNAME }}/issue-tracker-client:latest
+          echo "Bun version: $(bun --version)"
+          bun --version
+
+      - name: Install dependencies (install phase)
+        run: bun install --frozen-lockfile
+
+      - name: Build (build phase)
+        run: bun run build
+
+      - name: Start server (start phase)
+        run: |
+          export PORT=4173
+          MAX_RETRIES=10
+          RETRY_DELAY=2
+          bunx serve -s dist -l "${PORT}" &
+          SERVER_PID=$!
+          echo "Server started with PID ${SERVER_PID}"
+          for i in $(seq 1 "${MAX_RETRIES}"); do
+            if curl -sf "http://localhost:${PORT}" > /dev/null 2>&1; then
+              echo "Server is running on port ${PORT}"
+              kill "${SERVER_PID}"
+              exit 0
+            fi
+            echo "Waiting for server... (attempt ${i}/${MAX_RETRIES})"
+            sleep "${RETRY_DELAY}"
+          done
+          echo "ERROR: Server failed to start within the timeout"
+          kill "${SERVER_PID}" 2>/dev/null || echo "WARNING: Failed to kill server process ${SERVER_PID}"
+          exit 1
