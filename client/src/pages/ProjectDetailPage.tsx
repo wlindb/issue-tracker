@@ -5,8 +5,8 @@ import { issues, projects } from '@/data/mock'
 import { groupIssuesByStatus } from '@/lib/groupIssuesByStatus'
 
 export function ProjectDetailPage() {
-  const { id } = useParams<{ id: string }>()
-  const project = projects.find((p) => p.id === id)
+  const { identifier } = useParams<{ identifier: string }>()
+  const project = projects.find((p) => p.identifier === identifier)
 
   if (!project) {
     return (
@@ -21,10 +21,6 @@ export function ProjectDetailPage() {
     <div className="flex flex-col">
       <div className="border-b border-border px-6 py-4">
         <div className="flex items-center gap-2">
-          <span
-            className="size-2.5 shrink-0 rounded-full"
-            style={{ backgroundColor: project.color }}
-          />
           <h1 className="text-lg font-semibold">{project.name}</h1>
           <Badge variant="outline" className="font-mono text-xs">
             {project.identifier}

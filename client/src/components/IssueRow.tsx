@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import type { Issue } from '@/data/mock'
 import { PriorityIcon } from './PriorityIcon'
@@ -18,7 +19,10 @@ function getInitials(name: string): string {
 
 export function IssueRow({ issue }: IssueRowProps) {
   return (
-    <div className="flex h-9 items-center gap-3 border-b border-border/50 px-4 hover:bg-muted/40 transition-colors">
+    <Link
+      to={`/issues/${issue.identifier}`}
+      className="flex h-9 items-center gap-3 border-b border-border/50 px-4 hover:bg-muted/40 transition-colors"
+    >
       <PriorityIcon priority={issue.priority} />
       <span className="w-[72px] shrink-0 font-mono text-xs text-muted-foreground">
         {issue.identifier}
@@ -32,6 +36,6 @@ export function IssueRow({ issue }: IssueRowProps) {
       ) : (
         <div className="size-6 shrink-0" />
       )}
-    </div>
+    </Link>
   )
 }
