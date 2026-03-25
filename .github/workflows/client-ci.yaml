@@ -6,62 +6,47 @@ on:
       - main
     paths:
       - "client/**"
-  pull_request:
-    paths:
-      - "client/**"
 
 jobs:
   build:
-    name: Build and Test
+    name: Build and Publish
     runs-on: ubuntu-latest
 
     permissions:
       contents: read
-
-    defaults:
-      run:
-        working-directory: client
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
       - name: Setup Node.js LTS
+        # Ensures the runner has the latest LTS Node.js available for any
+        # runner-level scripts and satisfies CI tooling requirements.
         uses: actions/setup-node@v4
         with:
           node-version: lts/*
 
-      - name: Setup Bun (setup phase)
-        uses: oven-sh/setup-bun@v2
-
-      - name: Validate Bun version
+      - name: Install Nixpacks
         run: |
-          echo "Bun version: $(bun --version)"
-          bun --version
+          curl -fsSL "https://github.com/railwayapp/nixpacks/releases/download/v1.41.0/nixpacks-v1.41.0-x86_64-unknown-linux-musl.tar.gz" \
+            -o /tmp/nixpacks.tar.gz
+          tar -xzf /tmp/nixpacks.tar.gz -C /tmp
+          sudo mv /tmp/nixpacks /usr/local/bin/nixpacks
+          echo "Nixpacks version: $(nixpacks --version)"
 
-      - name: Install dependencies (install phase)
-        run: bun install --frozen-lockfile
+      - name: Build Docker image
+        run: nixpacks build ./client --name issue-tracker-client
 
-      - name: Build (build phase)
-        run: bun run build
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ vars.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Start server (start phase)
+      - name: Tag and push image
         run: |
-          export PORT=4173
-          MAX_RETRIES=10
-          RETRY_DELAY=2
-          bunx serve -s dist -l "${PORT}" &
-          SERVER_PID=$!
-          echo "Server started with PID ${SERVER_PID}"
-          for i in $(seq 1 "${MAX_RETRIES}"); do
-            if curl -sf "http://localhost:${PORT}" > /dev/null 2>&1; then
-              echo "Server is running on port ${PORT}"
-              kill "${SERVER_PID}"
-              exit 0
-            fi
-            echo "Waiting for server... (attempt ${i}/${MAX_RETRIES})"
-            sleep "${RETRY_DELAY}"
-          done
-          echo "ERROR: Server failed to start within the timeout"
-          kill "${SERVER_PID}" 2>/dev/null || echo "WARNING: Failed to kill server process ${SERVER_PID}"
-          exit 1
+          docker tag issue-tracker-client ${{ vars.DOCKERHUB_USERNAME }}/issue-tracker-client:${{ github.sha }}
+          docker tag issue-tracker-client ${{ vars.DOCKERHUB_USERNAME }}/issue-tracker-client:latest
+          docker push ${{ vars.DOCKERHUB_USERNAME }}/issue-tracker-client:${{ github.sha }}
+          docker push ${{ vars.DOCKERHUB_USERNAME }}/issue-tracker-client:latest
+
