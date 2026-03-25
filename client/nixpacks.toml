@@ -8,4 +8,4 @@ cmds = ["bun install --frozen-lockfile"]
 cmds = ["bun run build"]
 
 [start]
-cmd = "bunx serve -s dist -l 4173"
+cmd = "bunx serve -s dist -l ${PORT:-4173}"
