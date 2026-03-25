@@ -1,21 +1,20 @@
-import { Route, Routes } from 'react-router-dom'
-import { useKeycloak } from './auth/KeycloakProvider'
+import { Navigate, Route, Routes } from 'react-router-dom'
+import { AppLayout } from './layout/AppLayout'
+import { AllIssuesPage } from './pages/AllIssuesPage'
+import { MyIssuesPage } from './pages/MyIssuesPage'
+import { ProjectDetailPage } from './pages/ProjectDetailPage'
+import { ProjectsPage } from './pages/ProjectsPage'
 
 function App() {
-  const { keycloak } = useKeycloak()
-  const username = keycloak.tokenParsed?.preferred_username as string | undefined
-
   return (
     <Routes>
-      <Route
-        path="/"
-        element={
-          <div>
-            <p>Logged in as <strong>{username}</strong></p>
-            <button onClick={() => keycloak.logout()}>Logout</button>
-          </div>
-        }
-      />
+      <Route element={<AppLayout />}>
+        <Route index element={<Navigate to="/my-issues" replace />} />
+        <Route path="/my-issues" element={<MyIssuesPage />} />
+        <Route path="/all-issues" element={<AllIssuesPage />} />
+        <Route path="/projects" element={<ProjectsPage />} />
+        <Route path="/projects/:id" element={<ProjectDetailPage />} />
+      </Route>
     </Routes>
   )
 }
