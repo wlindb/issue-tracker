@@ -1,13 +1,115 @@
+import { useEffect, useRef, useState } from 'react'
+import { PlusCircle } from 'lucide-react'
 import { ProjectCard } from '@/components/ProjectCard'
-import { projects } from '@/data/mock'
+import { projects as mockProjects, type Project } from '@/data/mock'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { cn } from '@/lib/utils'
 
 export function ProjectsPage() {
+  const [projects, setProjects] = useState<Project[]>(mockProjects)
+  const [creating, setCreating] = useState(false)
+  const [name, setName] = useState('')
+  const [description, setDescription] = useState('')
+  const nameRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (creating) {
+      nameRef.current?.focus()
+    }
+  }, [creating])
+
+  function handleSave() {
+    const trimmedName = name.trim()
+    if (!trimmedName) return
+
+    // TODO: POST /projects
+    const newProject: Project = {
+      id: `proj-${Date.now()}`,
+      name: trimmedName,
+      identifier: trimmedName.slice(0, 4).toUpperCase().replace(/\s/g, ''),
+      description: description.trim(),
+      issueCount: 0,
+    }
+    setProjects([newProject, ...projects])
+    handleCancel()
+  }
+
+  function handleCancel() {
+    setCreating(false)
+    setName('')
+    setDescription('')
+  }
+
+  function handleKeyDown(event: React.KeyboardEvent) {
+    if (event.key === 'Escape') handleCancel()
+  }
+
   return (
     <div className="flex flex-col">
-      <div className="border-b border-border px-6 py-4">
-        <h1 className="text-lg font-semibold">Projects</h1>
-        <p className="text-sm text-muted-foreground">{projects.length} projects</p>
+      <div className="flex items-center justify-between border-b border-border px-6 py-4">
+        <div>
+          <h1 className="text-lg font-semibold">Projects</h1>
+          <p className="text-sm text-muted-foreground">{projects.length} projects</p>
+        </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label="Create new project"
+          onClick={() => setCreating(true)}
+          className={cn(creating && 'text-primary')}
+        >
+          <PlusCircle className="size-5" />
+        </Button>
       </div>
+
+      {creating && (
+        <div className="border-b border-border px-6 py-4">
+          <form
+            onSubmit={(e) => { e.preventDefault(); handleSave() }}
+            onKeyDown={handleKeyDown}
+            aria-label="New project"
+            className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4"
+          >
+            <h2 className="text-sm font-medium">New project</h2>
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="project-name" className="text-sm font-medium">
+                Name <span className="text-destructive" aria-hidden>*</span>
+              </label>
+              <Input
+                id="project-name"
+                ref={nameRef}
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="e.g. Backend"
+                required
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="project-description" className="text-sm font-medium">
+                Description
+              </label>
+              <textarea
+                id="project-description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="What is this project about?"
+                rows={3}
+                className="w-full min-w-0 resize-none rounded-lg border border-input bg-transparent px-2.5 py-1.5 text-sm transition-colors outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="ghost" size="sm" onClick={handleCancel}>
+                Cancel
+              </Button>
+              <Button type="submit" size="sm" disabled={!name.trim()}>
+                Create project
+              </Button>
+            </div>
+          </form>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 gap-4 p-6 sm:grid-cols-2 lg:grid-cols-3">
         {projects.map((project) => (
           <ProjectCard key={project.id} project={project} />
