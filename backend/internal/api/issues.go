@@ -20,7 +20,7 @@ var (
 // IssueService is what the handler needs from the domain.
 type IssueService interface {
 	ListIssues(ctx context.Context, projectID uuid.UUID, query issuedomain.ListIssueQuery) (issuedomain.IssuePage, error)
-	CreateIssue(ctx context.Context, id uuid.UUID, projectID uuid.UUID, reporterID uuid.UUID, req issuedomain.CreateIssueRequest) (*issuedomain.Issue, error)
+	CreateIssue(ctx context.Context, command issuedomain.CreateIssueCommand) (*issuedomain.Issue, error)
 }
 
 // IssueHandler holds the issue service dependency.
@@ -72,8 +72,7 @@ func (h *Handler) CreateIssue(ctx context.Context, req model.CreateIssueRequestO
 			UnauthorizedJSONResponse: newUnauthorized("unauthorized", "authentication required"),
 		}, nil
 	}
-	id := uuid.New()
-	issue, err := h.IssueHandler.service.CreateIssue(ctx, id, req.Body.ProjectId, userID, createIssueRequestFromModel(*req.Body))
+	issue, err := h.IssueHandler.service.CreateIssue(ctx, createIssueCommandFromModel(req.Body.ProjectId, userID, *req.Body))
 	if errors.Is(err, ErrIssueUnprocessable) {
 		return model.CreateIssue422JSONResponse{
 			UnprocessableEntityJSONResponse: newUnprocessable("unprocessable_entity", "request could not be processed"),

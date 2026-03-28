@@ -1,6 +1,8 @@
 package api
 
 import (
+	"github.com/google/uuid"
+
 	"github.com/wlindb/issue-tracker/internal/api/model"
 	commentdomain "github.com/wlindb/issue-tracker/internal/domain/tracker/comment"
 	issuedomain "github.com/wlindb/issue-tracker/internal/domain/tracker/issue"
@@ -102,8 +104,10 @@ func listIssueQueryFromRequest(params model.ListIssuesParams) issuedomain.ListIs
 	}
 }
 
-func createIssueRequestFromModel(req model.CreateIssueRequest) issuedomain.CreateIssueRequest {
-	return issuedomain.CreateIssueRequest{
+func createIssueCommandFromModel(projectID uuid.UUID, reporterID uuid.UUID, req model.CreateIssueRequest) issuedomain.CreateIssueCommand {
+	return issuedomain.CreateIssueCommand{
+		ProjectID:   projectID,
+		ReporterID:  reporterID,
 		Title:       req.Title,
 		Description: req.Description,
 		Status:      issuedomain.Status(req.Status),

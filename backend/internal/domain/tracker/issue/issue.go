@@ -1,9 +1,19 @@
 package issue
 
 import (
+	"context"
+	"errors"
+	"fmt"
+	"regexp"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
+)
+
+var (
+	nonSlugCharPattern    = regexp.MustCompile(`[^a-z0-9-]`)
+	multipleDashesPattern = regexp.MustCompile(`-{2,}`)
 )
 
 // Status represents the workflow state of an issue.
@@ -59,11 +69,46 @@ type ListIssueQuery struct {
 	AssigneeID *uuid.UUID
 }
 
-// CreateIssueRequest carries the input data for creating a new issue.
-type CreateIssueRequest struct {
+type CreateIssueCommand struct {
+	ProjectID   uuid.UUID
+	ReporterID  uuid.UUID
 	Title       string
 	Description *string
 	Status      Status
 	Priority    Priority
 	AssigneeID  *uuid.UUID
 }
+
+func (c CreateIssueCommand) Slugify(s string) string {
+	s = strings.ToLower(s)
+	s = strings.ReplaceAll(s, " ", "-")
+	s = nonSlugCharPattern.ReplaceAllString(s, "")
+	s = multipleDashesPattern.ReplaceAllString(s, "-")
+	return strings.Trim(s, "-")
+}
+
+type Slugifier func(s string) string
+
+func (c CreateIssueCommand) ToIssue(id uuid.UUID, slugifier Slugifier) Issue {
+	return Issue{
+		ID:          id,
+		Identifier:  slugifier(fmt.Sprintf("%s-%s", c.Title, id.String()[:8])),
+		ProjectID:   c.ProjectID,
+		ReporterID:  c.ReporterID,
+		Title:       c.Title,
+		Description: c.Description,
+		Status:      c.Status,
+		Priority:    c.Priority,
+		AssigneeID:  c.AssigneeID,
+	}
+}
+
+type IssueRepository interface {
+	ListIssues(ctx context.Context, projectID uuid.UUID, query ListIssueQuery) (IssuePage, error)
+	CreateIssue(ctx context.Context, issue Issue) (*Issue, error)
+}
+
+var (
+	ErrIssueNotFound = errors.New("issue not found")
+	ErrInvalidIssue  = errors.New("invalid issue")
+)
