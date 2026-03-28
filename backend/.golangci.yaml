@@ -44,11 +44,6 @@ linters:
         - name: var-naming
         - name: error-return
         - name: unused-parameter
-    wrapcheck:
-      ignoreSigs:
-        - .Errorf(
-        - errors.New(
-        - errors.Unwrap(
     depguard:
       rules:
         domain-isolation:
