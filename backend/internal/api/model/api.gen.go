@@ -107,6 +107,7 @@ type CreateIssueRequest struct {
 	AssigneeId  *uuid.UUID    `json:"assigneeId,omitempty"`
 	Description *string       `json:"description,omitempty"`
 	Priority    IssuePriority `json:"priority"`
+	ProjectId   uuid.UUID     `json:"projectId"`
 	Status      IssueStatus   `json:"status"`
 	Title       string        `json:"title"`
 }
@@ -242,6 +243,16 @@ type Unauthorized = Error
 // UnprocessableEntity defines model for UnprocessableEntity.
 type UnprocessableEntity = Error
 
+// ListIssuesParams defines parameters for ListIssues.
+type ListIssuesParams struct {
+	ProjectId  uuid.UUID      `form:"project_id" json:"project_id"`
+	Cursor     *CursorParam   `form:"cursor,omitempty" json:"cursor,omitempty"`
+	Limit      *LimitParam    `form:"limit,omitempty" json:"limit,omitempty"`
+	Status     *IssueStatus   `form:"status,omitempty" json:"status,omitempty"`
+	Priority   *IssuePriority `form:"priority,omitempty" json:"priority,omitempty"`
+	AssigneeId *uuid.UUID     `form:"assigneeId,omitempty" json:"assigneeId,omitempty"`
+}
+
 // ListCommentsParams defines parameters for ListComments.
 type ListCommentsParams struct {
 	Cursor *CursorParam `form:"cursor,omitempty" json:"cursor,omitempty"`
@@ -254,14 +265,8 @@ type ListProjectsParams struct {
 	Limit  *LimitParam  `form:"limit,omitempty" json:"limit,omitempty"`
 }
 
-// ListIssuesParams defines parameters for ListIssues.
-type ListIssuesParams struct {
-	Cursor     *CursorParam   `form:"cursor,omitempty" json:"cursor,omitempty"`
-	Limit      *LimitParam    `form:"limit,omitempty" json:"limit,omitempty"`
-	Status     *IssueStatus   `form:"status,omitempty" json:"status,omitempty"`
-	Priority   *IssuePriority `form:"priority,omitempty" json:"priority,omitempty"`
-	AssigneeId *uuid.UUID     `form:"assigneeId,omitempty" json:"assigneeId,omitempty"`
-}
+// CreateIssueJSONRequestBody defines body for CreateIssue for application/json ContentType.
+type CreateIssueJSONRequestBody = CreateIssueRequest
 
 // UpdateIssueAssigneeJSONRequestBody defines body for UpdateIssueAssignee for application/json ContentType.
 type UpdateIssueAssigneeJSONRequestBody = UpdateIssueAssigneeRequest
@@ -287,14 +292,17 @@ type CreateProjectJSONRequestBody = CreateProjectRequest
 // UpdateProjectJSONRequestBody defines body for UpdateProject for application/json ContentType.
 type UpdateProjectJSONRequestBody = UpdateProjectRequest
 
-// CreateIssueJSONRequestBody defines body for CreateIssue for application/json ContentType.
-type CreateIssueJSONRequestBody = CreateIssueRequest
-
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 	// Delete a comment.
 	// (DELETE /comments/{commentId})
 	DeleteComment(ctx echo.Context, commentId CommentIdParam) error
+	// List issues with optional filters.
+	// (GET /issues)
+	ListIssues(ctx echo.Context, params ListIssuesParams) error
+	// Create a new issue.
+	// (POST /issues)
+	CreateIssue(ctx echo.Context) error
 	// Delete an issue and its comments.
 	// (DELETE /issues/{issueId})
 	DeleteIssue(ctx echo.Context, issueId IssueIdParam) error
@@ -337,12 +345,6 @@ type ServerInterface interface {
 	// Replace a project's mutable fields.
 	// (PUT /projects/{projectId})
 	UpdateProject(ctx echo.Context, projectId ProjectIdParam) error
-	// List issues in a project with optional filters.
-	// (GET /projects/{projectId}/issues)
-	ListIssues(ctx echo.Context, projectId ProjectIdParam, params ListIssuesParams) error
-	// Create a new issue in a project.
-	// (POST /projects/{projectId}/issues)
-	CreateIssue(ctx echo.Context, projectId ProjectIdParam) error
 	// Get the currently authenticated user.
 	// (GET /users/me)
 	GetMe(ctx echo.Context) error
@@ -368,6 +370,72 @@ func (w *ServerInterfaceWrapper) DeleteComment(ctx echo.Context) error {
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.DeleteComment(ctx, commentId)
+	return err
+}
+
+// ListIssues converts echo context to params.
+func (w *ServerInterfaceWrapper) ListIssues(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(BearerAuthScopes, []string{})
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListIssuesParams
+	// ------------- Required query parameter "project_id" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "project_id", ctx.QueryParams(), &params.ProjectId, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter project_id: %s", err))
+	}
+
+	// ------------- Optional query parameter "cursor" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "cursor", ctx.QueryParams(), &params.Cursor, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter cursor: %s", err))
+	}
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", ctx.QueryParams(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter limit: %s", err))
+	}
+
+	// ------------- Optional query parameter "status" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "status", ctx.QueryParams(), &params.Status, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter status: %s", err))
+	}
+
+	// ------------- Optional query parameter "priority" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "priority", ctx.QueryParams(), &params.Priority, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter priority: %s", err))
+	}
+
+	// ------------- Optional query parameter "assigneeId" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "assigneeId", ctx.QueryParams(), &params.AssigneeId, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter assigneeId: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.ListIssues(ctx, params)
+	return err
+}
+
+// CreateIssue converts echo context to params.
+func (w *ServerInterfaceWrapper) CreateIssue(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(BearerAuthScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.CreateIssue(ctx)
 	return err
 }
 
@@ -641,79 +709,6 @@ func (w *ServerInterfaceWrapper) UpdateProject(ctx echo.Context) error {
 	return err
 }
 
-// ListIssues converts echo context to params.
-func (w *ServerInterfaceWrapper) ListIssues(ctx echo.Context) error {
-	var err error
-	// ------------- Path parameter "projectId" -------------
-	var projectId ProjectIdParam
-
-	err = runtime.BindStyledParameterWithOptions("simple", "projectId", ctx.Param("projectId"), &projectId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter projectId: %s", err))
-	}
-
-	ctx.Set(BearerAuthScopes, []string{})
-
-	// Parameter object where we will unmarshal all parameters from the context
-	var params ListIssuesParams
-	// ------------- Optional query parameter "cursor" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "cursor", ctx.QueryParams(), &params.Cursor, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter cursor: %s", err))
-	}
-
-	// ------------- Optional query parameter "limit" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", ctx.QueryParams(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter limit: %s", err))
-	}
-
-	// ------------- Optional query parameter "status" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "status", ctx.QueryParams(), &params.Status, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter status: %s", err))
-	}
-
-	// ------------- Optional query parameter "priority" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "priority", ctx.QueryParams(), &params.Priority, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter priority: %s", err))
-	}
-
-	// ------------- Optional query parameter "assigneeId" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "assigneeId", ctx.QueryParams(), &params.AssigneeId, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter assigneeId: %s", err))
-	}
-
-	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.ListIssues(ctx, projectId, params)
-	return err
-}
-
-// CreateIssue converts echo context to params.
-func (w *ServerInterfaceWrapper) CreateIssue(ctx echo.Context) error {
-	var err error
-	// ------------- Path parameter "projectId" -------------
-	var projectId ProjectIdParam
-
-	err = runtime.BindStyledParameterWithOptions("simple", "projectId", ctx.Param("projectId"), &projectId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter projectId: %s", err))
-	}
-
-	ctx.Set(BearerAuthScopes, []string{})
-
-	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.CreateIssue(ctx, projectId)
-	return err
-}
-
 // GetMe converts echo context to params.
 func (w *ServerInterfaceWrapper) GetMe(ctx echo.Context) error {
 	var err error
@@ -754,6 +749,8 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 	}
 
 	router.DELETE(baseURL+"/comments/:commentId", wrapper.DeleteComment)
+	router.GET(baseURL+"/issues", wrapper.ListIssues)
+	router.POST(baseURL+"/issues", wrapper.CreateIssue)
 	router.DELETE(baseURL+"/issues/:issueId", wrapper.DeleteIssue)
 	router.GET(baseURL+"/issues/:issueId", wrapper.GetIssue)
 	router.PUT(baseURL+"/issues/:issueId/assigneeId", wrapper.UpdateIssueAssignee)
@@ -768,8 +765,6 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 	router.DELETE(baseURL+"/projects/:projectId", wrapper.DeleteProject)
 	router.GET(baseURL+"/projects/:projectId", wrapper.GetProject)
 	router.PUT(baseURL+"/projects/:projectId", wrapper.UpdateProject)
-	router.GET(baseURL+"/projects/:projectId/issues", wrapper.ListIssues)
-	router.POST(baseURL+"/projects/:projectId/issues", wrapper.CreateIssue)
 	router.GET(baseURL+"/users/me", wrapper.GetMe)
 
 }
@@ -834,6 +829,118 @@ type DeleteComment500JSONResponse struct {
 }
 
 func (response DeleteComment500JSONResponse) VisitDeleteCommentResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListIssuesRequestObject struct {
+	Params ListIssuesParams
+}
+
+type ListIssuesResponseObject interface {
+	VisitListIssuesResponse(w http.ResponseWriter) error
+}
+
+type ListIssues200JSONResponse IssuePage
+
+func (response ListIssues200JSONResponse) VisitListIssuesResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListIssues401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response ListIssues401JSONResponse) VisitListIssuesResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListIssues404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response ListIssues404JSONResponse) VisitListIssuesResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListIssues500JSONResponse struct {
+	InternalServerErrorJSONResponse
+}
+
+func (response ListIssues500JSONResponse) VisitListIssuesResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateIssueRequestObject struct {
+	Body *CreateIssueJSONRequestBody
+}
+
+type CreateIssueResponseObject interface {
+	VisitCreateIssueResponse(w http.ResponseWriter) error
+}
+
+type CreateIssue201JSONResponse Issue
+
+func (response CreateIssue201JSONResponse) VisitCreateIssueResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(201)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateIssue400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response CreateIssue400JSONResponse) VisitCreateIssueResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateIssue401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response CreateIssue401JSONResponse) VisitCreateIssueResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateIssue404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response CreateIssue404JSONResponse) VisitCreateIssueResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateIssue422JSONResponse struct {
+	UnprocessableEntityJSONResponse
+}
+
+func (response CreateIssue422JSONResponse) VisitCreateIssueResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(422)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateIssue500JSONResponse struct {
+	InternalServerErrorJSONResponse
+}
+
+func (response CreateIssue500JSONResponse) VisitCreateIssueResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(500)
 
@@ -1674,138 +1781,6 @@ func (response UpdateProject500JSONResponse) VisitUpdateProjectResponse(w http.R
 	return json.NewEncoder(w).Encode(response)
 }
 
-type ListIssuesRequestObject struct {
-	ProjectId ProjectIdParam `json:"projectId"`
-	Params    ListIssuesParams
-}
-
-type ListIssuesResponseObject interface {
-	VisitListIssuesResponse(w http.ResponseWriter) error
-}
-
-type ListIssues200JSONResponse IssuePage
-
-func (response ListIssues200JSONResponse) VisitListIssuesResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
-type ListIssues401JSONResponse struct{ UnauthorizedJSONResponse }
-
-func (response ListIssues401JSONResponse) VisitListIssuesResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(401)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
-type ListIssues403JSONResponse struct{ ForbiddenJSONResponse }
-
-func (response ListIssues403JSONResponse) VisitListIssuesResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(403)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
-type ListIssues404JSONResponse struct{ NotFoundJSONResponse }
-
-func (response ListIssues404JSONResponse) VisitListIssuesResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(404)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
-type ListIssues500JSONResponse struct {
-	InternalServerErrorJSONResponse
-}
-
-func (response ListIssues500JSONResponse) VisitListIssuesResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(500)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
-type CreateIssueRequestObject struct {
-	ProjectId ProjectIdParam `json:"projectId"`
-	Body      *CreateIssueJSONRequestBody
-}
-
-type CreateIssueResponseObject interface {
-	VisitCreateIssueResponse(w http.ResponseWriter) error
-}
-
-type CreateIssue201JSONResponse Issue
-
-func (response CreateIssue201JSONResponse) VisitCreateIssueResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(201)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
-type CreateIssue400JSONResponse struct{ BadRequestJSONResponse }
-
-func (response CreateIssue400JSONResponse) VisitCreateIssueResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(400)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
-type CreateIssue401JSONResponse struct{ UnauthorizedJSONResponse }
-
-func (response CreateIssue401JSONResponse) VisitCreateIssueResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(401)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
-type CreateIssue403JSONResponse struct{ ForbiddenJSONResponse }
-
-func (response CreateIssue403JSONResponse) VisitCreateIssueResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(403)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
-type CreateIssue404JSONResponse struct{ NotFoundJSONResponse }
-
-func (response CreateIssue404JSONResponse) VisitCreateIssueResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(404)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
-type CreateIssue422JSONResponse struct {
-	UnprocessableEntityJSONResponse
-}
-
-func (response CreateIssue422JSONResponse) VisitCreateIssueResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(422)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
-type CreateIssue500JSONResponse struct {
-	InternalServerErrorJSONResponse
-}
-
-func (response CreateIssue500JSONResponse) VisitCreateIssueResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(500)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
 type GetMeRequestObject struct {
 }
 
@@ -1847,6 +1822,12 @@ type StrictServerInterface interface {
 	// Delete a comment.
 	// (DELETE /comments/{commentId})
 	DeleteComment(ctx context.Context, request DeleteCommentRequestObject) (DeleteCommentResponseObject, error)
+	// List issues with optional filters.
+	// (GET /issues)
+	ListIssues(ctx context.Context, request ListIssuesRequestObject) (ListIssuesResponseObject, error)
+	// Create a new issue.
+	// (POST /issues)
+	CreateIssue(ctx context.Context, request CreateIssueRequestObject) (CreateIssueResponseObject, error)
 	// Delete an issue and its comments.
 	// (DELETE /issues/{issueId})
 	DeleteIssue(ctx context.Context, request DeleteIssueRequestObject) (DeleteIssueResponseObject, error)
@@ -1889,12 +1870,6 @@ type StrictServerInterface interface {
 	// Replace a project's mutable fields.
 	// (PUT /projects/{projectId})
 	UpdateProject(ctx context.Context, request UpdateProjectRequestObject) (UpdateProjectResponseObject, error)
-	// List issues in a project with optional filters.
-	// (GET /projects/{projectId}/issues)
-	ListIssues(ctx context.Context, request ListIssuesRequestObject) (ListIssuesResponseObject, error)
-	// Create a new issue in a project.
-	// (POST /projects/{projectId}/issues)
-	CreateIssue(ctx context.Context, request CreateIssueRequestObject) (CreateIssueResponseObject, error)
 	// Get the currently authenticated user.
 	// (GET /users/me)
 	GetMe(ctx context.Context, request GetMeRequestObject) (GetMeResponseObject, error)
@@ -1931,6 +1906,60 @@ func (sh *strictHandler) DeleteComment(ctx echo.Context, commentId CommentIdPara
 		return err
 	} else if validResponse, ok := response.(DeleteCommentResponseObject); ok {
 		return validResponse.VisitDeleteCommentResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
+}
+
+// ListIssues operation middleware
+func (sh *strictHandler) ListIssues(ctx echo.Context, params ListIssuesParams) error {
+	var request ListIssuesRequestObject
+
+	request.Params = params
+
+	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.ListIssues(ctx.Request().Context(), request.(ListIssuesRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListIssues")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(ListIssuesResponseObject); ok {
+		return validResponse.VisitListIssuesResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
+}
+
+// CreateIssue operation middleware
+func (sh *strictHandler) CreateIssue(ctx echo.Context) error {
+	var request CreateIssueRequestObject
+
+	var body CreateIssueJSONRequestBody
+	if err := ctx.Bind(&body); err != nil {
+		return err
+	}
+	request.Body = &body
+
+	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.CreateIssue(ctx.Request().Context(), request.(CreateIssueRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CreateIssue")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(CreateIssueResponseObject); ok {
+		return validResponse.VisitCreateIssueResponse(ctx.Response())
 	} else if response != nil {
 		return fmt.Errorf("unexpected response type: %T", response)
 	}
@@ -2334,63 +2363,6 @@ func (sh *strictHandler) UpdateProject(ctx echo.Context, projectId ProjectIdPara
 	return nil
 }
 
-// ListIssues operation middleware
-func (sh *strictHandler) ListIssues(ctx echo.Context, projectId ProjectIdParam, params ListIssuesParams) error {
-	var request ListIssuesRequestObject
-
-	request.ProjectId = projectId
-	request.Params = params
-
-	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
-		return sh.ssi.ListIssues(ctx.Request().Context(), request.(ListIssuesRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "ListIssues")
-	}
-
-	response, err := handler(ctx, request)
-
-	if err != nil {
-		return err
-	} else if validResponse, ok := response.(ListIssuesResponseObject); ok {
-		return validResponse.VisitListIssuesResponse(ctx.Response())
-	} else if response != nil {
-		return fmt.Errorf("unexpected response type: %T", response)
-	}
-	return nil
-}
-
-// CreateIssue operation middleware
-func (sh *strictHandler) CreateIssue(ctx echo.Context, projectId ProjectIdParam) error {
-	var request CreateIssueRequestObject
-
-	request.ProjectId = projectId
-
-	var body CreateIssueJSONRequestBody
-	if err := ctx.Bind(&body); err != nil {
-		return err
-	}
-	request.Body = &body
-
-	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
-		return sh.ssi.CreateIssue(ctx.Request().Context(), request.(CreateIssueRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "CreateIssue")
-	}
-
-	response, err := handler(ctx, request)
-
-	if err != nil {
-		return err
-	} else if validResponse, ok := response.(CreateIssueResponseObject); ok {
-		return validResponse.VisitCreateIssueResponse(ctx.Response())
-	} else if response != nil {
-		return fmt.Errorf("unexpected response type: %T", response)
-	}
-	return nil
-}
-
 // GetMe operation middleware
 func (sh *strictHandler) GetMe(ctx echo.Context) error {
 	var request GetMeRequestObject
@@ -2417,41 +2389,42 @@ func (sh *strictHandler) GetMe(ctx echo.Context) error {
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
+	"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",
+	"dwAAAP//zNq7HtpGAAA=",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

@@ -178,8 +178,14 @@ components:
 
     CreateIssueRequest:
       type: object
-      required: [title, status, priority]
+      required: [projectId, title, status, priority]
       properties:
+        projectId:
+          type: string
+          format: uuid
+          x-go-type: uuid.UUID
+          x-go-type-import:
+            path: github.com/google/uuid
         title:       { type: string }
         description: { type: string, nullable: true }
         status:      { $ref: "#/components/schemas/IssueStatus" }
@@ -416,15 +422,21 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
         "500": { $ref: "#/components/responses/InternalServerError" }
 
-  /projects/{projectId}/issues:
-    parameters:
-      - { $ref: "#/components/parameters/ProjectIdParam" }
-
+  /issues:
     get:
       operationId: listIssues
-      summary: List issues in a project with optional filters.
+      summary: List issues with optional filters.
       tags: [issues]
       parameters:
+        - name: project_id
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+            x-go-type: uuid.UUID
+            x-go-type-import:
+              path: github.com/google/uuid
         - { $ref: "#/components/parameters/CursorParam" }
         - { $ref: "#/components/parameters/LimitParam" }
         - name: status
@@ -451,13 +463,12 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/IssuePage" }
         "401": { $ref: "#/components/responses/Unauthorized" }
-        "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
         "500": { $ref: "#/components/responses/InternalServerError" }
 
     post:
       operationId: createIssue
-      summary: Create a new issue in a project.
+      summary: Create a new issue.
       tags: [issues]
       requestBody:
         required: true
@@ -472,7 +483,6 @@ paths:
               schema: { $ref: "#/components/schemas/Issue" }
         "400": { $ref: "#/components/responses/BadRequest" }
         "401": { $ref: "#/components/responses/Unauthorized" }
-        "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
         "422": { $ref: "#/components/responses/UnprocessableEntity" }
         "500": { $ref: "#/components/responses/InternalServerError" }

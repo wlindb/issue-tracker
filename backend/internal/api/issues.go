@@ -40,7 +40,7 @@ func (h *Handler) ListIssues(ctx context.Context, req model.ListIssuesRequestObj
 		}, nil
 	}
 	query := listIssueQueryFromRequest(req.Params)
-	page, err := h.IssueHandler.service.ListIssues(ctx, req.ProjectId, query)
+	page, err := h.IssueHandler.service.ListIssues(ctx, req.Params.ProjectId, query)
 	if errors.Is(err, ErrIssueProjectNotFound) {
 		return model.ListIssues404JSONResponse{
 			NotFoundJSONResponse: newNotFound("not_found", "project not found"),
@@ -56,6 +56,11 @@ func (h *Handler) ListIssues(ctx context.Context, req model.ListIssuesRequestObj
 }
 
 func (h *Handler) CreateIssue(ctx context.Context, req model.CreateIssueRequestObject) (model.CreateIssueResponseObject, error) {
+	if req.Body.ProjectId == uuid.Nil {
+		return model.CreateIssue400JSONResponse{
+			BadRequestJSONResponse: newBadRequest("invalid_input", "projectId is required"),
+		}, nil
+	}
 	if req.Body.Title == "" {
 		return model.CreateIssue400JSONResponse{
 			BadRequestJSONResponse: newBadRequest("invalid_input", "title is required"),
@@ -68,7 +73,7 @@ func (h *Handler) CreateIssue(ctx context.Context, req model.CreateIssueRequestO
 		}, nil
 	}
 	id := uuid.New()
-	issue, err := h.IssueHandler.service.CreateIssue(ctx, id, req.ProjectId, userID, createIssueRequestFromModel(*req.Body))
+	issue, err := h.IssueHandler.service.CreateIssue(ctx, id, req.Body.ProjectId, userID, createIssueRequestFromModel(*req.Body))
 	if errors.Is(err, ErrIssueUnprocessable) {
 		return model.CreateIssue422JSONResponse{
 			UnprocessableEntityJSONResponse: newUnprocessable("unprocessable_entity", "request could not be processed"),

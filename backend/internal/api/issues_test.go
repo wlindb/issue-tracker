@@ -84,7 +84,7 @@ func Test_ListIssues_IssuesExist_Returns200(t *testing.T) {
 	e := newIssueTestServer(t, service)
 	e.Use(injectUser(userID))
 
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/projects/"+projectID.String()+"/issues", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/issues?project_id="+projectID.String(), nil)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 
@@ -106,7 +106,7 @@ func Test_ListIssues_EmptyList_Returns200(t *testing.T) {
 	e := newIssueTestServer(t, service)
 	e.Use(injectUser(uuid.New()))
 
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/projects/"+projectID.String()+"/issues", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/issues?project_id="+projectID.String(), nil)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 
@@ -123,7 +123,7 @@ func Test_ListIssues_NoUserID_Returns401(t *testing.T) {
 
 	e := newIssueTestServer(t, service) // no injectUser — userID absent from context
 
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/projects/"+projectID.String()+"/issues", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/issues?project_id="+projectID.String(), nil)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 
@@ -141,7 +141,7 @@ func Test_ListIssues_ProjectNotFound_Returns404(t *testing.T) {
 	e := newIssueTestServer(t, service)
 	e.Use(injectUser(uuid.New()))
 
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/projects/"+projectID.String()+"/issues", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/issues?project_id="+projectID.String(), nil)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 
@@ -159,7 +159,7 @@ func Test_ListIssues_ServiceError_Returns500(t *testing.T) {
 	e := newIssueTestServer(t, service)
 	e.Use(injectUser(uuid.New()))
 
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/projects/"+projectID.String()+"/issues", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/issues?project_id="+projectID.String(), nil)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 
@@ -174,7 +174,7 @@ func Test_ListIssues_InvalidLimitParam_Returns400(t *testing.T) {
 	e := newIssueTestServer(t, service)
 	e.Use(injectUser(uuid.New()))
 
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/projects/"+projectID.String()+"/issues?limit=notanumber", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/issues?project_id="+projectID.String()+"&limit=notanumber", nil)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 
@@ -207,8 +207,8 @@ func Test_CreateIssue_ValidBody_Returns201(t *testing.T) {
 	e := newIssueTestServer(t, service)
 	e.Use(injectUser(userID))
 
-	body := `{"title":"New feature","status":"todo","priority":"medium"}`
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/projects/"+projectID.String()+"/issues", strings.NewReader(body))
+	body := `{"projectId":"` + projectID.String() + `","title":"New feature","status":"todo","priority":"medium"}`
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/issues", strings.NewReader(body))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
@@ -220,6 +220,22 @@ func Test_CreateIssue_ValidBody_Returns201(t *testing.T) {
 	service.AssertExpectations(t)
 }
 
+func Test_CreateIssue_MissingProjectID_Returns400(t *testing.T) {
+	service := &mockIssueService{}
+
+	e := newIssueTestServer(t, service)
+	e.Use(injectUser(uuid.New()))
+
+	body := `{"title":"New feature","status":"todo","priority":"medium"}`
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/issues", strings.NewReader(body))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusBadRequest, rec.Code)
+	service.AssertNotCalled(t, "CreateIssue")
+}
+
 func Test_CreateIssue_MissingTitle_Returns400(t *testing.T) {
 	service := &mockIssueService{}
 	projectID := uuid.New()
@@ -227,8 +243,8 @@ func Test_CreateIssue_MissingTitle_Returns400(t *testing.T) {
 	e := newIssueTestServer(t, service)
 	e.Use(injectUser(uuid.New()))
 
-	body := `{"status":"backlog","priority":"none"}`
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/projects/"+projectID.String()+"/issues", strings.NewReader(body))
+	body := `{"projectId":"` + projectID.String() + `","status":"backlog","priority":"none"}`
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/issues", strings.NewReader(body))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
@@ -243,8 +259,8 @@ func Test_CreateIssue_NoUserID_Returns401(t *testing.T) {
 
 	e := newIssueTestServer(t, service) // no injectUser — userID absent from context
 
-	body := `{"title":"New feature","status":"todo","priority":"medium"}`
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/projects/"+projectID.String()+"/issues", strings.NewReader(body))
+	body := `{"projectId":"` + projectID.String() + `","title":"New feature","status":"todo","priority":"medium"}`
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/issues", strings.NewReader(body))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
@@ -264,8 +280,8 @@ func Test_CreateIssue_InvalidProjectID_Returns422(t *testing.T) {
 	e := newIssueTestServer(t, service)
 	e.Use(injectUser(userID))
 
-	body := `{"title":"New feature","status":"todo","priority":"medium"}`
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/projects/"+projectID.String()+"/issues", strings.NewReader(body))
+	body := `{"projectId":"` + projectID.String() + `","title":"New feature","status":"todo","priority":"medium"}`
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/issues", strings.NewReader(body))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
@@ -285,8 +301,8 @@ func Test_CreateIssue_UnprocessableInput_Returns422(t *testing.T) {
 	e := newIssueTestServer(t, service)
 	e.Use(injectUser(userID))
 
-	body := `{"title":"New feature","status":"todo","priority":"medium"}`
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/projects/"+projectID.String()+"/issues", strings.NewReader(body))
+	body := `{"projectId":"` + projectID.String() + `","title":"New feature","status":"todo","priority":"medium"}`
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/issues", strings.NewReader(body))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
@@ -306,8 +322,8 @@ func Test_CreateIssue_ServiceError_Returns500(t *testing.T) {
 	e := newIssueTestServer(t, service)
 	e.Use(injectUser(userID))
 
-	body := `{"title":"New feature","status":"todo","priority":"medium"}`
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/projects/"+projectID.String()+"/issues", strings.NewReader(body))
+	body := `{"projectId":"` + projectID.String() + `","title":"New feature","status":"todo","priority":"medium"}`
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/issues", strings.NewReader(body))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
