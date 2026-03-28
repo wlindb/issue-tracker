@@ -3,6 +3,7 @@ package api
 import (
 	"github.com/wlindb/issue-tracker/internal/api/model"
 	commentdomain "github.com/wlindb/issue-tracker/internal/domain/tracker/comment"
+	issuedomain "github.com/wlindb/issue-tracker/internal/domain/tracker/issue"
 	trackerdomain "github.com/wlindb/issue-tracker/internal/domain/tracker/project"
 )
 
@@ -50,4 +51,63 @@ func commentsFromDomain(items []commentdomain.Comment) []model.Comment {
 
 func listCommentQueryFromRequest(params model.ListCommentsParams) commentdomain.ListCommentQuery {
 	return commentdomain.NewListCommentQuery(params.Cursor, params.Limit)
+}
+
+func issueFromDomain(d issuedomain.Issue) model.Issue {
+	labels := d.Labels
+	if labels == nil {
+		labels = []string{}
+	}
+	return model.Issue{
+		Id:          d.ID,
+		Identifier:  d.Identifier,
+		Title:       d.Title,
+		Description: d.Description,
+		Status:      model.IssueStatus(d.Status),
+		Priority:    model.IssuePriority(d.Priority),
+		Labels:      labels,
+		AssigneeId:  d.AssigneeID,
+		ProjectId:   d.ProjectID,
+		ReporterId:  d.ReporterID,
+		CreatedAt:   d.CreatedAt,
+		UpdatedAt:   d.UpdatedAt,
+	}
+}
+
+func issuesFromDomain(domain []issuedomain.Issue) []model.Issue {
+	items := make([]model.Issue, len(domain))
+	for i, issue := range domain {
+		items[i] = issueFromDomain(issue)
+	}
+	return items
+}
+
+func listIssueQueryFromRequest(params model.ListIssuesParams) issuedomain.ListIssueQuery {
+	var status *issuedomain.Status
+	if params.Status != nil {
+		s := issuedomain.Status(*params.Status)
+		status = &s
+	}
+	var priority *issuedomain.Priority
+	if params.Priority != nil {
+		p := issuedomain.Priority(*params.Priority)
+		priority = &p
+	}
+	return issuedomain.ListIssueQuery{
+		Cursor:     params.Cursor,
+		Limit:      params.Limit,
+		Status:     status,
+		Priority:   priority,
+		AssigneeID: params.AssigneeId,
+	}
+}
+
+func createIssueRequestFromModel(req model.CreateIssueRequest) issuedomain.CreateIssueRequest {
+	return issuedomain.CreateIssueRequest{
+		Title:       req.Title,
+		Description: req.Description,
+		Status:      issuedomain.Status(req.Status),
+		Priority:    issuedomain.Priority(req.Priority),
+		AssigneeID:  req.AssigneeId,
+	}
 }
