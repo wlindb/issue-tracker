@@ -8,6 +8,7 @@ import (
 // Stub methods for unimplemented areas remain directly on Handler.
 type Handler struct {
 	ProjectHandler
+	CommentHandler
 }
 
 var _ model.StrictServerInterface = (*Handler)(nil)
