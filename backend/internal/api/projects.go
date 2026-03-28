@@ -24,7 +24,7 @@ func NewProjectHandler(service ProjectService) ProjectHandler {
 	return ProjectHandler{service: service}
 }
 
-func (h *Handler) ListProjects(ctx context.Context, req model.ListProjectsRequestObject) (model.ListProjectsResponseObject, error) {
+func (h *ProjectHandler) ListProjects(ctx context.Context, req model.ListProjectsRequestObject) (model.ListProjectsResponseObject, error) {
 	if _, err := userIDFromContext(ctx); err != nil {
 		return model.ListProjects401JSONResponse{
 			UnauthorizedJSONResponse: newUnauthorized("unauthorized", "authentication required"),
@@ -40,7 +40,7 @@ func (h *Handler) ListProjects(ctx context.Context, req model.ListProjectsReques
 	}, nil
 }
 
-func (h *Handler) CreateProject(ctx context.Context, req model.CreateProjectRequestObject) (model.CreateProjectResponseObject, error) {
+func (h *ProjectHandler) CreateProject(ctx context.Context, req model.CreateProjectRequestObject) (model.CreateProjectResponseObject, error) {
 	if req.Body.Name == "" {
 		return model.CreateProject400JSONResponse{
 			BadRequestJSONResponse: newBadRequest("invalid_input", "name is required"),
