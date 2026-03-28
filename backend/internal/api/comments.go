@@ -14,10 +14,6 @@ func (h *Handler) CreateComment(_ context.Context, _ model.CreateCommentRequestO
 	return model.CreateComment500JSONResponse{InternalServerErrorJSONResponse: model.InternalServerErrorJSONResponse(notImplemented())}, nil
 }
 
-func (h *Handler) UpdateComment(_ context.Context, _ model.UpdateCommentRequestObject) (model.UpdateCommentResponseObject, error) {
-	return model.UpdateComment500JSONResponse{InternalServerErrorJSONResponse: model.InternalServerErrorJSONResponse(notImplemented())}, nil
-}
-
 func (h *Handler) DeleteComment(_ context.Context, _ model.DeleteCommentRequestObject) (model.DeleteCommentResponseObject, error) {
 	return model.DeleteComment500JSONResponse{InternalServerErrorJSONResponse: model.InternalServerErrorJSONResponse(notImplemented())}, nil
 }

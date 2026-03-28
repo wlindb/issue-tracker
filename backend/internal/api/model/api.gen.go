@@ -129,6 +129,8 @@ type Issue struct {
 	CreatedAt   time.Time     `json:"createdAt"`
 	Description *string       `json:"description,omitempty"`
 	Id          uuid.UUID     `json:"id"`
+	Identifier  string        `json:"identifier"`
+	Labels      []string      `json:"labels"`
 	Priority    IssuePriority `json:"priority"`
 	ProjectId   uuid.UUID     `json:"projectId"`
 	ReporterId  uuid.UUID     `json:"reporterId"`
@@ -154,6 +156,8 @@ type Project struct {
 	CreatedAt   time.Time `json:"createdAt"`
 	Description *string   `json:"description,omitempty"`
 	Id          uuid.UUID `json:"id"`
+	Identifier  string    `json:"identifier"`
+	IssueCount  int       `json:"issueCount"`
 	Name        string    `json:"name"`
 	OwnerId     uuid.UUID `json:"ownerId"`
 	UpdatedAt   time.Time `json:"updatedAt"`
@@ -165,18 +169,29 @@ type ProjectPage struct {
 	NextCursor *string   `json:"nextCursor,omitempty"`
 }
 
-// UpdateCommentRequest defines model for UpdateCommentRequest.
-type UpdateCommentRequest struct {
-	Body string `json:"body"`
+// UpdateIssueAssigneeRequest defines model for UpdateIssueAssigneeRequest.
+type UpdateIssueAssigneeRequest struct {
+	AssigneeId *uuid.UUID `json:"assigneeId"`
 }
 
-// UpdateIssueRequest defines model for UpdateIssueRequest.
-type UpdateIssueRequest struct {
-	AssigneeId  *uuid.UUID     `json:"assigneeId,omitempty"`
-	Description *string        `json:"description,omitempty"`
-	Priority    *IssuePriority `json:"priority,omitempty"`
-	Status      *IssueStatus   `json:"status,omitempty"`
-	Title       *string        `json:"title,omitempty"`
+// UpdateIssueDescriptionRequest defines model for UpdateIssueDescriptionRequest.
+type UpdateIssueDescriptionRequest struct {
+	Description *string `json:"description"`
+}
+
+// UpdateIssuePriorityRequest defines model for UpdateIssuePriorityRequest.
+type UpdateIssuePriorityRequest struct {
+	Priority IssuePriority `json:"priority"`
+}
+
+// UpdateIssueStatusRequest defines model for UpdateIssueStatusRequest.
+type UpdateIssueStatusRequest struct {
+	Status IssueStatus `json:"status"`
+}
+
+// UpdateIssueTitleRequest defines model for UpdateIssueTitleRequest.
+type UpdateIssueTitleRequest struct {
+	Title string `json:"title"`
 }
 
 // UpdateProjectRequest defines model for UpdateProjectRequest.
@@ -248,14 +263,23 @@ type ListIssuesParams struct {
 	AssigneeId *uuid.UUID     `form:"assigneeId,omitempty" json:"assigneeId,omitempty"`
 }
 
-// UpdateCommentJSONRequestBody defines body for UpdateComment for application/json ContentType.
-type UpdateCommentJSONRequestBody = UpdateCommentRequest
-
-// UpdateIssueJSONRequestBody defines body for UpdateIssue for application/json ContentType.
-type UpdateIssueJSONRequestBody = UpdateIssueRequest
+// UpdateIssueAssigneeJSONRequestBody defines body for UpdateIssueAssignee for application/json ContentType.
+type UpdateIssueAssigneeJSONRequestBody = UpdateIssueAssigneeRequest
 
 // CreateCommentJSONRequestBody defines body for CreateComment for application/json ContentType.
 type CreateCommentJSONRequestBody = CreateCommentRequest
+
+// UpdateIssueDescriptionJSONRequestBody defines body for UpdateIssueDescription for application/json ContentType.
+type UpdateIssueDescriptionJSONRequestBody = UpdateIssueDescriptionRequest
+
+// UpdateIssuePriorityJSONRequestBody defines body for UpdateIssuePriority for application/json ContentType.
+type UpdateIssuePriorityJSONRequestBody = UpdateIssuePriorityRequest
+
+// UpdateIssueStatusJSONRequestBody defines body for UpdateIssueStatus for application/json ContentType.
+type UpdateIssueStatusJSONRequestBody = UpdateIssueStatusRequest
+
+// UpdateIssueTitleJSONRequestBody defines body for UpdateIssueTitle for application/json ContentType.
+type UpdateIssueTitleJSONRequestBody = UpdateIssueTitleRequest
 
 // CreateProjectJSONRequestBody defines body for CreateProject for application/json ContentType.
 type CreateProjectJSONRequestBody = CreateProjectRequest
@@ -271,24 +295,33 @@ type ServerInterface interface {
 	// Delete a comment.
 	// (DELETE /comments/{commentId})
 	DeleteComment(ctx echo.Context, commentId CommentIdParam) error
-	// Edit the body of a comment.
-	// (PATCH /comments/{commentId})
-	UpdateComment(ctx echo.Context, commentId CommentIdParam) error
 	// Delete an issue and its comments.
 	// (DELETE /issues/{issueId})
 	DeleteIssue(ctx echo.Context, issueId IssueIdParam) error
 	// Get a single issue by ID.
 	// (GET /issues/{issueId})
 	GetIssue(ctx echo.Context, issueId IssueIdParam) error
-	// Partially update an issue (including status transitions).
-	// (PATCH /issues/{issueId})
-	UpdateIssue(ctx echo.Context, issueId IssueIdParam) error
+	// Update the assignee of an issue.
+	// (PUT /issues/{issueId}/assigneeId)
+	UpdateIssueAssignee(ctx echo.Context, issueId IssueIdParam) error
 	// List comments on an issue.
 	// (GET /issues/{issueId}/comments)
 	ListComments(ctx echo.Context, issueId IssueIdParam, params ListCommentsParams) error
 	// Add a comment to an issue.
 	// (POST /issues/{issueId}/comments)
 	CreateComment(ctx echo.Context, issueId IssueIdParam) error
+	// Update the description of an issue.
+	// (PUT /issues/{issueId}/description)
+	UpdateIssueDescription(ctx echo.Context, issueId IssueIdParam) error
+	// Update the priority of an issue.
+	// (PUT /issues/{issueId}/priority)
+	UpdateIssuePriority(ctx echo.Context, issueId IssueIdParam) error
+	// Update the status of an issue.
+	// (PUT /issues/{issueId}/status)
+	UpdateIssueStatus(ctx echo.Context, issueId IssueIdParam) error
+	// Update the title of an issue.
+	// (PUT /issues/{issueId}/title)
+	UpdateIssueTitle(ctx echo.Context, issueId IssueIdParam) error
 	// List projects accessible to the authenticated user.
 	// (GET /projects)
 	ListProjects(ctx echo.Context, params ListProjectsParams) error
@@ -338,24 +371,6 @@ func (w *ServerInterfaceWrapper) DeleteComment(ctx echo.Context) error {
 	return err
 }
 
-// UpdateComment converts echo context to params.
-func (w *ServerInterfaceWrapper) UpdateComment(ctx echo.Context) error {
-	var err error
-	// ------------- Path parameter "commentId" -------------
-	var commentId CommentIdParam
-
-	err = runtime.BindStyledParameterWithOptions("simple", "commentId", ctx.Param("commentId"), &commentId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter commentId: %s", err))
-	}
-
-	ctx.Set(BearerAuthScopes, []string{})
-
-	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.UpdateComment(ctx, commentId)
-	return err
-}
-
 // DeleteIssue converts echo context to params.
 func (w *ServerInterfaceWrapper) DeleteIssue(ctx echo.Context) error {
 	var err error
@@ -392,8 +407,8 @@ func (w *ServerInterfaceWrapper) GetIssue(ctx echo.Context) error {
 	return err
 }
 
-// UpdateIssue converts echo context to params.
-func (w *ServerInterfaceWrapper) UpdateIssue(ctx echo.Context) error {
+// UpdateIssueAssignee converts echo context to params.
+func (w *ServerInterfaceWrapper) UpdateIssueAssignee(ctx echo.Context) error {
 	var err error
 	// ------------- Path parameter "issueId" -------------
 	var issueId IssueIdParam
@@ -406,7 +421,7 @@ func (w *ServerInterfaceWrapper) UpdateIssue(ctx echo.Context) error {
 	ctx.Set(BearerAuthScopes, []string{})
 
 	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.UpdateIssue(ctx, issueId)
+	err = w.Handler.UpdateIssueAssignee(ctx, issueId)
 	return err
 }
 
@@ -459,6 +474,78 @@ func (w *ServerInterfaceWrapper) CreateComment(ctx echo.Context) error {
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.CreateComment(ctx, issueId)
+	return err
+}
+
+// UpdateIssueDescription converts echo context to params.
+func (w *ServerInterfaceWrapper) UpdateIssueDescription(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "issueId" -------------
+	var issueId IssueIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "issueId", ctx.Param("issueId"), &issueId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter issueId: %s", err))
+	}
+
+	ctx.Set(BearerAuthScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.UpdateIssueDescription(ctx, issueId)
+	return err
+}
+
+// UpdateIssuePriority converts echo context to params.
+func (w *ServerInterfaceWrapper) UpdateIssuePriority(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "issueId" -------------
+	var issueId IssueIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "issueId", ctx.Param("issueId"), &issueId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter issueId: %s", err))
+	}
+
+	ctx.Set(BearerAuthScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.UpdateIssuePriority(ctx, issueId)
+	return err
+}
+
+// UpdateIssueStatus converts echo context to params.
+func (w *ServerInterfaceWrapper) UpdateIssueStatus(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "issueId" -------------
+	var issueId IssueIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "issueId", ctx.Param("issueId"), &issueId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter issueId: %s", err))
+	}
+
+	ctx.Set(BearerAuthScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.UpdateIssueStatus(ctx, issueId)
+	return err
+}
+
+// UpdateIssueTitle converts echo context to params.
+func (w *ServerInterfaceWrapper) UpdateIssueTitle(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "issueId" -------------
+	var issueId IssueIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "issueId", ctx.Param("issueId"), &issueId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter issueId: %s", err))
+	}
+
+	ctx.Set(BearerAuthScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.UpdateIssueTitle(ctx, issueId)
 	return err
 }
 
@@ -667,12 +754,15 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 	}
 
 	router.DELETE(baseURL+"/comments/:commentId", wrapper.DeleteComment)
-	router.PATCH(baseURL+"/comments/:commentId", wrapper.UpdateComment)
 	router.DELETE(baseURL+"/issues/:issueId", wrapper.DeleteIssue)
 	router.GET(baseURL+"/issues/:issueId", wrapper.GetIssue)
-	router.PATCH(baseURL+"/issues/:issueId", wrapper.UpdateIssue)
+	router.PUT(baseURL+"/issues/:issueId/assigneeId", wrapper.UpdateIssueAssignee)
 	router.GET(baseURL+"/issues/:issueId/comments", wrapper.ListComments)
 	router.POST(baseURL+"/issues/:issueId/comments", wrapper.CreateComment)
+	router.PUT(baseURL+"/issues/:issueId/description", wrapper.UpdateIssueDescription)
+	router.PUT(baseURL+"/issues/:issueId/priority", wrapper.UpdateIssuePriority)
+	router.PUT(baseURL+"/issues/:issueId/status", wrapper.UpdateIssueStatus)
+	router.PUT(baseURL+"/issues/:issueId/title", wrapper.UpdateIssueTitle)
 	router.GET(baseURL+"/projects", wrapper.ListProjects)
 	router.POST(baseURL+"/projects", wrapper.CreateProject)
 	router.DELETE(baseURL+"/projects/:projectId", wrapper.DeleteProject)
@@ -744,71 +834,6 @@ type DeleteComment500JSONResponse struct {
 }
 
 func (response DeleteComment500JSONResponse) VisitDeleteCommentResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(500)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
-type UpdateCommentRequestObject struct {
-	CommentId CommentIdParam `json:"commentId"`
-	Body      *UpdateCommentJSONRequestBody
-}
-
-type UpdateCommentResponseObject interface {
-	VisitUpdateCommentResponse(w http.ResponseWriter) error
-}
-
-type UpdateComment200JSONResponse Comment
-
-func (response UpdateComment200JSONResponse) VisitUpdateCommentResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
-type UpdateComment400JSONResponse struct{ BadRequestJSONResponse }
-
-func (response UpdateComment400JSONResponse) VisitUpdateCommentResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(400)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
-type UpdateComment401JSONResponse struct{ UnauthorizedJSONResponse }
-
-func (response UpdateComment401JSONResponse) VisitUpdateCommentResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(401)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
-type UpdateComment403JSONResponse struct{ ForbiddenJSONResponse }
-
-func (response UpdateComment403JSONResponse) VisitUpdateCommentResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(403)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
-type UpdateComment404JSONResponse struct{ NotFoundJSONResponse }
-
-func (response UpdateComment404JSONResponse) VisitUpdateCommentResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(404)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
-type UpdateComment500JSONResponse struct {
-	InternalServerErrorJSONResponse
-}
-
-func (response UpdateComment500JSONResponse) VisitUpdateCommentResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(500)
 
@@ -924,76 +949,65 @@ func (response GetIssue500JSONResponse) VisitGetIssueResponse(w http.ResponseWri
 	return json.NewEncoder(w).Encode(response)
 }
 
-type UpdateIssueRequestObject struct {
+type UpdateIssueAssigneeRequestObject struct {
 	IssueId IssueIdParam `json:"issueId"`
-	Body    *UpdateIssueJSONRequestBody
+	Body    *UpdateIssueAssigneeJSONRequestBody
 }
 
-type UpdateIssueResponseObject interface {
-	VisitUpdateIssueResponse(w http.ResponseWriter) error
+type UpdateIssueAssigneeResponseObject interface {
+	VisitUpdateIssueAssigneeResponse(w http.ResponseWriter) error
 }
 
-type UpdateIssue200JSONResponse Issue
+type UpdateIssueAssignee200JSONResponse Issue
 
-func (response UpdateIssue200JSONResponse) VisitUpdateIssueResponse(w http.ResponseWriter) error {
+func (response UpdateIssueAssignee200JSONResponse) VisitUpdateIssueAssigneeResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(200)
 
 	return json.NewEncoder(w).Encode(response)
 }
 
-type UpdateIssue400JSONResponse struct{ BadRequestJSONResponse }
+type UpdateIssueAssignee400JSONResponse struct{ BadRequestJSONResponse }
 
-func (response UpdateIssue400JSONResponse) VisitUpdateIssueResponse(w http.ResponseWriter) error {
+func (response UpdateIssueAssignee400JSONResponse) VisitUpdateIssueAssigneeResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(400)
 
 	return json.NewEncoder(w).Encode(response)
 }
 
-type UpdateIssue401JSONResponse struct{ UnauthorizedJSONResponse }
+type UpdateIssueAssignee401JSONResponse struct{ UnauthorizedJSONResponse }
 
-func (response UpdateIssue401JSONResponse) VisitUpdateIssueResponse(w http.ResponseWriter) error {
+func (response UpdateIssueAssignee401JSONResponse) VisitUpdateIssueAssigneeResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(401)
 
 	return json.NewEncoder(w).Encode(response)
 }
 
-type UpdateIssue403JSONResponse struct{ ForbiddenJSONResponse }
+type UpdateIssueAssignee403JSONResponse struct{ ForbiddenJSONResponse }
 
-func (response UpdateIssue403JSONResponse) VisitUpdateIssueResponse(w http.ResponseWriter) error {
+func (response UpdateIssueAssignee403JSONResponse) VisitUpdateIssueAssigneeResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(403)
 
 	return json.NewEncoder(w).Encode(response)
 }
 
-type UpdateIssue404JSONResponse struct{ NotFoundJSONResponse }
+type UpdateIssueAssignee404JSONResponse struct{ NotFoundJSONResponse }
 
-func (response UpdateIssue404JSONResponse) VisitUpdateIssueResponse(w http.ResponseWriter) error {
+func (response UpdateIssueAssignee404JSONResponse) VisitUpdateIssueAssigneeResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(404)
 
 	return json.NewEncoder(w).Encode(response)
 }
 
-type UpdateIssue422JSONResponse struct {
-	UnprocessableEntityJSONResponse
-}
-
-func (response UpdateIssue422JSONResponse) VisitUpdateIssueResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(422)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
-type UpdateIssue500JSONResponse struct {
+type UpdateIssueAssignee500JSONResponse struct {
 	InternalServerErrorJSONResponse
 }
 
-func (response UpdateIssue500JSONResponse) VisitUpdateIssueResponse(w http.ResponseWriter) error {
+func (response UpdateIssueAssignee500JSONResponse) VisitUpdateIssueAssigneeResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(500)
 
@@ -1126,6 +1140,266 @@ type CreateComment500JSONResponse struct {
 }
 
 func (response CreateComment500JSONResponse) VisitCreateCommentResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateIssueDescriptionRequestObject struct {
+	IssueId IssueIdParam `json:"issueId"`
+	Body    *UpdateIssueDescriptionJSONRequestBody
+}
+
+type UpdateIssueDescriptionResponseObject interface {
+	VisitUpdateIssueDescriptionResponse(w http.ResponseWriter) error
+}
+
+type UpdateIssueDescription200JSONResponse Issue
+
+func (response UpdateIssueDescription200JSONResponse) VisitUpdateIssueDescriptionResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateIssueDescription400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response UpdateIssueDescription400JSONResponse) VisitUpdateIssueDescriptionResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateIssueDescription401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response UpdateIssueDescription401JSONResponse) VisitUpdateIssueDescriptionResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateIssueDescription403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response UpdateIssueDescription403JSONResponse) VisitUpdateIssueDescriptionResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateIssueDescription404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response UpdateIssueDescription404JSONResponse) VisitUpdateIssueDescriptionResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateIssueDescription500JSONResponse struct {
+	InternalServerErrorJSONResponse
+}
+
+func (response UpdateIssueDescription500JSONResponse) VisitUpdateIssueDescriptionResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateIssuePriorityRequestObject struct {
+	IssueId IssueIdParam `json:"issueId"`
+	Body    *UpdateIssuePriorityJSONRequestBody
+}
+
+type UpdateIssuePriorityResponseObject interface {
+	VisitUpdateIssuePriorityResponse(w http.ResponseWriter) error
+}
+
+type UpdateIssuePriority200JSONResponse Issue
+
+func (response UpdateIssuePriority200JSONResponse) VisitUpdateIssuePriorityResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateIssuePriority400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response UpdateIssuePriority400JSONResponse) VisitUpdateIssuePriorityResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateIssuePriority401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response UpdateIssuePriority401JSONResponse) VisitUpdateIssuePriorityResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateIssuePriority403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response UpdateIssuePriority403JSONResponse) VisitUpdateIssuePriorityResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateIssuePriority404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response UpdateIssuePriority404JSONResponse) VisitUpdateIssuePriorityResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateIssuePriority500JSONResponse struct {
+	InternalServerErrorJSONResponse
+}
+
+func (response UpdateIssuePriority500JSONResponse) VisitUpdateIssuePriorityResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateIssueStatusRequestObject struct {
+	IssueId IssueIdParam `json:"issueId"`
+	Body    *UpdateIssueStatusJSONRequestBody
+}
+
+type UpdateIssueStatusResponseObject interface {
+	VisitUpdateIssueStatusResponse(w http.ResponseWriter) error
+}
+
+type UpdateIssueStatus200JSONResponse Issue
+
+func (response UpdateIssueStatus200JSONResponse) VisitUpdateIssueStatusResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateIssueStatus400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response UpdateIssueStatus400JSONResponse) VisitUpdateIssueStatusResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateIssueStatus401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response UpdateIssueStatus401JSONResponse) VisitUpdateIssueStatusResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateIssueStatus403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response UpdateIssueStatus403JSONResponse) VisitUpdateIssueStatusResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateIssueStatus404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response UpdateIssueStatus404JSONResponse) VisitUpdateIssueStatusResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateIssueStatus500JSONResponse struct {
+	InternalServerErrorJSONResponse
+}
+
+func (response UpdateIssueStatus500JSONResponse) VisitUpdateIssueStatusResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateIssueTitleRequestObject struct {
+	IssueId IssueIdParam `json:"issueId"`
+	Body    *UpdateIssueTitleJSONRequestBody
+}
+
+type UpdateIssueTitleResponseObject interface {
+	VisitUpdateIssueTitleResponse(w http.ResponseWriter) error
+}
+
+type UpdateIssueTitle200JSONResponse Issue
+
+func (response UpdateIssueTitle200JSONResponse) VisitUpdateIssueTitleResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateIssueTitle400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response UpdateIssueTitle400JSONResponse) VisitUpdateIssueTitleResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateIssueTitle401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response UpdateIssueTitle401JSONResponse) VisitUpdateIssueTitleResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateIssueTitle403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response UpdateIssueTitle403JSONResponse) VisitUpdateIssueTitleResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateIssueTitle404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response UpdateIssueTitle404JSONResponse) VisitUpdateIssueTitleResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateIssueTitle500JSONResponse struct {
+	InternalServerErrorJSONResponse
+}
+
+func (response UpdateIssueTitle500JSONResponse) VisitUpdateIssueTitleResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(500)
 
@@ -1573,24 +1847,33 @@ type StrictServerInterface interface {
 	// Delete a comment.
 	// (DELETE /comments/{commentId})
 	DeleteComment(ctx context.Context, request DeleteCommentRequestObject) (DeleteCommentResponseObject, error)
-	// Edit the body of a comment.
-	// (PATCH /comments/{commentId})
-	UpdateComment(ctx context.Context, request UpdateCommentRequestObject) (UpdateCommentResponseObject, error)
 	// Delete an issue and its comments.
 	// (DELETE /issues/{issueId})
 	DeleteIssue(ctx context.Context, request DeleteIssueRequestObject) (DeleteIssueResponseObject, error)
 	// Get a single issue by ID.
 	// (GET /issues/{issueId})
 	GetIssue(ctx context.Context, request GetIssueRequestObject) (GetIssueResponseObject, error)
-	// Partially update an issue (including status transitions).
-	// (PATCH /issues/{issueId})
-	UpdateIssue(ctx context.Context, request UpdateIssueRequestObject) (UpdateIssueResponseObject, error)
+	// Update the assignee of an issue.
+	// (PUT /issues/{issueId}/assigneeId)
+	UpdateIssueAssignee(ctx context.Context, request UpdateIssueAssigneeRequestObject) (UpdateIssueAssigneeResponseObject, error)
 	// List comments on an issue.
 	// (GET /issues/{issueId}/comments)
 	ListComments(ctx context.Context, request ListCommentsRequestObject) (ListCommentsResponseObject, error)
 	// Add a comment to an issue.
 	// (POST /issues/{issueId}/comments)
 	CreateComment(ctx context.Context, request CreateCommentRequestObject) (CreateCommentResponseObject, error)
+	// Update the description of an issue.
+	// (PUT /issues/{issueId}/description)
+	UpdateIssueDescription(ctx context.Context, request UpdateIssueDescriptionRequestObject) (UpdateIssueDescriptionResponseObject, error)
+	// Update the priority of an issue.
+	// (PUT /issues/{issueId}/priority)
+	UpdateIssuePriority(ctx context.Context, request UpdateIssuePriorityRequestObject) (UpdateIssuePriorityResponseObject, error)
+	// Update the status of an issue.
+	// (PUT /issues/{issueId}/status)
+	UpdateIssueStatus(ctx context.Context, request UpdateIssueStatusRequestObject) (UpdateIssueStatusResponseObject, error)
+	// Update the title of an issue.
+	// (PUT /issues/{issueId}/title)
+	UpdateIssueTitle(ctx context.Context, request UpdateIssueTitleRequestObject) (UpdateIssueTitleResponseObject, error)
 	// List projects accessible to the authenticated user.
 	// (GET /projects)
 	ListProjects(ctx context.Context, request ListProjectsRequestObject) (ListProjectsResponseObject, error)
@@ -1654,37 +1937,6 @@ func (sh *strictHandler) DeleteComment(ctx echo.Context, commentId CommentIdPara
 	return nil
 }
 
-// UpdateComment operation middleware
-func (sh *strictHandler) UpdateComment(ctx echo.Context, commentId CommentIdParam) error {
-	var request UpdateCommentRequestObject
-
-	request.CommentId = commentId
-
-	var body UpdateCommentJSONRequestBody
-	if err := ctx.Bind(&body); err != nil {
-		return err
-	}
-	request.Body = &body
-
-	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
-		return sh.ssi.UpdateComment(ctx.Request().Context(), request.(UpdateCommentRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "UpdateComment")
-	}
-
-	response, err := handler(ctx, request)
-
-	if err != nil {
-		return err
-	} else if validResponse, ok := response.(UpdateCommentResponseObject); ok {
-		return validResponse.VisitUpdateCommentResponse(ctx.Response())
-	} else if response != nil {
-		return fmt.Errorf("unexpected response type: %T", response)
-	}
-	return nil
-}
-
 // DeleteIssue operation middleware
 func (sh *strictHandler) DeleteIssue(ctx echo.Context, issueId IssueIdParam) error {
 	var request DeleteIssueRequestObject
@@ -1735,31 +1987,31 @@ func (sh *strictHandler) GetIssue(ctx echo.Context, issueId IssueIdParam) error 
 	return nil
 }
 
-// UpdateIssue operation middleware
-func (sh *strictHandler) UpdateIssue(ctx echo.Context, issueId IssueIdParam) error {
-	var request UpdateIssueRequestObject
+// UpdateIssueAssignee operation middleware
+func (sh *strictHandler) UpdateIssueAssignee(ctx echo.Context, issueId IssueIdParam) error {
+	var request UpdateIssueAssigneeRequestObject
 
 	request.IssueId = issueId
 
-	var body UpdateIssueJSONRequestBody
+	var body UpdateIssueAssigneeJSONRequestBody
 	if err := ctx.Bind(&body); err != nil {
 		return err
 	}
 	request.Body = &body
 
 	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
-		return sh.ssi.UpdateIssue(ctx.Request().Context(), request.(UpdateIssueRequestObject))
+		return sh.ssi.UpdateIssueAssignee(ctx.Request().Context(), request.(UpdateIssueAssigneeRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "UpdateIssue")
+		handler = middleware(handler, "UpdateIssueAssignee")
 	}
 
 	response, err := handler(ctx, request)
 
 	if err != nil {
 		return err
-	} else if validResponse, ok := response.(UpdateIssueResponseObject); ok {
-		return validResponse.VisitUpdateIssueResponse(ctx.Response())
+	} else if validResponse, ok := response.(UpdateIssueAssigneeResponseObject); ok {
+		return validResponse.VisitUpdateIssueAssigneeResponse(ctx.Response())
 	} else if response != nil {
 		return fmt.Errorf("unexpected response type: %T", response)
 	}
@@ -1817,6 +2069,130 @@ func (sh *strictHandler) CreateComment(ctx echo.Context, issueId IssueIdParam) e
 		return err
 	} else if validResponse, ok := response.(CreateCommentResponseObject); ok {
 		return validResponse.VisitCreateCommentResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
+}
+
+// UpdateIssueDescription operation middleware
+func (sh *strictHandler) UpdateIssueDescription(ctx echo.Context, issueId IssueIdParam) error {
+	var request UpdateIssueDescriptionRequestObject
+
+	request.IssueId = issueId
+
+	var body UpdateIssueDescriptionJSONRequestBody
+	if err := ctx.Bind(&body); err != nil {
+		return err
+	}
+	request.Body = &body
+
+	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.UpdateIssueDescription(ctx.Request().Context(), request.(UpdateIssueDescriptionRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UpdateIssueDescription")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(UpdateIssueDescriptionResponseObject); ok {
+		return validResponse.VisitUpdateIssueDescriptionResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
+}
+
+// UpdateIssuePriority operation middleware
+func (sh *strictHandler) UpdateIssuePriority(ctx echo.Context, issueId IssueIdParam) error {
+	var request UpdateIssuePriorityRequestObject
+
+	request.IssueId = issueId
+
+	var body UpdateIssuePriorityJSONRequestBody
+	if err := ctx.Bind(&body); err != nil {
+		return err
+	}
+	request.Body = &body
+
+	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.UpdateIssuePriority(ctx.Request().Context(), request.(UpdateIssuePriorityRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UpdateIssuePriority")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(UpdateIssuePriorityResponseObject); ok {
+		return validResponse.VisitUpdateIssuePriorityResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
+}
+
+// UpdateIssueStatus operation middleware
+func (sh *strictHandler) UpdateIssueStatus(ctx echo.Context, issueId IssueIdParam) error {
+	var request UpdateIssueStatusRequestObject
+
+	request.IssueId = issueId
+
+	var body UpdateIssueStatusJSONRequestBody
+	if err := ctx.Bind(&body); err != nil {
+		return err
+	}
+	request.Body = &body
+
+	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.UpdateIssueStatus(ctx.Request().Context(), request.(UpdateIssueStatusRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UpdateIssueStatus")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(UpdateIssueStatusResponseObject); ok {
+		return validResponse.VisitUpdateIssueStatusResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
+}
+
+// UpdateIssueTitle operation middleware
+func (sh *strictHandler) UpdateIssueTitle(ctx echo.Context, issueId IssueIdParam) error {
+	var request UpdateIssueTitleRequestObject
+
+	request.IssueId = issueId
+
+	var body UpdateIssueTitleJSONRequestBody
+	if err := ctx.Bind(&body); err != nil {
+		return err
+	}
+	request.Body = &body
+
+	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.UpdateIssueTitle(ctx.Request().Context(), request.(UpdateIssueTitleRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UpdateIssueTitle")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(UpdateIssueTitleResponseObject); ok {
+		return validResponse.VisitUpdateIssueTitleResponse(ctx.Response())
 	} else if response != nil {
 		return fmt.Errorf("unexpected response type: %T", response)
 	}
@@ -2041,39 +2417,41 @@ func (sh *strictHandler) GetMe(ctx echo.Context) error {
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
-	"lQyPsE8S6t8d4+wm+z8AAP//zFKeWbE7AAA=",
+	"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",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

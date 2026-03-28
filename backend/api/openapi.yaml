@@ -47,7 +47,7 @@ components:
 
     Project:
       type: object
-      required: [id, name, ownerId, createdAt, updatedAt]
+      required: [id, identifier, name, ownerId, issueCount, createdAt, updatedAt]
       properties:
         id:
           type: string
@@ -55,6 +55,7 @@ components:
           x-go-type: uuid.UUID
           x-go-type-import:
             path: github.com/google/uuid
+        identifier:  { type: string }
         name:        { type: string }
         description: { type: string, nullable: true }
         ownerId:
@@ -63,12 +64,13 @@ components:
           x-go-type: uuid.UUID
           x-go-type-import:
             path: github.com/google/uuid
+        issueCount:  { type: integer }
         createdAt:   { type: string, format: date-time }
         updatedAt:   { type: string, format: date-time }
 
     Issue:
       type: object
-      required: [id, projectId, title, status, priority, reporterId, createdAt, updatedAt]
+      required: [id, identifier, projectId, title, status, priority, labels, reporterId, createdAt, updatedAt]
       properties:
         id:
           type: string
@@ -76,6 +78,7 @@ components:
           x-go-type: uuid.UUID
           x-go-type-import:
             path: github.com/google/uuid
+        identifier:  { type: string }
         projectId:
           type: string
           format: uuid
@@ -86,6 +89,7 @@ components:
         description: { type: string, nullable: true }
         status:      { $ref: "#/components/schemas/IssueStatus" }
         priority:    { $ref: "#/components/schemas/IssuePriority" }
+        labels:      { type: array, items: { type: string } }
         assigneeId:
           type: string
           format: uuid
@@ -188,13 +192,34 @@ components:
           x-go-type-import:
             path: github.com/google/uuid
 
-    UpdateIssueRequest:
+    UpdateIssueTitleRequest:
       type: object
+      required: [title]
       properties:
-        title:       { type: string }
+        title: { type: string }
+
+    UpdateIssueDescriptionRequest:
+      type: object
+      required: [description]
+      properties:
         description: { type: string, nullable: true }
-        status:      { $ref: "#/components/schemas/IssueStatus" }
-        priority:    { $ref: "#/components/schemas/IssuePriority" }
+
+    UpdateIssueStatusRequest:
+      type: object
+      required: [status]
+      properties:
+        status: { $ref: "#/components/schemas/IssueStatus" }
+
+    UpdateIssuePriorityRequest:
+      type: object
+      required: [priority]
+      properties:
+        priority: { $ref: "#/components/schemas/IssuePriority" }
+
+    UpdateIssueAssigneeRequest:
+      type: object
+      required: [assigneeId]
+      properties:
         assigneeId:
           type: string
           format: uuid
@@ -204,12 +229,6 @@ components:
             path: github.com/google/uuid
 
     CreateCommentRequest:
-      type: object
-      required: [body]
-      properties:
-        body: { type: string, minLength: 1 }
-
-    UpdateCommentRequest:
       type: object
       required: [body]
       properties:
@@ -477,15 +496,30 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
         "500": { $ref: "#/components/responses/InternalServerError" }
 
-    patch:
-      operationId: updateIssue
-      summary: Partially update an issue (including status transitions).
+    delete:
+      operationId: deleteIssue
+      summary: Delete an issue and its comments.
+      tags: [issues]
+      responses:
+        "204": { description: Issue deleted. }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "500": { $ref: "#/components/responses/InternalServerError" }
+
+  /issues/{issueId}/title:
+    parameters:
+      - { $ref: "#/components/parameters/IssueIdParam" }
+
+    put:
+      operationId: updateIssueTitle
+      summary: Update the title of an issue.
       tags: [issues]
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: "#/components/schemas/UpdateIssueRequest" }
+            schema: { $ref: "#/components/schemas/UpdateIssueTitleRequest" }
       responses:
         "200":
           description: Updated issue.
@@ -496,15 +530,103 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
-        "422": { $ref: "#/components/responses/UnprocessableEntity" }
         "500": { $ref: "#/components/responses/InternalServerError" }
 
-    delete:
-      operationId: deleteIssue
-      summary: Delete an issue and its comments.
+  /issues/{issueId}/description:
+    parameters:
+      - { $ref: "#/components/parameters/IssueIdParam" }
+
+    put:
+      operationId: updateIssueDescription
+      summary: Update the description of an issue.
       tags: [issues]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateIssueDescriptionRequest" }
       responses:
-        "204": { description: Issue deleted. }
+        "200":
+          description: Updated issue.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Issue" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "500": { $ref: "#/components/responses/InternalServerError" }
+
+  /issues/{issueId}/status:
+    parameters:
+      - { $ref: "#/components/parameters/IssueIdParam" }
+
+    put:
+      operationId: updateIssueStatus
+      summary: Update the status of an issue.
+      tags: [issues]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateIssueStatusRequest" }
+      responses:
+        "200":
+          description: Updated issue.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Issue" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "500": { $ref: "#/components/responses/InternalServerError" }
+
+  /issues/{issueId}/priority:
+    parameters:
+      - { $ref: "#/components/parameters/IssueIdParam" }
+
+    put:
+      operationId: updateIssuePriority
+      summary: Update the priority of an issue.
+      tags: [issues]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateIssuePriorityRequest" }
+      responses:
+        "200":
+          description: Updated issue.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Issue" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "500": { $ref: "#/components/responses/InternalServerError" }
+
+  /issues/{issueId}/assigneeId:
+    parameters:
+      - { $ref: "#/components/parameters/IssueIdParam" }
+
+    put:
+      operationId: updateIssueAssignee
+      summary: Update the assignee of an issue.
+      tags: [issues]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateIssueAssigneeRequest" }
+      responses:
+        "200":
+          description: Updated issue.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Issue" }
+        "400": { $ref: "#/components/responses/BadRequest" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
@@ -557,27 +679,6 @@ paths:
   /comments/{commentId}:
     parameters:
       - { $ref: "#/components/parameters/CommentIdParam" }
-
-    patch:
-      operationId: updateComment
-      summary: Edit the body of a comment.
-      tags: [comments]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: "#/components/schemas/UpdateCommentRequest" }
-      responses:
-        "200":
-          description: Updated comment.
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Comment" }
-        "400": { $ref: "#/components/responses/BadRequest" }
-        "401": { $ref: "#/components/responses/Unauthorized" }
-        "403": { $ref: "#/components/responses/Forbidden" }
-        "404": { $ref: "#/components/responses/NotFound" }
-        "500": { $ref: "#/components/responses/InternalServerError" }
 
     delete:
       operationId: deleteComment
