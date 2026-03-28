@@ -34,8 +34,8 @@ func (m *mockIssueService) ListIssues(ctx context.Context, projectID uuid.UUID, 
 	return issuedomain.IssuePage{}, args.Error(1)
 }
 
-func (m *mockIssueService) CreateIssue(ctx context.Context, id uuid.UUID, projectID uuid.UUID, reporterID uuid.UUID, req issuedomain.CreateIssueRequest) (*issuedomain.Issue, error) {
-	args := m.Called(ctx, id, projectID, reporterID, req)
+func (m *mockIssueService) CreateIssue(ctx context.Context, command issuedomain.CreateIssueCommand) (*issuedomain.Issue, error) {
+	args := m.Called(ctx, command)
 	if issue, ok := args.Get(0).(*issuedomain.Issue); ok {
 		return issue, args.Error(1)
 	}
@@ -190,7 +190,7 @@ func Test_CreateIssue_ValidBody_Returns201(t *testing.T) {
 	userID := uuid.New()
 	now := time.Now().UTC()
 
-	service.On("CreateIssue", mock.Anything, mock.Anything, projectID, userID, mock.Anything).
+	service.On("CreateIssue", mock.Anything, mock.Anything).
 		Return(&issuedomain.Issue{
 			ID:         uuid.New(),
 			Identifier: "PROJ-1",
@@ -274,7 +274,7 @@ func Test_CreateIssue_InvalidProjectID_Returns422(t *testing.T) {
 	projectID := uuid.New()
 	userID := uuid.New()
 
-	service.On("CreateIssue", mock.Anything, mock.Anything, projectID, userID, mock.Anything).
+	service.On("CreateIssue", mock.Anything, mock.Anything).
 		Return(nil, api.ErrIssueUnprocessable)
 
 	e := newIssueTestServer(t, service)
@@ -295,7 +295,7 @@ func Test_CreateIssue_UnprocessableInput_Returns422(t *testing.T) {
 	projectID := uuid.New()
 	userID := uuid.New()
 
-	service.On("CreateIssue", mock.Anything, mock.Anything, projectID, userID, mock.Anything).
+	service.On("CreateIssue", mock.Anything, mock.Anything).
 		Return(nil, api.ErrIssueUnprocessable)
 
 	e := newIssueTestServer(t, service)
@@ -316,7 +316,7 @@ func Test_CreateIssue_ServiceError_Returns500(t *testing.T) {
 	projectID := uuid.New()
 	userID := uuid.New()
 
-	service.On("CreateIssue", mock.Anything, mock.Anything, projectID, userID, mock.Anything).
+	service.On("CreateIssue", mock.Anything, mock.Anything).
 		Return(nil, errors.New("db down"))
 
 	e := newIssueTestServer(t, service)

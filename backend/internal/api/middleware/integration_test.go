@@ -126,7 +126,11 @@ func newProtectedEcho(jwksURL string) *echo.Echo {
 	e.Use(middleware.JwtMiddleware(jwksURL))
 	e.Use(middleware.UserIDMiddleware())
 	e.GET("/ping", func(c echo.Context) error {
-		id := api.UserIDFromContext(c.Request().Context())
+		id, err := api.UserIDFromContext(c.Request().Context())
+		if err != nil {
+			return err
+		}
+
 		return c.String(http.StatusOK, id.String())
 	})
 	return e
