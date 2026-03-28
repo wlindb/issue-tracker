@@ -9,6 +9,7 @@ import (
 type Handler struct {
 	ProjectHandler
 	CommentHandler
+	IssueHandler
 }
 
 var _ model.StrictServerInterface = (*Handler)(nil)

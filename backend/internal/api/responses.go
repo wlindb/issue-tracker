@@ -19,3 +19,9 @@ func newBadRequest(code, message string) model.BadRequestJSONResponse {
 func newNotFound(code, message string) model.NotFoundJSONResponse {
 	return model.NotFoundJSONResponse(model.Error{Code: code, Message: message})
 }
+
+// newUnprocessable constructs an UnprocessableEntityJSONResponse with the given
+// error code and message.  It is embedded in per-endpoint 422 response types.
+func newUnprocessable(code, message string) model.UnprocessableEntityJSONResponse {
+	return model.UnprocessableEntityJSONResponse(model.Error{Code: code, Message: message})
+}
