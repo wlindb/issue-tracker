@@ -99,6 +99,7 @@ func (c CreateIssueCommand) ToIssue(id uuid.UUID, slugifier Slugifier) Issue {
 		Description: c.Description,
 		Status:      c.Status,
 		Priority:    c.Priority,
+		Labels:      []string{},
 		AssigneeID:  c.AssigneeID,
 	}
 }
