@@ -14,6 +14,7 @@ import (
 
 	"github.com/wlindb/issue-tracker/internal/api"
 	"github.com/wlindb/issue-tracker/internal/config"
+	issuedomain "github.com/wlindb/issue-tracker/internal/domain/tracker/issue"
 	trackerdomain "github.com/wlindb/issue-tracker/internal/domain/tracker/project"
 	"github.com/wlindb/issue-tracker/internal/infrastructure/db"
 	trackerinfra "github.com/wlindb/issue-tracker/internal/infrastructure/tracker"
@@ -45,9 +46,11 @@ func run() error {
 	}
 	log.Println("tracker migrations applied")
 
-	projectRepo := trackerinfra.NewProjectRepository(pool)
+	projectRepository := trackerinfra.NewProjectRepository(pool)
+	issueRepository := trackerinfra.NewIssueRepository(pool)
 	h := &api.Handler{
-		ProjectHandler: api.NewProjectHandler(trackerdomain.NewProjectService(projectRepo)),
+		ProjectHandler: api.NewProjectHandler(trackerdomain.NewProjectService(projectRepository)),
+		IssueHandler:   api.NewIssueHandler(issuedomain.NewIssueService(issueRepository)),
 	}
 
 	e, err := newServer(h, cfg)
