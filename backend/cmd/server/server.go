@@ -6,6 +6,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 	echomiddleware "github.com/labstack/echo/v4/middleware"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/labstack/echo/otelecho"
 
 	"github.com/wlindb/issue-tracker/internal/api"
 	apimiddleware "github.com/wlindb/issue-tracker/internal/api/middleware"
@@ -18,6 +19,7 @@ func newServer(h *api.Handler, cfg *config.Config) (*echo.Echo, error) {
 
 	e := echo.New()
 	e.HTTPErrorHandler = api.HTTPErrorHandler
+	e.Use(otelecho.Middleware(cfg.OTELServiceName))
 	e.Use(api.RequestLogger(logger))
 	e.Use(echomiddleware.Recover())
 	e.Use(echomiddleware.CORS())
