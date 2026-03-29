@@ -14,6 +14,7 @@ import (
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 
+	issuedomain "github.com/wlindb/issue-tracker/internal/domain/tracker/issue"
 	projectdomain "github.com/wlindb/issue-tracker/internal/domain/tracker/project"
 	infradb "github.com/wlindb/issue-tracker/internal/infrastructure/db"
 	tracker "github.com/wlindb/issue-tracker/internal/infrastructure/tracker"
@@ -155,4 +156,359 @@ func Test_List_LimitExceedsTotal_ReturnsAllProjects(t *testing.T) {
 	}
 	assert.Contains(t, ids, id1)
 	assert.Contains(t, ids, id2)
+}
+
+// — Issue integration helpers —
+
+func createTestProject(t *testing.T) uuid.UUID {
+	t.Helper()
+	repo := tracker.NewProjectRepository(testPool)
+	id := uuid.New()
+	_, err := repo.Create(context.Background(), id, uuid.New(), "TestProject-"+id.String()[:8], nil)
+	require.NoError(t, err)
+	return id
+}
+
+// — CreateIssue integration tests —
+
+func Test_CreateIssue_NoOptionalFields_SuccessfulCreation(t *testing.T) {
+	repository := tracker.NewIssueRepository(testPool)
+	projectID := createTestProject(t)
+	ctx := context.Background()
+
+	issue := issuedomain.Issue{
+		ID:         uuid.New(),
+		Identifier: "create-no-opt-" + uuid.New().String()[:8],
+		Title:      "Simple issue",
+		Status:     issuedomain.StatusBacklog,
+		Priority:   issuedomain.PriorityNone,
+		Labels:     []string{},
+		ProjectID:  projectID,
+		ReporterID: uuid.New(),
+	}
+
+	actual, err := repository.CreateIssue(ctx, issue)
+
+	require.NoError(t, err)
+	require.NotNil(t, actual)
+	assert.Equal(t, issue.ID, actual.ID)
+	assert.Equal(t, issue.Identifier, actual.Identifier)
+	assert.Equal(t, issue.Title, actual.Title)
+	assert.Nil(t, actual.Description)
+	assert.Equal(t, issuedomain.StatusBacklog, actual.Status)
+	assert.Equal(t, issuedomain.PriorityNone, actual.Priority)
+	assert.Empty(t, actual.Labels)
+	assert.Nil(t, actual.AssigneeID)
+	assert.Equal(t, projectID, actual.ProjectID)
+	assert.Equal(t, issue.ReporterID, actual.ReporterID)
+	assert.False(t, actual.CreatedAt.IsZero())
+	assert.False(t, actual.UpdatedAt.IsZero())
+}
+
+func Test_CreateIssue_WithOptionalFields_SuccessfulCreation(t *testing.T) {
+	repository := tracker.NewIssueRepository(testPool)
+	projectID := createTestProject(t)
+	ctx := context.Background()
+
+	description := "detailed description"
+	assigneeID := uuid.New()
+	issue := issuedomain.Issue{
+		ID:          uuid.New(),
+		Identifier:  "create-opt-" + uuid.New().String()[:8],
+		Title:       "Full issue",
+		Description: &description,
+		Status:      issuedomain.StatusInProgress,
+		Priority:    issuedomain.PriorityHigh,
+		Labels:      []string{"backend", "urgent"},
+		AssigneeID:  &assigneeID,
+		ProjectID:   projectID,
+		ReporterID:  uuid.New(),
+	}
+
+	actual, err := repository.CreateIssue(ctx, issue)
+
+	require.NoError(t, err)
+	require.NotNil(t, actual)
+	require.NotNil(t, actual.Description)
+	assert.Equal(t, description, *actual.Description)
+	require.NotNil(t, actual.AssigneeID)
+	assert.Equal(t, assigneeID, *actual.AssigneeID)
+	assert.Equal(t, issuedomain.StatusInProgress, actual.Status)
+	assert.Equal(t, issuedomain.PriorityHigh, actual.Priority)
+	assert.Equal(t, []string{"backend", "urgent"}, actual.Labels)
+}
+
+func Test_CreateIssue_DuplicateID_ReturnsError(t *testing.T) {
+	repository := tracker.NewIssueRepository(testPool)
+	projectID := createTestProject(t)
+	ctx := context.Background()
+
+	issueID := uuid.New()
+	issue := issuedomain.Issue{
+		ID:         issueID,
+		Identifier: "dup-id-" + uuid.New().String()[:8],
+		Title:      "First",
+		Status:     issuedomain.StatusBacklog,
+		Priority:   issuedomain.PriorityNone,
+		Labels:     []string{},
+		ProjectID:  projectID,
+		ReporterID: uuid.New(),
+	}
+	_, err := repository.CreateIssue(ctx, issue)
+	require.NoError(t, err)
+
+	issue.Identifier = "dup-id-second-" + uuid.New().String()[:8]
+	_, err = repository.CreateIssue(ctx, issue)
+	require.Error(t, err) // PK violation
+}
+
+func Test_CreateIssue_DuplicateIdentifierSameProject_ReturnsError(t *testing.T) {
+	repository := tracker.NewIssueRepository(testPool)
+	projectID := createTestProject(t)
+	ctx := context.Background()
+
+	identifier := "dup-ident-" + uuid.New().String()[:8]
+	issue := issuedomain.Issue{
+		ID:         uuid.New(),
+		Identifier: identifier,
+		Title:      "First",
+		Status:     issuedomain.StatusBacklog,
+		Priority:   issuedomain.PriorityNone,
+		Labels:     []string{},
+		ProjectID:  projectID,
+		ReporterID: uuid.New(),
+	}
+	_, err := repository.CreateIssue(ctx, issue)
+	require.NoError(t, err)
+
+	issue.ID = uuid.New()
+	_, err = repository.CreateIssue(ctx, issue)
+	require.Error(t, err) // UNIQUE violation on (project_id, identifier)
+}
+
+func Test_CreateIssue_DuplicateIdentifierDifferentProject_Succeeds(t *testing.T) {
+	repository := tracker.NewIssueRepository(testPool)
+	projectA := createTestProject(t)
+	projectB := createTestProject(t)
+	ctx := context.Background()
+
+	identifier := "cross-proj-" + uuid.New().String()[:8]
+	issueA := issuedomain.Issue{
+		ID:         uuid.New(),
+		Identifier: identifier,
+		Title:      "Issue in A",
+		Status:     issuedomain.StatusBacklog,
+		Priority:   issuedomain.PriorityNone,
+		Labels:     []string{},
+		ProjectID:  projectA,
+		ReporterID: uuid.New(),
+	}
+	_, err := repository.CreateIssue(ctx, issueA)
+	require.NoError(t, err)
+
+	issueB := issuedomain.Issue{
+		ID:         uuid.New(),
+		Identifier: identifier,
+		Title:      "Issue in B",
+		Status:     issuedomain.StatusBacklog,
+		Priority:   issuedomain.PriorityNone,
+		Labels:     []string{},
+		ProjectID:  projectB,
+		ReporterID: uuid.New(),
+	}
+	_, err = repository.CreateIssue(ctx, issueB)
+	require.NoError(t, err) // same identifier, different project is OK
+}
+
+func Test_CreateIssue_InvalidProjectID_ReturnsError(t *testing.T) {
+	repository := tracker.NewIssueRepository(testPool)
+	ctx := context.Background()
+
+	issue := issuedomain.Issue{
+		ID:         uuid.New(),
+		Identifier: "invalid-proj-" + uuid.New().String()[:8],
+		Title:      "Bad project ref",
+		Status:     issuedomain.StatusBacklog,
+		Priority:   issuedomain.PriorityNone,
+		Labels:     []string{},
+		ProjectID:  uuid.New(), // nonexistent project
+		ReporterID: uuid.New(),
+	}
+
+	_, err := repository.CreateIssue(ctx, issue)
+	require.Error(t, err) // FK violation
+}
+
+// — ListIssues integration tests —
+
+func Test_ListIssues_EmptyProject_ReturnsEmptyPage(t *testing.T) {
+	repository := tracker.NewIssueRepository(testPool)
+	projectID := createTestProject(t)
+	ctx := context.Background()
+
+	query := issuedomain.ListIssueQuery{}
+	actual, err := repository.ListIssues(ctx, projectID, query)
+
+	require.NoError(t, err)
+	assert.Empty(t, actual.Items)
+}
+
+func Test_ListIssues_WithIssues_ReturnsAllIssues(t *testing.T) {
+	repository := tracker.NewIssueRepository(testPool)
+	projectID := createTestProject(t)
+	ctx := context.Background()
+
+	for idx := 0; idx < 3; idx++ {
+		_, err := repository.CreateIssue(ctx, issuedomain.Issue{
+			ID:         uuid.New(),
+			Identifier: fmt.Sprintf("list-all-%d-%s", idx, uuid.New().String()[:8]),
+			Title:      fmt.Sprintf("Issue %d", idx),
+			Status:     issuedomain.StatusBacklog,
+			Priority:   issuedomain.PriorityNone,
+			Labels:     []string{},
+			ProjectID:  projectID,
+			ReporterID: uuid.New(),
+		})
+		require.NoError(t, err)
+	}
+
+	query := issuedomain.ListIssueQuery{}
+	actual, err := repository.ListIssues(ctx, projectID, query)
+
+	require.NoError(t, err)
+	assert.Len(t, actual.Items, 3)
+}
+
+func Test_ListIssues_FilterByStatus_ReturnsFilteredIssues(t *testing.T) {
+	repository := tracker.NewIssueRepository(testPool)
+	projectID := createTestProject(t)
+	ctx := context.Background()
+
+	statuses := []issuedomain.Status{issuedomain.StatusBacklog, issuedomain.StatusTodo, issuedomain.StatusBacklog}
+	for idx, status := range statuses {
+		_, err := repository.CreateIssue(ctx, issuedomain.Issue{
+			ID:         uuid.New(),
+			Identifier: fmt.Sprintf("filter-status-%d-%s", idx, uuid.New().String()[:8]),
+			Title:      fmt.Sprintf("Issue %d", idx),
+			Status:     status,
+			Priority:   issuedomain.PriorityNone,
+			Labels:     []string{},
+			ProjectID:  projectID,
+			ReporterID: uuid.New(),
+		})
+		require.NoError(t, err)
+	}
+
+	filterStatus := issuedomain.StatusBacklog
+	query := issuedomain.ListIssueQuery{Status: &filterStatus}
+	actual, err := repository.ListIssues(ctx, projectID, query)
+
+	require.NoError(t, err)
+	assert.Len(t, actual.Items, 2)
+	for _, item := range actual.Items {
+		assert.Equal(t, issuedomain.StatusBacklog, item.Status)
+	}
+}
+
+func Test_ListIssues_FilterByPriority_ReturnsFilteredIssues(t *testing.T) {
+	repository := tracker.NewIssueRepository(testPool)
+	projectID := createTestProject(t)
+	ctx := context.Background()
+
+	priorities := []issuedomain.Priority{issuedomain.PriorityHigh, issuedomain.PriorityLow, issuedomain.PriorityHigh}
+	for idx, priority := range priorities {
+		_, err := repository.CreateIssue(ctx, issuedomain.Issue{
+			ID:         uuid.New(),
+			Identifier: fmt.Sprintf("filter-priority-%d-%s", idx, uuid.New().String()[:8]),
+			Title:      fmt.Sprintf("Issue %d", idx),
+			Status:     issuedomain.StatusBacklog,
+			Priority:   priority,
+			Labels:     []string{},
+			ProjectID:  projectID,
+			ReporterID: uuid.New(),
+		})
+		require.NoError(t, err)
+	}
+
+	filterPriority := issuedomain.PriorityHigh
+	query := issuedomain.ListIssueQuery{Priority: &filterPriority}
+	actual, err := repository.ListIssues(ctx, projectID, query)
+
+	require.NoError(t, err)
+	assert.Len(t, actual.Items, 2)
+	for _, item := range actual.Items {
+		assert.Equal(t, issuedomain.PriorityHigh, item.Priority)
+	}
+}
+
+func Test_ListIssues_FilterByAssignee_ReturnsFilteredIssues(t *testing.T) {
+	repository := tracker.NewIssueRepository(testPool)
+	projectID := createTestProject(t)
+	ctx := context.Background()
+
+	assigneeID := uuid.New()
+	otherID := uuid.New()
+	assignees := []*uuid.UUID{&assigneeID, &otherID, &assigneeID}
+	for idx, assignee := range assignees {
+		_, err := repository.CreateIssue(ctx, issuedomain.Issue{
+			ID:         uuid.New(),
+			Identifier: fmt.Sprintf("filter-assignee-%d-%s", idx, uuid.New().String()[:8]),
+			Title:      fmt.Sprintf("Issue %d", idx),
+			Status:     issuedomain.StatusBacklog,
+			Priority:   issuedomain.PriorityNone,
+			Labels:     []string{},
+			AssigneeID: assignee,
+			ProjectID:  projectID,
+			ReporterID: uuid.New(),
+		})
+		require.NoError(t, err)
+	}
+
+	query := issuedomain.ListIssueQuery{AssigneeID: &assigneeID}
+	actual, err := repository.ListIssues(ctx, projectID, query)
+
+	require.NoError(t, err)
+	assert.Len(t, actual.Items, 2)
+	for _, item := range actual.Items {
+		require.NotNil(t, item.AssigneeID)
+		assert.Equal(t, assigneeID, *item.AssigneeID)
+	}
+}
+
+func Test_ListIssues_IsolatesByProject_ReturnsOnlyProjectIssues(t *testing.T) {
+	repository := tracker.NewIssueRepository(testPool)
+	projectA := createTestProject(t)
+	projectB := createTestProject(t)
+	ctx := context.Background()
+
+	_, err := repository.CreateIssue(ctx, issuedomain.Issue{
+		ID:         uuid.New(),
+		Identifier: "proj-a-" + uuid.New().String()[:8],
+		Title:      "Issue in A",
+		Status:     issuedomain.StatusBacklog,
+		Priority:   issuedomain.PriorityNone,
+		Labels:     []string{},
+		ProjectID:  projectA,
+		ReporterID: uuid.New(),
+	})
+	require.NoError(t, err)
+
+	_, err = repository.CreateIssue(ctx, issuedomain.Issue{
+		ID:         uuid.New(),
+		Identifier: "proj-b-" + uuid.New().String()[:8],
+		Title:      "Issue in B",
+		Status:     issuedomain.StatusBacklog,
+		Priority:   issuedomain.PriorityNone,
+		Labels:     []string{},
+		ProjectID:  projectB,
+		ReporterID: uuid.New(),
+	})
+	require.NoError(t, err)
+
+	query := issuedomain.ListIssueQuery{}
+	actual, err := repository.ListIssues(ctx, projectA, query)
+
+	require.NoError(t, err)
+	assert.Len(t, actual.Items, 1)
+	assert.Equal(t, "Issue in A", actual.Items[0].Title)
 }
