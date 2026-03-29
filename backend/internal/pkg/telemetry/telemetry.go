@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/url"
 	"time"
 
 	"go.opentelemetry.io/otel"
@@ -93,7 +94,17 @@ func Setup(ctx context.Context, cfg Config) (func(context.Context) error, error)
 	shutdownFuncs = append(shutdownFuncs, mp.Shutdown)
 
 	// --- Logs ---
-	logOpts := []otlploghttp.Option{otlploghttp.WithEndpointURL(cfg.OTLPEndpoint)}
+	// otlploghttp v0.x WithEndpointURL sets the path to the raw URL path (empty
+	// for "http://host:port"), overriding the default "/v1/logs". Use
+	// WithEndpoint + WithInsecure so the default path is preserved.
+	logURL, err := url.Parse(cfg.OTLPEndpoint)
+	if err != nil {
+		return shutdownAll, fmt.Errorf("telemetry: parse OTLP endpoint: %w", err)
+	}
+	logOpts := []otlploghttp.Option{otlploghttp.WithEndpoint(logURL.Host)}
+	if logURL.Scheme == "http" {
+		logOpts = append(logOpts, otlploghttp.WithInsecure())
+	}
 	if len(cfg.OTLPHeaders) > 0 {
 		logOpts = append(logOpts, otlploghttp.WithHeaders(cfg.OTLPHeaders))
 	}

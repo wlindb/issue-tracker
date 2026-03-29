@@ -422,6 +422,8 @@ github.com/ziutek/mymysql v1.5.4/go.mod h1:LMSpPZ6DbqWFxNCHW77HeMg9I646SAhApZ/wK
 go.mongodb.org/mongo-driver v1.11.4/go.mod h1:PTSz5yu21bkT/wXpkS7WR5f0ddqw5quethTUn9WM+2g=
 go.opentelemetry.io/auto/sdk v1.2.1 h1:jXsnJ4Lmnqd11kwkBV2LgLoFMZKizbCi5fNZ/ipaZ64=
 go.opentelemetry.io/auto/sdk v1.2.1/go.mod h1:KRTj+aOaElaLi+wW1kO/DZRXwkF4C5xPbEe3ZiIhN7Y=
+go.opentelemetry.io/contrib/bridges/otelslog v0.17.0 h1:NFIS6x7wyObQ7cR84x7bt1sr8nYBx89s3x3GwRjw40k=
+go.opentelemetry.io/contrib/bridges/otelslog v0.17.0/go.mod h1:39SaByOyDMRMe872AE7uelMuQZidIw7LLFAnQi0FWTE=
 go.opentelemetry.io/contrib/instrumentation/github.com/labstack/echo/otelecho v0.67.0 h1:0FKdyaoWXDmSCpQuv3m2UiJIRNxb1CK1mILy5QyKxc4=
 go.opentelemetry.io/contrib/instrumentation/github.com/labstack/echo/otelecho v0.67.0/go.mod h1:IXtTS6zjKfM2yNRD9rWOS7SfIYGtuLGhL9ent5WX3Uk=
 go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.65.0 h1:7iP2uCb7sGddAr30RRS6xjKy7AZ2JtTOPA3oolgVSw8=

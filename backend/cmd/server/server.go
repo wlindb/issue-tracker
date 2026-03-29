@@ -6,6 +6,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 	echomiddleware "github.com/labstack/echo/v4/middleware"
+	"go.opentelemetry.io/contrib/bridges/otelslog"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/labstack/echo/otelecho"
 
 	"github.com/wlindb/issue-tracker/internal/api"
@@ -15,7 +16,10 @@ import (
 )
 
 func newServer(h *api.Handler, cfg *config.Config) (*echo.Echo, error) {
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	logger := slog.New(slog.NewMultiHandler(
+		slog.NewJSONHandler(os.Stdout, nil),
+		otelslog.NewHandler(cfg.OTELServiceName),
+	))
 
 	e := echo.New()
 	e.HTTPErrorHandler = api.HTTPErrorHandler
