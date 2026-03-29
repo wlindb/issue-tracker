@@ -84,6 +84,15 @@ func (h *Handler) CreateIssue(ctx context.Context, req model.CreateIssueRequestO
 	return model.CreateIssue201JSONResponse(issueFromDomain(*issue)), nil
 }
 
+func (h *Handler) SearchIssues(_ context.Context, req model.SearchIssuesRequestObject) (model.SearchIssuesResponseObject, error) {
+	if req.Body == nil || req.Body.Query == "" {
+		return model.SearchIssues400JSONResponse{
+			BadRequestJSONResponse: newBadRequest("invalid_input", "query is required"),
+		}, nil
+	}
+	return model.SearchIssues501JSONResponse{NotImplementedJSONResponse: model.NotImplementedJSONResponse(notImplemented())}, nil
+}
+
 func (h *Handler) GetIssue(_ context.Context, _ model.GetIssueRequestObject) (model.GetIssueResponseObject, error) {
 	return model.GetIssue500JSONResponse{InternalServerErrorJSONResponse: model.InternalServerErrorJSONResponse(notImplemented())}, nil
 }
