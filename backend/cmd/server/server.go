@@ -16,7 +16,7 @@ import (
 )
 
 func newServer(h *api.Handler, cfg *config.Config) (*echo.Echo, error) {
-	logger := slog.New(slog.NewMultiHandler(
+	logger := slog.New(newMultiHandler(
 		slog.NewJSONHandler(os.Stdout, nil),
 		otelslog.NewHandler(cfg.OTELServiceName),
 	))
