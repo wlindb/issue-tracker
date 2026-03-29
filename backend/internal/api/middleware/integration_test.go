@@ -15,6 +15,8 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"os"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -49,6 +51,9 @@ func TestMain(m *testing.M) {
 }
 
 func startKeycloakContainer(ctx context.Context) (*keycloakContainer, error) {
+	_, testFile, _, _ := runtime.Caller(0)
+	realmExportPath := filepath.Join(filepath.Dir(testFile), "../../../keycloak/realm-export.json")
+
 	req := testcontainers.ContainerRequest{
 		Image: "quay.io/keycloak/keycloak:26.2",
 		Cmd:   []string{"start-dev", "--import-realm"},
@@ -58,7 +63,7 @@ func startKeycloakContainer(ctx context.Context) (*keycloakContainer, error) {
 		},
 		Files: []testcontainers.ContainerFile{
 			{
-				HostFilePath:      "../../keycloak/realm-export.json",
+				HostFilePath:      realmExportPath,
 				ContainerFilePath: "/opt/keycloak/data/import/realm-export.json",
 				FileMode:          0o644,
 			},
