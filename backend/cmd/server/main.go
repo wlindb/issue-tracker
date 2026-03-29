@@ -18,6 +18,7 @@ import (
 	trackerdomain "github.com/wlindb/issue-tracker/internal/domain/tracker/project"
 	"github.com/wlindb/issue-tracker/internal/infrastructure/db"
 	trackerinfra "github.com/wlindb/issue-tracker/internal/infrastructure/tracker"
+	"github.com/wlindb/issue-tracker/internal/pkg/telemetry"
 )
 
 func main() {
@@ -33,6 +34,23 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("config: %w", err)
 	}
+
+	otelShutdown, err := telemetry.Setup(ctx, telemetry.Config{
+		ServiceName:  cfg.OTELServiceName,
+		OTLPEndpoint: cfg.OTELEndpoint,
+		OTLPHeaders:  cfg.OTELHeaders,
+	})
+	if err != nil {
+		return fmt.Errorf("telemetry: %w", err)
+	}
+	defer func() {
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := otelShutdown(shutdownCtx); err != nil {
+			log.Printf("telemetry shutdown: %v", err)
+		}
+	}()
+	log.Println("telemetry initialised")
 
 	pool, err := db.New(ctx, cfg.DatabaseURL)
 	if err != nil {
