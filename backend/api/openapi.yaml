@@ -238,7 +238,7 @@ components:
       type: object
       required: [query]
       properties:
-        query: { type: string }
+        query: { type: string, minLength: 1 }
 
     CreateCommentRequest:
       type: object
@@ -509,6 +509,7 @@ paths:
           application/json:
             schema: { $ref: "#/components/schemas/SearchIssueRequest" }
       responses:
+        "400": { $ref: "#/components/responses/BadRequest" }
         "501": { $ref: "#/components/responses/NotImplemented" }
 
   /issues/{issueId}:

@@ -353,3 +353,51 @@ func Test_SearchIssues_Returns501(t *testing.T) {
 	service.AssertNotCalled(t, "ListIssues")
 	service.AssertNotCalled(t, "CreateIssue")
 }
+
+func Test_SearchIssues_MissingBody_Returns400(t *testing.T) {
+	service := &mockIssueService{}
+
+	e := newIssueTestServer(t, service)
+	e.Use(injectUser(uuid.New()))
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/issues/search", nil)
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusBadRequest, rec.Code)
+	service.AssertNotCalled(t, "ListIssues")
+	service.AssertNotCalled(t, "CreateIssue")
+}
+
+func Test_SearchIssues_MissingQuery_Returns400(t *testing.T) {
+	service := &mockIssueService{}
+
+	e := newIssueTestServer(t, service)
+	e.Use(injectUser(uuid.New()))
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/issues/search", strings.NewReader(`{}`))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusBadRequest, rec.Code)
+	service.AssertNotCalled(t, "ListIssues")
+	service.AssertNotCalled(t, "CreateIssue")
+}
+
+func Test_SearchIssues_EmptyQuery_Returns400(t *testing.T) {
+	service := &mockIssueService{}
+
+	e := newIssueTestServer(t, service)
+	e.Use(injectUser(uuid.New()))
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/issues/search", strings.NewReader(`{"query":""}`))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusBadRequest, rec.Code)
+	service.AssertNotCalled(t, "ListIssues")
+	service.AssertNotCalled(t, "CreateIssue")
+}
