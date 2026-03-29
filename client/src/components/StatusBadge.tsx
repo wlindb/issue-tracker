@@ -5,7 +5,6 @@ import { STATUS_LABEL } from './StatusIcon'
 
 const statusColors: Record<Status, string> = {
   in_progress: 'bg-blue-500/10 text-blue-600 dark:text-blue-400',
-  in_review: 'bg-violet-500/10 text-violet-600 dark:text-violet-400',
   todo: 'bg-muted text-muted-foreground',
   backlog: 'bg-muted text-muted-foreground',
   done: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',

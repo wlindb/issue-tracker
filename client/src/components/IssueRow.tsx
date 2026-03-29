@@ -1,20 +1,10 @@
 import { Link } from 'react-router-dom'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import type { Issue } from '@/data/mock'
 import { PriorityIcon } from './PriorityIcon'
 import { StatusBadge } from './StatusBadge'
 
 interface IssueRowProps {
   issue: Issue
-}
-
-function getInitials(name: string): string {
-  return name
-    .split(' ')
-    .map((part) => part[0])
-    .slice(0, 2)
-    .join('')
-    .toUpperCase()
 }
 
 export function IssueRow({ issue }: IssueRowProps) {
@@ -29,13 +19,7 @@ export function IssueRow({ issue }: IssueRowProps) {
       </span>
       <span className="flex-1 truncate text-sm">{issue.title}</span>
       <StatusBadge status={issue.status} />
-      {issue.assigneeName ? (
-        <Avatar size="sm" className="shrink-0">
-          <AvatarFallback>{getInitials(issue.assigneeName)}</AvatarFallback>
-        </Avatar>
-      ) : (
-        <div className="size-6 shrink-0" />
-      )}
+      <div className="size-6 shrink-0" />
     </Link>
   )
 }

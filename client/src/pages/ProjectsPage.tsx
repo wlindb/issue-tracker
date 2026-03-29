@@ -1,14 +1,24 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { PlusCircle } from 'lucide-react'
 import { ProjectCard } from '@/components/ProjectCard'
-import { projects as mockProjects, type Project } from '@/data/mock'
 import { Button } from '@/components/ui/button'
 import { CreateProjectForm } from '@/components/CreateProjectForm'
 import { cn } from '@/lib/utils'
+import { listProjects, type Project } from '@/api/generated/issueTrackerAPI'
 
 export function ProjectsPage() {
-  const [projects, setProjects] = useState<Project[]>(mockProjects)
+  const [projects, setProjects] = useState<Project[]>([])
+  const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
+
+  useEffect(() => {
+    async function load() {
+      const page = await listProjects()
+      setProjects(page.items)
+      setLoading(false)
+    }
+    load()
+  }, [])
 
   function handleSave(project: Project) {
     setProjects([project, ...projects])
@@ -40,11 +50,15 @@ export function ProjectsPage() {
         />
       )}
 
-      <div className="grid grid-cols-1 gap-4 p-6 sm:grid-cols-2 lg:grid-cols-3">
-        {projects.map((project) => (
-          <ProjectCard key={project.id} project={project} />
-        ))}
-      </div>
+      {loading ? (
+        <p className="px-6 py-8 text-sm text-muted-foreground">Loading…</p>
+      ) : (
+        <div className="grid grid-cols-1 gap-4 p-6 sm:grid-cols-2 lg:grid-cols-3">
+          {projects.map((project) => (
+            <ProjectCard key={project.id} project={project} />
+          ))}
+        </div>
+      )}
     </div>
   )
 }

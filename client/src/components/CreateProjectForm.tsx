@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
 import { type Project } from '@/data/mock'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { createProject } from '@/api/generated/issueTrackerAPI'
 
 interface CreateProjectFormProps {
   onSave: (project: Project) => void
@@ -11,24 +12,27 @@ interface CreateProjectFormProps {
 export function CreateProjectForm({ onSave, onCancel }: CreateProjectFormProps) {
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
+  const [submitting, setSubmitting] = useState(false)
   const nameRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     nameRef.current?.focus()
   }, [])
 
-  function handleSubmit() {
+  async function handleSubmit() {
     const trimmedName = name.trim()
     if (!trimmedName) return
 
-    // TODO: POST /projects
-    onSave({
-      id: `proj-${Date.now()}`,
-      name: trimmedName,
-      identifier: trimmedName.slice(0, 4).toUpperCase().replace(/\s/g, ''),
-      description: description.trim(),
-      issueCount: 0,
-    })
+    setSubmitting(true)
+    try {
+      const project = await createProject({
+        name: trimmedName,
+        description: description.trim() || null,
+      })
+      onSave(project)
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   function handleKeyDown(event: KeyboardEvent) {
@@ -71,11 +75,11 @@ export function CreateProjectForm({ onSave, onCancel }: CreateProjectFormProps) 
           />
         </div>
         <div className="flex justify-end gap-2">
-          <Button type="button" variant="ghost" size="sm" onClick={onCancel}>
+          <Button type="button" variant="ghost" size="sm" onClick={onCancel} disabled={submitting}>
             Cancel
           </Button>
-          <Button type="submit" size="sm" disabled={!name.trim()}>
-            Create project
+          <Button type="submit" size="sm" disabled={!name.trim() || submitting}>
+            {submitting ? 'Creating…' : 'Create project'}
           </Button>
         </div>
       </form>

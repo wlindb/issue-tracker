@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
-import { type Issue, type Project, issues as allIssues } from '@/data/mock'
+import { type Issue, type Project } from '@/data/mock'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { createIssue } from '@/api/generated/issueTrackerAPI'
 
 interface CreateIssueFormProps {
   projects: Project[]
@@ -14,33 +15,30 @@ export function CreateIssueForm({ projects, defaultProjectId, onSave, onCancel }
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [projectId, setProjectId] = useState(defaultProjectId ?? '')
+  const [submitting, setSubmitting] = useState(false)
   const titleRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     titleRef.current?.focus()
   }, [])
 
-  function handleSubmit() {
+  async function handleSubmit() {
     const trimmedTitle = title.trim()
     if (!trimmedTitle || !projectId) return
 
-    const project = projects.find((p) => p.id === projectId)!
-    const nextNumber = allIssues.filter((i) => i.projectId === projectId).length + 1
-
-    // TODO: POST /issues
-    onSave({
-      id: `issue-${Date.now()}`,
-      identifier: `${project.identifier}-${nextNumber}`,
-      title: trimmedTitle,
-      description: description.trim() || null,
-      labels: [],
-      status: 'backlog',
-      priority: 'no_priority',
-      projectId,
-      assigneeId: null,
-      assigneeName: null,
-      createdAt: new Date().toISOString(),
-    })
+    setSubmitting(true)
+    try {
+      const issue = await createIssue({
+        projectId,
+        title: trimmedTitle,
+        description: description.trim() || null,
+        status: 'backlog',
+        priority: 'none',
+      })
+      onSave(issue)
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   function handleKeyDown(event: KeyboardEvent) {
@@ -103,11 +101,11 @@ export function CreateIssueForm({ projects, defaultProjectId, onSave, onCancel }
           />
         </div>
         <div className="flex justify-end gap-2">
-          <Button type="button" variant="ghost" size="sm" onClick={onCancel}>
+          <Button type="button" variant="ghost" size="sm" onClick={onCancel} disabled={submitting}>
             Cancel
           </Button>
-          <Button type="submit" size="sm" disabled={!canSubmit}>
-            Create issue
+          <Button type="submit" size="sm" disabled={!canSubmit || submitting}>
+            {submitting ? 'Creating…' : 'Create issue'}
           </Button>
         </div>
       </form>

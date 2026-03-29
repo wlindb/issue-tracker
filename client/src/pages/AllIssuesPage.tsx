@@ -1,19 +1,34 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { PlusCircle, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { IssueRow } from '@/components/IssueRow'
 import { CreateIssueForm } from '@/components/CreateIssueForm'
-import { issues as mockIssues, projects, type Issue } from '@/data/mock'
 import { useIssueSearch } from '@/hooks/useIssueSearch'
 import { cn } from '@/lib/utils'
+import { listProjects, listIssues, type Issue, type Project } from '@/api/generated/issueTrackerAPI'
 
 export function AllIssuesPage() {
-  const [issues, setIssues] = useState<Issue[]>(mockIssues)
+  const [issues, setIssues] = useState<Issue[]>([])
+  const [projects, setProjects] = useState<Project[]>([])
+  const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
   const [query, setQuery] = useState('')
 
   const { results, isPending } = useIssueSearch(issues, query)
+
+  useEffect(() => {
+    async function load() {
+      const projectPage = await listProjects()
+      setProjects(projectPage.items)
+      const issuePages = await Promise.all(
+        projectPage.items.map((p) => listIssues({ project_id: p.id }))
+      )
+      setIssues(issuePages.flatMap((page) => page.items))
+      setLoading(false)
+    }
+    load()
+  }, [])
 
   function handleSave(issue: Issue) {
     setIssues([issue, ...issues])
@@ -62,10 +77,16 @@ export function AllIssuesPage() {
       )}
 
       <div className="py-2">
-        {results.length === 0 ? (
-          <p className="px-6 py-8 text-sm text-muted-foreground">
-            No issues match &ldquo;{query}&rdquo;.
-          </p>
+        {loading ? (
+          <p className="px-6 py-8 text-sm text-muted-foreground">Loading…</p>
+        ) : results.length === 0 ? (
+          query ? (
+            <p className="px-6 py-8 text-sm text-muted-foreground">
+              No issues match &ldquo;{query}&rdquo;.
+            </p>
+          ) : (
+            <p className="px-6 py-8 text-sm text-muted-foreground">No issues yet.</p>
+          )
         ) : (
           results.map((issue) => <IssueRow key={issue.id} issue={issue} />)
         )}

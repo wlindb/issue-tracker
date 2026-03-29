@@ -12,11 +12,11 @@ const PRIORITY_LABEL: Record<Priority, string> = {
   high: 'High',
   medium: 'Medium',
   low: 'Low',
-  no_priority: 'No priority',
+  none: 'No priority',
 }
 
-const ALL_STATUSES: Status[] = ['backlog', 'todo', 'in_progress', 'in_review', 'done', 'cancelled']
-const ALL_PRIORITIES: Priority[] = ['no_priority', 'urgent', 'high', 'medium', 'low']
+const ALL_STATUSES: Status[] = ['backlog', 'todo', 'in_progress', 'done', 'cancelled']
+const ALL_PRIORITIES: Priority[] = ['none', 'urgent', 'high', 'medium', 'low']
 
 function getInitials(name: string): string {
   return name
@@ -37,7 +37,7 @@ interface IssueMetaSidebarProps {
   users: User[]
   onStatusChange: (status: Status) => void
   onPriorityChange: (priority: Priority) => void
-  onAssigneeChange: (assigneeId: string | null, assigneeName: string | null) => void
+  onAssigneeChange: (assigneeId: string | null) => void
   onLabelsChange: (labels: string[]) => void
 }
 
@@ -110,12 +110,7 @@ export function IssueMetaSidebar({
           value={issue.assigneeId ?? ''}
           onChange={(e) => {
             const userId = e.target.value
-            if (!userId) {
-              onAssigneeChange(null, null)
-            } else {
-              const user = users.find((u) => u.id === userId)
-              onAssigneeChange(userId, user?.name ?? null)
-            }
+            onAssigneeChange(userId || null)
           }}
           className={selectClass}
         >
@@ -126,14 +121,17 @@ export function IssueMetaSidebar({
             </option>
           ))}
         </select>
-        {issue.assigneeName && (
-          <div className="flex items-center gap-2 px-0.5">
-            <Avatar size="sm">
-              <AvatarFallback>{getInitials(issue.assigneeName)}</AvatarFallback>
-            </Avatar>
-            <span className="text-xs text-muted-foreground">{issue.assigneeName}</span>
-          </div>
-        )}
+        {issue.assigneeId && (() => {
+          const assignee = users.find((u) => u.id === issue.assigneeId)
+          return assignee ? (
+            <div className="flex items-center gap-2 px-0.5">
+              <Avatar size="sm">
+                <AvatarFallback>{getInitials(assignee.name)}</AvatarFallback>
+              </Avatar>
+              <span className="text-xs text-muted-foreground">{assignee.name}</span>
+            </div>
+          ) : null
+        })()}
       </MetaRow>
 
       <MetaRow label="Labels">

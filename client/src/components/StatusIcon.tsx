@@ -3,7 +3,6 @@ import {
   CircleDashedIcon,
   CircleDotIcon,
   CircleIcon,
-  EyeIcon,
   XCircleIcon,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -11,7 +10,6 @@ import type { Status } from '@/data/mock'
 
 const config: Record<Status, { icon: React.ElementType; className: string }> = {
   in_progress: { icon: CircleDotIcon, className: 'text-blue-500' },
-  in_review: { icon: EyeIcon, className: 'text-violet-500' },
   todo: { icon: CircleIcon, className: 'text-muted-foreground' },
   backlog: { icon: CircleDashedIcon, className: 'text-muted-foreground' },
   done: { icon: CheckCircle2Icon, className: 'text-emerald-500' },
@@ -20,7 +18,6 @@ const config: Record<Status, { icon: React.ElementType; className: string }> = {
 
 export const STATUS_LABEL: Record<Status, string> = {
   in_progress: 'In Progress',
-  in_review: 'In Review',
   todo: 'Todo',
   backlog: 'Backlog',
   done: 'Done',

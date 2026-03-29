@@ -7,7 +7,7 @@ const config: Record<Priority, { icon: React.ElementType; className: string }> =
   high: { icon: ArrowUpIcon, className: 'text-orange-500' },
   medium: { icon: ArrowRightIcon, className: 'text-yellow-500' },
   low: { icon: ArrowDownIcon, className: 'text-blue-400' },
-  no_priority: { icon: MinusIcon, className: 'text-muted-foreground' },
+  none: { icon: MinusIcon, className: 'text-muted-foreground' },
 }
 
 interface PriorityIconProps {

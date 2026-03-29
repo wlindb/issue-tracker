@@ -2,7 +2,6 @@ import type { Issue, Status } from '@/data/mock'
 
 const STATUS_ORDER: Status[] = [
   'in_progress',
-  'in_review',
   'todo',
   'backlog',
   'done',

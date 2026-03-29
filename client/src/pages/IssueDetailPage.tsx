@@ -24,9 +24,8 @@ export function IssueDetailPage() {
   const [title, setTitle] = useState(baseIssue?.title ?? '')
   const [description, setDescription] = useState(baseIssue?.description ?? '')
   const [status, setStatus] = useState<Status>(baseIssue?.status ?? 'backlog')
-  const [priority, setPriority] = useState<Priority>(baseIssue?.priority ?? 'no_priority')
+  const [priority, setPriority] = useState<Priority>(baseIssue?.priority ?? 'none')
   const [assigneeId, setAssigneeId] = useState(baseIssue?.assigneeId ?? null)
-  const [assigneeName, setAssigneeName] = useState(baseIssue?.assigneeName ?? null)
   const [labels, setLabels] = useState(baseIssue?.labels ?? [])
   const [issueComments, setIssueComments] = useState<Comment[]>(
     allComments.filter((c) => c.issueId === baseIssue?.id),
@@ -54,12 +53,11 @@ export function IssueDetailPage() {
     ])
   }
 
-  function handleAssigneeChange(newId: string | null, newName: string | null) {
+  function handleAssigneeChange(newId: string | null) {
     setAssigneeId(newId)
-    setAssigneeName(newName)
   }
 
-  const issue = { ...baseIssue, title, description, status, priority, assigneeId, assigneeName, labels }
+  const issue = { ...baseIssue, title, description, status, priority, assigneeId, labels }
 
   return (
     <div className="flex flex-col">
