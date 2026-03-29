@@ -84,6 +84,10 @@ func (h *Handler) CreateIssue(ctx context.Context, req model.CreateIssueRequestO
 	return model.CreateIssue201JSONResponse(issueFromDomain(*issue)), nil
 }
 
+func (h *Handler) SearchIssues(_ context.Context, _ model.SearchIssuesRequestObject) (model.SearchIssuesResponseObject, error) {
+	return model.SearchIssues501JSONResponse{NotImplementedJSONResponse: model.NotImplementedJSONResponse(notImplemented())}, nil
+}
+
 func (h *Handler) GetIssue(_ context.Context, _ model.GetIssueRequestObject) (model.GetIssueResponseObject, error) {
 	return model.GetIssue500JSONResponse{InternalServerErrorJSONResponse: model.InternalServerErrorJSONResponse(notImplemented())}, nil
 }

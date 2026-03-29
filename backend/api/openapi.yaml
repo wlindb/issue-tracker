@@ -234,6 +234,12 @@ components:
           x-go-type-import:
             path: github.com/google/uuid
 
+    SearchIssueRequest:
+      type: object
+      required: [query]
+      properties:
+        query: { type: string }
+
     CreateCommentRequest:
       type: object
       required: [body]
@@ -309,6 +315,11 @@ components:
           schema: { $ref: "#/components/schemas/Error" }
     UnprocessableEntity:
       description: Semantic validation error.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    NotImplemented:
+      description: Endpoint not yet implemented.
       content:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }
@@ -486,6 +497,19 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
         "422": { $ref: "#/components/responses/UnprocessableEntity" }
         "500": { $ref: "#/components/responses/InternalServerError" }
+
+  /issues/search:
+    post:
+      operationId: searchIssues
+      summary: Search issues by a query string.
+      tags: [issues]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SearchIssueRequest" }
+      responses:
+        "501": { $ref: "#/components/responses/NotImplemented" }
 
   /issues/{issueId}:
     parameters:

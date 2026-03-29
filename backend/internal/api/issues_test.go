@@ -331,3 +331,25 @@ func Test_CreateIssue_ServiceError_Returns500(t *testing.T) {
 	require.Equal(t, http.StatusInternalServerError, rec.Code)
 	service.AssertExpectations(t)
 }
+
+// — SearchIssues —
+
+func Test_SearchIssues_Returns501(t *testing.T) {
+	service := &mockIssueService{}
+
+	e := newIssueTestServer(t, service)
+	e.Use(injectUser(uuid.New()))
+
+	body := `{"query":"login bug"}`
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/issues/search", strings.NewReader(body))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusNotImplemented, rec.Code)
+	var actual model.Error
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &actual))
+	assert.Equal(t, "not_implemented", actual.Code)
+	service.AssertNotCalled(t, "ListIssues")
+	service.AssertNotCalled(t, "CreateIssue")
+}
