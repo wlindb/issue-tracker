@@ -219,7 +219,7 @@ export const getMe = (
 
  ) => {
       return customFetch<User>(
-      {url: `/users/me`, method: 'GET'
+      {url: `/api/v1/users/me`, method: 'GET'
     },
       );
     }
@@ -231,7 +231,7 @@ export const listProjects = (
     params?: ListProjectsParams,
  ) => {
       return customFetch<ProjectPage>(
-      {url: `/projects`, method: 'GET',
+      {url: `/api/v1/projects`, method: 'GET',
         params
     },
       );
@@ -244,7 +244,7 @@ export const createProject = (
     createProjectRequest: CreateProjectRequest,
  ) => {
       return customFetch<Project>(
-      {url: `/projects`, method: 'POST',
+      {url: `/api/v1/projects`, method: 'POST',
       headers: {'Content-Type': 'application/json', },
       data: createProjectRequest
     },
@@ -258,7 +258,7 @@ export const getProject = (
     projectId: string,
  ) => {
       return customFetch<Project>(
-      {url: `/projects/${projectId}`, method: 'GET'
+      {url: `/api/v1/projects/${projectId}`, method: 'GET'
     },
       );
     }
@@ -271,7 +271,7 @@ export const updateProject = (
     updateProjectRequest: UpdateProjectRequest,
  ) => {
       return customFetch<Project>(
-      {url: `/projects/${projectId}`, method: 'PUT',
+      {url: `/api/v1/projects/${projectId}`, method: 'PUT',
       headers: {'Content-Type': 'application/json', },
       data: updateProjectRequest
     },
@@ -285,7 +285,7 @@ export const deleteProject = (
     projectId: string,
  ) => {
       return customFetch<void>(
-      {url: `/projects/${projectId}`, method: 'DELETE'
+      {url: `/api/v1/projects/${projectId}`, method: 'DELETE'
     },
       );
     }
@@ -297,7 +297,7 @@ export const listIssues = (
     params: ListIssuesParams,
  ) => {
       return customFetch<IssuePage>(
-      {url: `/issues`, method: 'GET',
+      {url: `/api/v1/issues`, method: 'GET',
         params
     },
       );
@@ -310,7 +310,7 @@ export const createIssue = (
     createIssueRequest: CreateIssueRequest,
  ) => {
       return customFetch<Issue>(
-      {url: `/issues`, method: 'POST',
+      {url: `/api/v1/issues`, method: 'POST',
       headers: {'Content-Type': 'application/json', },
       data: createIssueRequest
     },
@@ -324,7 +324,7 @@ export const getIssue = (
     issueId: string,
  ) => {
       return customFetch<Issue>(
-      {url: `/issues/${issueId}`, method: 'GET'
+      {url: `/api/v1/issues/${issueId}`, method: 'GET'
     },
       );
     }
@@ -336,7 +336,7 @@ export const deleteIssue = (
     issueId: string,
  ) => {
       return customFetch<void>(
-      {url: `/issues/${issueId}`, method: 'DELETE'
+      {url: `/api/v1/issues/${issueId}`, method: 'DELETE'
     },
       );
     }
@@ -349,7 +349,7 @@ export const updateIssueTitle = (
     updateIssueTitleRequest: UpdateIssueTitleRequest,
  ) => {
       return customFetch<Issue>(
-      {url: `/issues/${issueId}/title`, method: 'PUT',
+      {url: `/api/v1/issues/${issueId}/title`, method: 'PUT',
       headers: {'Content-Type': 'application/json', },
       data: updateIssueTitleRequest
     },
@@ -364,7 +364,7 @@ export const updateIssueDescription = (
     updateIssueDescriptionRequest: UpdateIssueDescriptionRequest,
  ) => {
       return customFetch<Issue>(
-      {url: `/issues/${issueId}/description`, method: 'PUT',
+      {url: `/api/v1/issues/${issueId}/description`, method: 'PUT',
       headers: {'Content-Type': 'application/json', },
       data: updateIssueDescriptionRequest
     },
@@ -379,7 +379,7 @@ export const updateIssueStatus = (
     updateIssueStatusRequest: UpdateIssueStatusRequest,
  ) => {
       return customFetch<Issue>(
-      {url: `/issues/${issueId}/status`, method: 'PUT',
+      {url: `/api/v1/issues/${issueId}/status`, method: 'PUT',
       headers: {'Content-Type': 'application/json', },
       data: updateIssueStatusRequest
     },
@@ -394,7 +394,7 @@ export const updateIssuePriority = (
     updateIssuePriorityRequest: UpdateIssuePriorityRequest,
  ) => {
       return customFetch<Issue>(
-      {url: `/issues/${issueId}/priority`, method: 'PUT',
+      {url: `/api/v1/issues/${issueId}/priority`, method: 'PUT',
       headers: {'Content-Type': 'application/json', },
       data: updateIssuePriorityRequest
     },
@@ -409,7 +409,7 @@ export const updateIssueAssignee = (
     updateIssueAssigneeRequest: UpdateIssueAssigneeRequest,
  ) => {
       return customFetch<Issue>(
-      {url: `/issues/${issueId}/assigneeId`, method: 'PUT',
+      {url: `/api/v1/issues/${issueId}/assigneeId`, method: 'PUT',
       headers: {'Content-Type': 'application/json', },
       data: updateIssueAssigneeRequest
     },
@@ -424,7 +424,7 @@ export const listComments = (
     params?: ListCommentsParams,
  ) => {
       return customFetch<CommentPage>(
-      {url: `/issues/${issueId}/comments`, method: 'GET',
+      {url: `/api/v1/issues/${issueId}/comments`, method: 'GET',
         params
     },
       );
@@ -438,7 +438,7 @@ export const createComment = (
     createCommentRequest: CreateCommentRequest,
  ) => {
       return customFetch<Comment>(
-      {url: `/issues/${issueId}/comments`, method: 'POST',
+      {url: `/api/v1/issues/${issueId}/comments`, method: 'POST',
       headers: {'Content-Type': 'application/json', },
       data: createCommentRequest
     },
@@ -452,7 +452,7 @@ export const deleteComment = (
     commentId: string,
  ) => {
       return customFetch<void>(
-      {url: `/comments/${commentId}`, method: 'DELETE'
+      {url: `/api/v1/comments/${commentId}`, method: 'DELETE'
     },
       );
     }
