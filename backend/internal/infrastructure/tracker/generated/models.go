@@ -9,6 +9,21 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type Issue struct {
+	ID          uuid.UUID
+	Identifier  string
+	Title       string
+	Description pgtype.Text
+	Status      string
+	Priority    string
+	Labels      []string
+	AssigneeID  pgtype.UUID
+	ProjectID   uuid.UUID
+	ReporterID  uuid.UUID
+	CreatedAt   pgtype.Timestamptz
+	UpdatedAt   pgtype.Timestamptz
+}
+
 type Project struct {
 	ID          uuid.UUID
 	OwnerID     uuid.UUID
