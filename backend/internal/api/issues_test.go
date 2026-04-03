@@ -44,6 +44,14 @@ func (m *mockIssueService) CreateIssue(ctx context.Context, command issuedomain.
 	return nil, args.Error(1)
 }
 
+func (m *mockIssueService) GetIssue(ctx context.Context, issueID uuid.UUID) (*issuedomain.Issue, error) {
+	args := m.Called(ctx, issueID)
+	if issue, ok := args.Get(0).(*issuedomain.Issue); ok {
+		return issue, args.Error(1)
+	}
+	return nil, args.Error(1)
+}
+
 // newIssueTestServer builds a minimal Echo server wired to the given issue service.
 func newIssueTestServer(t *testing.T, service api.IssueService) *echo.Echo {
 	t.Helper()
@@ -402,4 +410,92 @@ func Test_SearchIssues_EmptyQuery_Returns400(t *testing.T) {
 	require.Equal(t, http.StatusBadRequest, rec.Code)
 	service.AssertNotCalled(t, "ListIssues")
 	service.AssertNotCalled(t, "CreateIssue")
+}
+
+// — GetIssue —
+
+func Test_GetIssue_NoUserID_Returns401(t *testing.T) {
+	service := &mockIssueService{}
+	issueID := uuid.New()
+
+	e := newIssueTestServer(t, service) // no injectUser — userID absent from context
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/issues/"+issueID.String(), nil)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusUnauthorized, rec.Code)
+	service.AssertNotCalled(t, "GetIssue")
+}
+
+func Test_GetIssue_IssueNotFound_Returns404(t *testing.T) {
+	service := &mockIssueService{}
+	issueID := uuid.New()
+
+	service.On("GetIssue", mock.Anything, issueID).
+		Return(nil, api.ErrIssueNotFound)
+
+	e := newIssueTestServer(t, service)
+	e.Use(injectUser(uuid.New()))
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/issues/"+issueID.String(), nil)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusNotFound, rec.Code)
+	var actual model.Error
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &actual))
+	assert.Equal(t, "not_found", actual.Code)
+	service.AssertExpectations(t)
+}
+
+func Test_GetIssue_ServiceError_Returns500(t *testing.T) {
+	service := &mockIssueService{}
+	issueID := uuid.New()
+
+	service.On("GetIssue", mock.Anything, issueID).
+		Return(nil, errors.New("db down"))
+
+	e := newIssueTestServer(t, service)
+	e.Use(injectUser(uuid.New()))
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/issues/"+issueID.String(), nil)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusInternalServerError, rec.Code)
+	service.AssertExpectations(t)
+}
+
+func Test_GetIssue_IssueExists_ReturnsNotImplemented(t *testing.T) {
+	service := &mockIssueService{}
+	issueID := uuid.New()
+	now := time.Now().UTC()
+
+	service.On("GetIssue", mock.Anything, issueID).
+		Return(&issuedomain.Issue{
+			ID:         issueID,
+			Identifier: "PROJ-1",
+			Title:      "Fix login bug",
+			Status:     issuedomain.StatusBacklog,
+			Priority:   issuedomain.PriorityNone,
+			Labels:     []string{},
+			ProjectID:  uuid.New(),
+			ReporterID: uuid.New(),
+			CreatedAt:  now,
+			UpdatedAt:  now,
+		}, nil)
+
+	e := newIssueTestServer(t, service)
+	e.Use(injectUser(uuid.New()))
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/issues/"+issueID.String(), nil)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusInternalServerError, rec.Code)
+	var actual model.Error
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &actual))
+	assert.Equal(t, "not_implemented", actual.Code)
+	service.AssertExpectations(t)
 }

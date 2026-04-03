@@ -35,3 +35,8 @@ func (s *IssueService) CreateIssue(ctx context.Context, command CreateIssueComma
 	}
 	return result, nil
 }
+
+// GetIssue retrieves a single issue by its ID.
+func (s *IssueService) GetIssue(_ context.Context, _ uuid.UUID) (*Issue, error) {
+	return nil, fmt.Errorf("get issue: not implemented")
+}

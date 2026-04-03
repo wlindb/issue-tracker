@@ -14,6 +14,7 @@ import (
 // Sentinel errors returned by IssueService implementations.
 var (
 	ErrIssueProjectNotFound = errors.New("issue: project not found")
+	ErrIssueNotFound        = errors.New("issue: not found")
 	ErrIssueUnprocessable   = errors.New("issue: unprocessable entity")
 )
 
@@ -21,6 +22,7 @@ var (
 type IssueService interface {
 	ListIssues(ctx context.Context, projectID uuid.UUID, query issuedomain.ListIssueQuery) (issuedomain.IssuePage, error)
 	CreateIssue(ctx context.Context, command issuedomain.CreateIssueCommand) (*issuedomain.Issue, error)
+	GetIssue(ctx context.Context, issueID uuid.UUID) (*issuedomain.Issue, error)
 }
 
 // IssueHandler holds the issue service dependency.
@@ -93,7 +95,21 @@ func (h *Handler) SearchIssues(_ context.Context, req model.SearchIssuesRequestO
 	return model.SearchIssues501JSONResponse{NotImplementedJSONResponse: model.NotImplementedJSONResponse(notImplemented())}, nil
 }
 
-func (h *Handler) GetIssue(_ context.Context, _ model.GetIssueRequestObject) (model.GetIssueResponseObject, error) {
+func (h *Handler) GetIssue(ctx context.Context, req model.GetIssueRequestObject) (model.GetIssueResponseObject, error) {
+	if _, err := userIDFromContext(ctx); err != nil {
+		return model.GetIssue401JSONResponse{
+			UnauthorizedJSONResponse: newUnauthorized("unauthorized", "authentication required"),
+		}, nil
+	}
+	_, err := h.IssueHandler.service.GetIssue(ctx, req.IssueId)
+	if errors.Is(err, ErrIssueNotFound) {
+		return model.GetIssue404JSONResponse{
+			NotFoundJSONResponse: newNotFound("not_found", "issue not found"),
+		}, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("get issue: %w", err)
+	}
 	return model.GetIssue500JSONResponse{InternalServerErrorJSONResponse: model.InternalServerErrorJSONResponse(notImplemented())}, nil
 }
 
