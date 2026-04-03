@@ -6,7 +6,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net/url"
 	"time"
 
 	"go.opentelemetry.io/otel"
@@ -23,10 +22,11 @@ import (
 )
 
 // Config holds the values needed to configure OpenTelemetry exporters.
+// Endpoint and headers are read directly from the standard OTel environment
+// variables (OTEL_EXPORTER_OTLP_ENDPOINT, OTEL_EXPORTER_OTLP_HEADERS) by
+// the SDK, so they are not included here.
 type Config struct {
-	ServiceName  string
-	OTLPEndpoint string
-	OTLPHeaders  map[string]string
+	ServiceName string
 }
 
 // Setup initialises the OTel SDK and registers global providers.
@@ -38,9 +38,6 @@ func Setup(ctx context.Context, cfg Config) (func(context.Context) error, error)
 	if cfg.ServiceName == "" {
 		return zero, fmt.Errorf("telemetry: service name is required")
 	}
-	if cfg.OTLPEndpoint == "" {
-		return zero, fmt.Errorf("telemetry: OTLP endpoint is required")
-	}
 
 	res, err := resource.New(ctx,
 		resource.WithAttributes(semconv.ServiceName(cfg.ServiceName)),
@@ -50,17 +47,17 @@ func Setup(ctx context.Context, cfg Config) (func(context.Context) error, error)
 		return zero, fmt.Errorf("telemetry resource: %w", err)
 	}
 
-	traceShutdown, err := setupTraces(ctx, cfg, res)
+	traceShutdown, err := setupTraces(ctx, res)
 	if err != nil {
 		return zero, err
 	}
 
-	metricShutdown, err := setupMetrics(ctx, cfg, res)
+	metricShutdown, err := setupMetrics(ctx, res)
 	if err != nil {
 		return zero, err
 	}
 
-	logShutdown, err := setupLogs(ctx, cfg, res)
+	logShutdown, err := setupLogs(ctx, res)
 	if err != nil {
 		return zero, err
 	}
@@ -76,12 +73,8 @@ func Setup(ctx context.Context, cfg Config) (func(context.Context) error, error)
 	return shutdownAll, nil
 }
 
-func setupTraces(ctx context.Context, cfg Config, res *resource.Resource) (func(context.Context) error, error) {
-	opts := []otlptracehttp.Option{otlptracehttp.WithEndpointURL(cfg.OTLPEndpoint)}
-	if len(cfg.OTLPHeaders) > 0 {
-		opts = append(opts, otlptracehttp.WithHeaders(cfg.OTLPHeaders))
-	}
-	exporter, err := otlptracehttp.New(ctx, opts...)
+func setupTraces(ctx context.Context, res *resource.Resource) (func(context.Context) error, error) {
+	exporter, err := otlptracehttp.New(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("trace exporter: %w", err)
 	}
@@ -97,12 +90,8 @@ func setupTraces(ctx context.Context, cfg Config, res *resource.Resource) (func(
 	return provider.Shutdown, nil
 }
 
-func setupMetrics(ctx context.Context, cfg Config, res *resource.Resource) (func(context.Context) error, error) {
-	opts := []otlpmetrichttp.Option{otlpmetrichttp.WithEndpointURL(cfg.OTLPEndpoint)}
-	if len(cfg.OTLPHeaders) > 0 {
-		opts = append(opts, otlpmetrichttp.WithHeaders(cfg.OTLPHeaders))
-	}
-	exporter, err := otlpmetrichttp.New(ctx, opts...)
+func setupMetrics(ctx context.Context, res *resource.Resource) (func(context.Context) error, error) {
+	exporter, err := otlpmetrichttp.New(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("metric exporter: %w", err)
 	}
@@ -114,22 +103,8 @@ func setupMetrics(ctx context.Context, cfg Config, res *resource.Resource) (func
 	return provider.Shutdown, nil
 }
 
-func setupLogs(ctx context.Context, cfg Config, res *resource.Resource) (func(context.Context) error, error) {
-	// otlploghttp v0.x WithEndpointURL sets the path to the raw URL path (empty
-	// for "http://host:port"), overriding the default "/v1/logs". Use
-	// WithEndpoint + WithInsecure so the default path is preserved.
-	logURL, err := url.Parse(cfg.OTLPEndpoint)
-	if err != nil {
-		return nil, fmt.Errorf("telemetry: parse OTLP endpoint: %w", err)
-	}
-	opts := []otlploghttp.Option{otlploghttp.WithEndpoint(logURL.Host)}
-	if logURL.Scheme == "http" {
-		opts = append(opts, otlploghttp.WithInsecure())
-	}
-	if len(cfg.OTLPHeaders) > 0 {
-		opts = append(opts, otlploghttp.WithHeaders(cfg.OTLPHeaders))
-	}
-	exporter, err := otlploghttp.New(ctx, opts...)
+func setupLogs(ctx context.Context, res *resource.Resource) (func(context.Context) error, error) {
+	exporter, err := otlploghttp.New(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("log exporter: %w", err)
 	}

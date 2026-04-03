@@ -36,9 +36,7 @@ func run() error {
 	}
 
 	otelShutdown, err := telemetry.Setup(ctx, telemetry.Config{
-		ServiceName:  cfg.OTELServiceName,
-		OTLPEndpoint: cfg.OTELEndpoint,
-		OTLPHeaders:  cfg.OTELHeaders,
+		ServiceName: cfg.OTELServiceName,
 	})
 	if err != nil {
 		return fmt.Errorf("telemetry: %w", err)
