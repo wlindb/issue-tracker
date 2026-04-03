@@ -15,12 +15,14 @@ import (
 var (
 	ErrIssueProjectNotFound = errors.New("issue: project not found")
 	ErrIssueUnprocessable   = errors.New("issue: unprocessable entity")
+	ErrIssueNotFound        = errors.New("issue: not found")
 )
 
 // IssueService is what the handler needs from the domain.
 type IssueService interface {
 	ListIssues(ctx context.Context, projectID uuid.UUID, query issuedomain.ListIssueQuery) (issuedomain.IssuePage, error)
 	CreateIssue(ctx context.Context, command issuedomain.CreateIssueCommand) (*issuedomain.Issue, error)
+	UpdateIssuePriority(ctx context.Context, issueID uuid.UUID, priority issuedomain.Priority) (*issuedomain.Issue, error)
 }
 
 // IssueHandler holds the issue service dependency.
@@ -109,8 +111,27 @@ func (h *Handler) UpdateIssueStatus(_ context.Context, _ model.UpdateIssueStatus
 	return model.UpdateIssueStatus500JSONResponse{InternalServerErrorJSONResponse: model.InternalServerErrorJSONResponse(notImplemented())}, nil
 }
 
-func (h *Handler) UpdateIssuePriority(_ context.Context, _ model.UpdateIssuePriorityRequestObject) (model.UpdateIssuePriorityResponseObject, error) {
-	return model.UpdateIssuePriority500JSONResponse{InternalServerErrorJSONResponse: model.InternalServerErrorJSONResponse(notImplemented())}, nil
+func (h *Handler) UpdateIssuePriority(ctx context.Context, req model.UpdateIssuePriorityRequestObject) (model.UpdateIssuePriorityResponseObject, error) {
+	if _, err := userIDFromContext(ctx); err != nil {
+		return model.UpdateIssuePriority401JSONResponse{
+			UnauthorizedJSONResponse: newUnauthorized("unauthorized", "authentication required"),
+		}, nil
+	}
+	if !req.Body.Priority.Valid() {
+		return model.UpdateIssuePriority400JSONResponse{
+			BadRequestJSONResponse: newBadRequest("invalid_input", "priority is invalid"),
+		}, nil
+	}
+	_, err := h.IssueHandler.service.UpdateIssuePriority(ctx, req.IssueId, issuedomain.Priority(req.Body.Priority))
+	if errors.Is(err, ErrIssueNotFound) {
+		return model.UpdateIssuePriority404JSONResponse{
+			NotFoundJSONResponse: newNotFound("not_found", "issue not found"),
+		}, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("update issue priority: %w", err)
+	}
+	return model.UpdateIssuePriority501JSONResponse{NotImplementedJSONResponse: model.NotImplementedJSONResponse(notImplemented())}, nil
 }
 
 func (h *Handler) UpdateIssueAssignee(_ context.Context, _ model.UpdateIssueAssigneeRequestObject) (model.UpdateIssueAssigneeResponseObject, error) {

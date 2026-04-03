@@ -35,3 +35,8 @@ func (s *IssueService) CreateIssue(ctx context.Context, command CreateIssueComma
 	}
 	return result, nil
 }
+
+// UpdateIssuePriority is not yet implemented.
+func (s *IssueService) UpdateIssuePriority(_ context.Context, _ uuid.UUID, _ Priority) (*Issue, error) {
+	return nil, fmt.Errorf("UpdateIssuePriority: %w", ErrNotImplemented)
+}
