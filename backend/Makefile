@@ -1,7 +1,7 @@
 BINARY := issue-tracker
 CMD     := ./cmd/server
 
-.PHONY: build run dev test test-integration lint fmt generate tidy sqlc-tracker docker-up docker-down wait-keycloak
+.PHONY: build run dev test test-unit test-integration lint fmt generate tidy sqlc-tracker docker-up docker-down wait-keycloak
 
 build: lint
 	go build -o bin/$(BINARY) $(CMD)

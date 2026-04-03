@@ -1,3 +1,5 @@
+//go:build !integration
+
 package project_test
 
 import (
@@ -31,7 +33,7 @@ func (m *mockProjectRepository) List(ctx context.Context, query project.ListProj
 	return projects, args.Error(1)
 }
 
-func TestProjectService_Create_Success(t *testing.T) {
+func Test_Create_ValidName_ReturnsProject(t *testing.T) {
 	repository := &mockProjectRepository{}
 	service := project.NewProjectService(repository)
 
@@ -42,13 +44,13 @@ func TestProjectService_Create_Success(t *testing.T) {
 	repository.On("Create", mock.Anything, id, ownerID, "My Project", (*string)(nil)).
 		Return(expected, nil)
 
-	got, err := service.Create(context.Background(), id, ownerID, "My Project", nil)
+	actual, err := service.Create(context.Background(), id, ownerID, "My Project", nil)
 	require.NoError(t, err)
-	assert.Equal(t, expected, got)
+	assert.Equal(t, expected, actual)
 	repository.AssertExpectations(t)
 }
 
-func TestProjectService_Create_WithDescription(t *testing.T) {
+func Test_Create_WithDescription_ReturnsProject(t *testing.T) {
 	repository := &mockProjectRepository{}
 	service := project.NewProjectService(repository)
 
@@ -60,13 +62,13 @@ func TestProjectService_Create_WithDescription(t *testing.T) {
 	repository.On("Create", mock.Anything, id, ownerID, "My Project", &description).
 		Return(expected, nil)
 
-	got, err := service.Create(context.Background(), id, ownerID, "My Project", &description)
+	actual, err := service.Create(context.Background(), id, ownerID, "My Project", &description)
 	require.NoError(t, err)
-	assert.Equal(t, expected, got)
+	assert.Equal(t, expected, actual)
 	repository.AssertExpectations(t)
 }
 
-func TestProjectService_Create_EmptyName(t *testing.T) {
+func Test_Create_EmptyName_ReturnsError(t *testing.T) {
 	repository := &mockProjectRepository{}
 	service := project.NewProjectService(repository)
 
@@ -76,7 +78,7 @@ func TestProjectService_Create_EmptyName(t *testing.T) {
 	repository.AssertNotCalled(t, "Create")
 }
 
-func TestProjectService_Create_RepoError(t *testing.T) {
+func Test_Create_RepositoryError_ReturnsError(t *testing.T) {
 	repository := &mockProjectRepository{}
 	service := project.NewProjectService(repository)
 

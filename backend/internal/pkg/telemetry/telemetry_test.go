@@ -1,3 +1,5 @@
+//go:build !integration
+
 package telemetry_test
 
 import (
@@ -10,7 +12,7 @@ import (
 	"github.com/wlindb/issue-tracker/internal/pkg/telemetry"
 )
 
-func TestSetup_ErrorWhenServiceNameEmpty(t *testing.T) {
+func Test_Setup_EmptyServiceName_ReturnsError(t *testing.T) {
 	cfg := telemetry.Config{
 		OTLPEndpoint: "http://127.0.0.1:4318",
 	}
@@ -21,7 +23,7 @@ func TestSetup_ErrorWhenServiceNameEmpty(t *testing.T) {
 	assert.Contains(t, err.Error(), "service name is required")
 }
 
-func TestSetup_ErrorWhenEndpointEmpty(t *testing.T) {
+func Test_Setup_EmptyEndpoint_ReturnsError(t *testing.T) {
 	cfg := telemetry.Config{
 		ServiceName: "test-service",
 	}
@@ -32,13 +34,13 @@ func TestSetup_ErrorWhenEndpointEmpty(t *testing.T) {
 	assert.Contains(t, err.Error(), "OTLP endpoint is required")
 }
 
-func TestSetup_ErrorWhenAllConfigMissing(t *testing.T) {
+func Test_Setup_EmptyConfig_ReturnsError(t *testing.T) {
 	shutdown, err := telemetry.Setup(context.Background(), telemetry.Config{})
 	require.Error(t, err)
 	assert.Nil(t, shutdown)
 }
 
-func TestSetup_SucceedsWithValidConfig(t *testing.T) {
+func Test_Setup_ValidConfig_ReturnsShutdownFunc(t *testing.T) {
 	cfg := telemetry.Config{
 		ServiceName:  "test-service",
 		OTLPEndpoint: "http://127.0.0.1:4318",
@@ -53,7 +55,7 @@ func TestSetup_SucceedsWithValidConfig(t *testing.T) {
 	_ = shutdown(context.Background())
 }
 
-func TestSetup_SucceedsWithHeaders(t *testing.T) {
+func Test_Setup_WithHeaders_ReturnsShutdownFunc(t *testing.T) {
 	cfg := telemetry.Config{
 		ServiceName:  "test-service",
 		OTLPEndpoint: "http://127.0.0.1:4318",

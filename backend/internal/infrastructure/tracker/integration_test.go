@@ -1,3 +1,5 @@
+//go:build integration
+
 package tracker_test
 
 import (
