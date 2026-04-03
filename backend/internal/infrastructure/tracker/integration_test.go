@@ -171,6 +171,32 @@ func createTestProject(t *testing.T) uuid.UUID {
 	return id
 }
 
+// — CreateIssue full-flow integration tests —
+
+func Test_CreateIssue_FromCommand_HasEmptyLabels(t *testing.T) {
+	repository := tracker.NewIssueRepository(testPool)
+	projectID := createTestProject(t)
+	ctx := context.Background()
+
+	command := issuedomain.CreateIssueCommand{
+		ProjectID:  projectID,
+		ReporterID: uuid.New(),
+		Title:      "New feature",
+		Status:     issuedomain.StatusTodo,
+		Priority:   issuedomain.PriorityMedium,
+	}
+	issue := command.ToIssue(uuid.New(), command.Slugify)
+	assert.NotNil(t, issue.Labels)
+	assert.Empty(t, issue.Labels)
+
+	actual, err := repository.CreateIssue(ctx, issue)
+
+	require.NoError(t, err)
+	require.NotNil(t, actual)
+	assert.NotNil(t, actual.Labels)
+	assert.Empty(t, actual.Labels)
+}
+
 // — CreateIssue integration tests —
 
 func Test_CreateIssue_NoOptionalFields_SuccessfulCreation(t *testing.T) {

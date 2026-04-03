@@ -82,3 +82,18 @@ func Test_ToIssue_FullCommand_PopulatesAllFields(t *testing.T) {
 	assert.Equal(t, issue.PriorityMedium, result.Priority)
 	assert.Equal(t, &assigneeID, result.AssigneeID)
 }
+
+func Test_ToIssue_NewIssue_HasEmptyLabels(t *testing.T) {
+	command := issue.CreateIssueCommand{
+		ProjectID:  uuid.New(),
+		ReporterID: uuid.New(),
+		Title:      "New feature",
+		Status:     issue.StatusTodo,
+		Priority:   issue.PriorityMedium,
+	}
+
+	result := command.ToIssue(uuid.New(), command.Slugify)
+
+	assert.NotNil(t, result.Labels)
+	assert.Empty(t, result.Labels)
+}
