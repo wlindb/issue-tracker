@@ -2,6 +2,7 @@ package tracker
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/google/uuid"
 	"go.opentelemetry.io/otel/codes"
@@ -37,7 +38,7 @@ func (s *TracingIssueService) ListIssues(ctx context.Context, projectID uuid.UUI
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
-		return issuedomain.IssuePage{}, err
+		return issuedomain.IssuePage{}, fmt.Errorf("list issues: %w", err)
 	}
 	return page, nil
 }
@@ -50,7 +51,7 @@ func (s *TracingIssueService) CreateIssue(ctx context.Context, command issuedoma
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
-		return nil, err
+		return nil, fmt.Errorf("create issue: %w", err)
 	}
 	return issue, nil
 }
@@ -63,7 +64,7 @@ func (s *TracingIssueService) UpdateIssueDescription(ctx context.Context, issueI
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
-		return nil, err
+		return nil, fmt.Errorf("update issue description: %w", err)
 	}
 	return issue, nil
 }

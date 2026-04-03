@@ -34,7 +34,10 @@ type updateIssueDescription501Response struct{}
 func (r updateIssueDescription501Response) VisitUpdateIssueDescriptionResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusNotImplemented)
-	return json.NewEncoder(w).Encode(notImplemented())
+	if err := json.NewEncoder(w).Encode(notImplemented()); err != nil {
+		return fmt.Errorf("encode not implemented response: %w", err)
+	}
+	return nil
 }
 
 // IssueHandler holds the issue service dependency.
