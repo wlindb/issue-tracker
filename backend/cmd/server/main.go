@@ -12,6 +12,8 @@ import (
 	"syscall"
 	"time"
 
+	"go.opentelemetry.io/otel"
+
 	"github.com/wlindb/issue-tracker/internal/api"
 	"github.com/wlindb/issue-tracker/internal/config"
 	issuedomain "github.com/wlindb/issue-tracker/internal/domain/tracker/issue"
@@ -62,11 +64,29 @@ func run() error {
 	}
 	log.Println("tracker migrations applied")
 
-	projectRepository := trackerinfra.NewProjectRepository(pool)
-	issueRepository := trackerinfra.NewIssueRepository(pool)
+	tracer := otel.Tracer(cfg.OTELServiceName)
+
+	projectRepository := trackerinfra.NewTracingProjectRepository(
+		trackerinfra.NewProjectRepository(pool),
+		tracer,
+	)
+	issueRepository := trackerinfra.NewTracingIssueRepository(
+		trackerinfra.NewIssueRepository(pool),
+		tracer,
+	)
 	h := &api.Handler{
-		ProjectHandler: api.NewProjectHandler(trackerdomain.NewProjectService(projectRepository)),
-		IssueHandler:   api.NewIssueHandler(issuedomain.NewIssueService(issueRepository)),
+		ProjectHandler: api.NewProjectHandler(
+			trackerinfra.NewTracingProjectService(
+				trackerdomain.NewProjectService(projectRepository),
+				tracer,
+			),
+		),
+		IssueHandler: api.NewIssueHandler(
+			trackerinfra.NewTracingIssueService(
+				issuedomain.NewIssueService(issueRepository),
+				tracer,
+			),
+		),
 	}
 
 	e, err := newServer(h, cfg)
