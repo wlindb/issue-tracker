@@ -2,6 +2,7 @@ package issue
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/google/uuid"
@@ -38,5 +39,5 @@ func (s *IssueService) CreateIssue(ctx context.Context, command CreateIssueComma
 
 // UpdateIssuePriority is not yet implemented.
 func (s *IssueService) UpdateIssuePriority(_ context.Context, _ uuid.UUID, _ Priority) (*Issue, error) {
-	return nil, fmt.Errorf("UpdateIssuePriority: %w", ErrNotImplemented)
+	return nil, errors.New("UpdateIssuePriority: not implemented")
 }

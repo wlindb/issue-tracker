@@ -118,8 +118,8 @@ func (h *Handler) UpdateIssuePriority(ctx context.Context, req model.UpdateIssue
 		}, nil
 	}
 	if !req.Body.Priority.Valid() {
-		return model.UpdateIssuePriority422JSONResponse{
-			UnprocessableEntityJSONResponse: newUnprocessable("invalid_input", "priority is invalid"),
+		return model.UpdateIssuePriority400JSONResponse{
+			BadRequestJSONResponse: newBadRequest("invalid_input", "priority is invalid"),
 		}, nil
 	}
 	issue, err := h.IssueHandler.service.UpdateIssuePriority(ctx, req.IssueId, issuedomain.Priority(req.Body.Priority))
