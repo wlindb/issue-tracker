@@ -118,11 +118,11 @@ func (h *Handler) UpdateIssuePriority(ctx context.Context, req model.UpdateIssue
 		}, nil
 	}
 	if !req.Body.Priority.Valid() {
-		return model.UpdateIssuePriority400JSONResponse{
-			BadRequestJSONResponse: newBadRequest("invalid_input", "priority is invalid"),
+		return model.UpdateIssuePriority422JSONResponse{
+			UnprocessableEntityJSONResponse: newUnprocessable("invalid_input", "priority is invalid"),
 		}, nil
 	}
-	_, err := h.IssueHandler.service.UpdateIssuePriority(ctx, req.IssueId, issuedomain.Priority(req.Body.Priority))
+	issue, err := h.IssueHandler.service.UpdateIssuePriority(ctx, req.IssueId, issuedomain.Priority(req.Body.Priority))
 	if errors.Is(err, ErrIssueNotFound) {
 		return model.UpdateIssuePriority404JSONResponse{
 			NotFoundJSONResponse: newNotFound("not_found", "issue not found"),
@@ -131,7 +131,7 @@ func (h *Handler) UpdateIssuePriority(ctx context.Context, req model.UpdateIssue
 	if err != nil {
 		return nil, fmt.Errorf("update issue priority: %w", err)
 	}
-	return model.UpdateIssuePriority501JSONResponse{NotImplementedJSONResponse: model.NotImplementedJSONResponse(notImplemented())}, nil
+	return model.UpdateIssuePriority200JSONResponse(issueFromDomain(*issue)), nil
 }
 
 func (h *Handler) UpdateIssueAssignee(_ context.Context, _ model.UpdateIssueAssigneeRequestObject) (model.UpdateIssueAssigneeResponseObject, error) {

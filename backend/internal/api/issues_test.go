@@ -414,12 +414,22 @@ func Test_SearchIssues_EmptyQuery_Returns400(t *testing.T) {
 
 // — UpdateIssuePriority —
 
-func Test_UpdateIssuePriority_ValidRequest_Returns501(t *testing.T) {
+func Test_UpdateIssuePriority_ValidRequest_Returns200(t *testing.T) {
 	service := &mockIssueService{}
 	issueID := uuid.New()
+	updatedIssue := &issuedomain.Issue{
+		ID:         issueID,
+		Identifier: "ISS-1",
+		Title:      "Test issue",
+		Status:     issuedomain.StatusTodo,
+		Priority:   issuedomain.PriorityHigh,
+		Labels:     []string{},
+		ProjectID:  uuid.New(),
+		ReporterID: uuid.New(),
+	}
 
 	service.On("UpdateIssuePriority", mock.Anything, issueID, issuedomain.PriorityHigh).
-		Return((*issuedomain.Issue)(nil), nil)
+		Return(updatedIssue, nil)
 
 	e := newIssueTestServer(t, service)
 	e.Use(injectUser(uuid.New()))
@@ -430,7 +440,7 @@ func Test_UpdateIssuePriority_ValidRequest_Returns501(t *testing.T) {
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 
-	require.Equal(t, http.StatusNotImplemented, rec.Code)
+	require.Equal(t, http.StatusOK, rec.Code)
 	service.AssertExpectations(t)
 }
 
@@ -450,7 +460,7 @@ func Test_UpdateIssuePriority_NoUserID_Returns401(t *testing.T) {
 	service.AssertNotCalled(t, "UpdateIssuePriority")
 }
 
-func Test_UpdateIssuePriority_InvalidPriority_Returns400(t *testing.T) {
+func Test_UpdateIssuePriority_InvalidPriority_Returns422(t *testing.T) {
 	service := &mockIssueService{}
 	issueID := uuid.New()
 
@@ -463,7 +473,7 @@ func Test_UpdateIssuePriority_InvalidPriority_Returns400(t *testing.T) {
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 
-	require.Equal(t, http.StatusBadRequest, rec.Code)
+	require.Equal(t, http.StatusUnprocessableEntity, rec.Code)
 	service.AssertNotCalled(t, "UpdateIssuePriority")
 }
 
