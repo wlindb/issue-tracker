@@ -33,11 +33,13 @@ type Config struct {
 // It returns a shutdown function that flushes and closes all exporters.
 // The caller should defer shutdown(ctx) during graceful server stop.
 func Setup(ctx context.Context, cfg Config) (func(context.Context) error, error) {
+	var zero func(context.Context) error
+
 	if cfg.ServiceName == "" {
-		return nil, fmt.Errorf("telemetry: service name is required")
+		return zero, fmt.Errorf("telemetry: service name is required")
 	}
 	if cfg.OTLPEndpoint == "" {
-		return nil, fmt.Errorf("telemetry: OTLP endpoint is required")
+		return zero, fmt.Errorf("telemetry: OTLP endpoint is required")
 	}
 
 	res, err := resource.New(ctx,
@@ -45,10 +47,25 @@ func Setup(ctx context.Context, cfg Config) (func(context.Context) error, error)
 		resource.WithTelemetrySDK(),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("telemetry resource: %w", err)
+		return zero, fmt.Errorf("telemetry resource: %w", err)
 	}
 
-	shutdownFuncs := make([]func(context.Context) error, 0, 3)
+	traceShutdown, err := setupTraces(ctx, cfg, res)
+	if err != nil {
+		return zero, err
+	}
+
+	metricShutdown, err := setupMetrics(ctx, cfg, res)
+	if err != nil {
+		return zero, err
+	}
+
+	logShutdown, err := setupLogs(ctx, cfg, res)
+	if err != nil {
+		return zero, err
+	}
+
+	shutdownFuncs := []func(context.Context) error{traceShutdown, metricShutdown, logShutdown}
 	shutdownAll := func(ctx context.Context) error {
 		var errs []error
 		for _, fn := range shutdownFuncs {
@@ -56,68 +73,70 @@ func Setup(ctx context.Context, cfg Config) (func(context.Context) error, error)
 		}
 		return errors.Join(errs...)
 	}
+	return shutdownAll, nil
+}
 
-	// --- Traces ---
-	traceOpts := []otlptracehttp.Option{otlptracehttp.WithEndpointURL(cfg.OTLPEndpoint)}
+func setupTraces(ctx context.Context, cfg Config, res *resource.Resource) (func(context.Context) error, error) {
+	opts := []otlptracehttp.Option{otlptracehttp.WithEndpointURL(cfg.OTLPEndpoint)}
 	if len(cfg.OTLPHeaders) > 0 {
-		traceOpts = append(traceOpts, otlptracehttp.WithHeaders(cfg.OTLPHeaders))
+		opts = append(opts, otlptracehttp.WithHeaders(cfg.OTLPHeaders))
 	}
-	traceExp, err := otlptracehttp.New(ctx, traceOpts...)
+	exporter, err := otlptracehttp.New(ctx, opts...)
 	if err != nil {
-		return shutdownAll, fmt.Errorf("trace exporter: %w", err)
+		return nil, fmt.Errorf("trace exporter: %w", err)
 	}
-	tp := sdktrace.NewTracerProvider(
-		sdktrace.WithBatcher(traceExp, sdktrace.WithBatchTimeout(5*time.Second)),
+	provider := sdktrace.NewTracerProvider(
+		sdktrace.WithBatcher(exporter, sdktrace.WithBatchTimeout(5*time.Second)),
 		sdktrace.WithResource(res),
 	)
-	otel.SetTracerProvider(tp)
+	otel.SetTracerProvider(provider)
 	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
 		propagation.TraceContext{},
 		propagation.Baggage{},
 	))
-	shutdownFuncs = append(shutdownFuncs, tp.Shutdown)
+	return provider.Shutdown, nil
+}
 
-	// --- Metrics ---
-	metricOpts := []otlpmetrichttp.Option{otlpmetrichttp.WithEndpointURL(cfg.OTLPEndpoint)}
+func setupMetrics(ctx context.Context, cfg Config, res *resource.Resource) (func(context.Context) error, error) {
+	opts := []otlpmetrichttp.Option{otlpmetrichttp.WithEndpointURL(cfg.OTLPEndpoint)}
 	if len(cfg.OTLPHeaders) > 0 {
-		metricOpts = append(metricOpts, otlpmetrichttp.WithHeaders(cfg.OTLPHeaders))
+		opts = append(opts, otlpmetrichttp.WithHeaders(cfg.OTLPHeaders))
 	}
-	metricExp, err := otlpmetrichttp.New(ctx, metricOpts...)
+	exporter, err := otlpmetrichttp.New(ctx, opts...)
 	if err != nil {
-		return shutdownAll, fmt.Errorf("metric exporter: %w", err)
+		return nil, fmt.Errorf("metric exporter: %w", err)
 	}
-	mp := sdkmetric.NewMeterProvider(
-		sdkmetric.WithReader(sdkmetric.NewPeriodicReader(metricExp, sdkmetric.WithInterval(30*time.Second))),
+	provider := sdkmetric.NewMeterProvider(
+		sdkmetric.WithReader(sdkmetric.NewPeriodicReader(exporter, sdkmetric.WithInterval(30*time.Second))),
 		sdkmetric.WithResource(res),
 	)
-	otel.SetMeterProvider(mp)
-	shutdownFuncs = append(shutdownFuncs, mp.Shutdown)
+	otel.SetMeterProvider(provider)
+	return provider.Shutdown, nil
+}
 
-	// --- Logs ---
+func setupLogs(ctx context.Context, cfg Config, res *resource.Resource) (func(context.Context) error, error) {
 	// otlploghttp v0.x WithEndpointURL sets the path to the raw URL path (empty
 	// for "http://host:port"), overriding the default "/v1/logs". Use
 	// WithEndpoint + WithInsecure so the default path is preserved.
 	logURL, err := url.Parse(cfg.OTLPEndpoint)
 	if err != nil {
-		return shutdownAll, fmt.Errorf("telemetry: parse OTLP endpoint: %w", err)
+		return nil, fmt.Errorf("telemetry: parse OTLP endpoint: %w", err)
 	}
-	logOpts := []otlploghttp.Option{otlploghttp.WithEndpoint(logURL.Host)}
+	opts := []otlploghttp.Option{otlploghttp.WithEndpoint(logURL.Host)}
 	if logURL.Scheme == "http" {
-		logOpts = append(logOpts, otlploghttp.WithInsecure())
+		opts = append(opts, otlploghttp.WithInsecure())
 	}
 	if len(cfg.OTLPHeaders) > 0 {
-		logOpts = append(logOpts, otlploghttp.WithHeaders(cfg.OTLPHeaders))
+		opts = append(opts, otlploghttp.WithHeaders(cfg.OTLPHeaders))
 	}
-	logExp, err := otlploghttp.New(ctx, logOpts...)
+	exporter, err := otlploghttp.New(ctx, opts...)
 	if err != nil {
-		return shutdownAll, fmt.Errorf("log exporter: %w", err)
+		return nil, fmt.Errorf("log exporter: %w", err)
 	}
-	lp := sdklog.NewLoggerProvider(
-		sdklog.WithProcessor(sdklog.NewBatchProcessor(logExp, sdklog.WithExportTimeout(5*time.Second))),
+	provider := sdklog.NewLoggerProvider(
+		sdklog.WithProcessor(sdklog.NewBatchProcessor(exporter, sdklog.WithExportTimeout(5*time.Second))),
 		sdklog.WithResource(res),
 	)
-	otellog.SetLoggerProvider(lp)
-	shutdownFuncs = append(shutdownFuncs, lp.Shutdown)
-
-	return shutdownAll, nil
+	otellog.SetLoggerProvider(provider)
+	return provider.Shutdown, nil
 }
