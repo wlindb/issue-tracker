@@ -105,8 +105,18 @@ func (h *Handler) UpdateIssueDescription(_ context.Context, _ model.UpdateIssueD
 	return model.UpdateIssueDescription500JSONResponse{InternalServerErrorJSONResponse: model.InternalServerErrorJSONResponse(notImplemented())}, nil
 }
 
-func (h *Handler) UpdateIssueStatus(_ context.Context, _ model.UpdateIssueStatusRequestObject) (model.UpdateIssueStatusResponseObject, error) {
-	return model.UpdateIssueStatus500JSONResponse{InternalServerErrorJSONResponse: model.InternalServerErrorJSONResponse(notImplemented())}, nil
+func (h *Handler) UpdateIssueStatus(ctx context.Context, req model.UpdateIssueStatusRequestObject) (model.UpdateIssueStatusResponseObject, error) {
+	if _, err := userIDFromContext(ctx); err != nil {
+		return model.UpdateIssueStatus401JSONResponse{
+			UnauthorizedJSONResponse: newUnauthorized("unauthorized", "authentication required"),
+		}, nil
+	}
+	if req.Body == nil || !req.Body.Status.Valid() {
+		return model.UpdateIssueStatus400JSONResponse{
+			BadRequestJSONResponse: newBadRequest("invalid_input", "status is required and must be a valid value"),
+		}, nil
+	}
+	return model.UpdateIssueStatus501JSONResponse{NotImplementedJSONResponse: model.NotImplementedJSONResponse(notImplemented())}, nil
 }
 
 func (h *Handler) UpdateIssuePriority(_ context.Context, _ model.UpdateIssuePriorityRequestObject) (model.UpdateIssuePriorityResponseObject, error) {
