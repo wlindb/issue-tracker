@@ -110,7 +110,7 @@ type IssueRepository interface {
 }
 
 var (
-	ErrIssueNotFound   = errors.New("issue not found")
-	ErrInvalidIssue    = errors.New("invalid issue")
-	ErrNotImplemented  = errors.New("not implemented")
+	ErrIssueNotFound  = errors.New("issue not found")
+	ErrInvalidIssue   = errors.New("invalid issue")
+	ErrNotImplemented = errors.New("not implemented")
 )

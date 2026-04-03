@@ -415,94 +415,94 @@ func Test_SearchIssues_EmptyQuery_Returns400(t *testing.T) {
 // — UpdateIssuePriority —
 
 func Test_UpdateIssuePriority_ValidRequest_Returns501(t *testing.T) {
-service := &mockIssueService{}
-issueID := uuid.New()
+	service := &mockIssueService{}
+	issueID := uuid.New()
 
-service.On("UpdateIssuePriority", mock.Anything, issueID, issuedomain.PriorityHigh).
-Return((*issuedomain.Issue)(nil), nil)
+	service.On("UpdateIssuePriority", mock.Anything, issueID, issuedomain.PriorityHigh).
+		Return((*issuedomain.Issue)(nil), nil)
 
-e := newIssueTestServer(t, service)
-e.Use(injectUser(uuid.New()))
+	e := newIssueTestServer(t, service)
+	e.Use(injectUser(uuid.New()))
 
-body := `{"priority":"high"}`
-req := httptest.NewRequest(http.MethodPut, "/api/v1/issues/"+issueID.String()+"/priority", strings.NewReader(body))
-req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-rec := httptest.NewRecorder()
-e.ServeHTTP(rec, req)
+	body := `{"priority":"high"}`
+	req := httptest.NewRequest(http.MethodPut, "/api/v1/issues/"+issueID.String()+"/priority", strings.NewReader(body))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
 
-require.Equal(t, http.StatusNotImplemented, rec.Code)
-service.AssertExpectations(t)
+	require.Equal(t, http.StatusNotImplemented, rec.Code)
+	service.AssertExpectations(t)
 }
 
 func Test_UpdateIssuePriority_NoUserID_Returns401(t *testing.T) {
-service := &mockIssueService{}
-issueID := uuid.New()
+	service := &mockIssueService{}
+	issueID := uuid.New()
 
-e := newIssueTestServer(t, service) // no injectUser — userID absent from context
+	e := newIssueTestServer(t, service) // no injectUser — userID absent from context
 
-body := `{"priority":"high"}`
-req := httptest.NewRequest(http.MethodPut, "/api/v1/issues/"+issueID.String()+"/priority", strings.NewReader(body))
-req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-rec := httptest.NewRecorder()
-e.ServeHTTP(rec, req)
+	body := `{"priority":"high"}`
+	req := httptest.NewRequest(http.MethodPut, "/api/v1/issues/"+issueID.String()+"/priority", strings.NewReader(body))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
 
-require.Equal(t, http.StatusUnauthorized, rec.Code)
-service.AssertNotCalled(t, "UpdateIssuePriority")
+	require.Equal(t, http.StatusUnauthorized, rec.Code)
+	service.AssertNotCalled(t, "UpdateIssuePriority")
 }
 
 func Test_UpdateIssuePriority_InvalidPriority_Returns400(t *testing.T) {
-service := &mockIssueService{}
-issueID := uuid.New()
+	service := &mockIssueService{}
+	issueID := uuid.New()
 
-e := newIssueTestServer(t, service)
-e.Use(injectUser(uuid.New()))
+	e := newIssueTestServer(t, service)
+	e.Use(injectUser(uuid.New()))
 
-body := `{"priority":"not-a-priority"}`
-req := httptest.NewRequest(http.MethodPut, "/api/v1/issues/"+issueID.String()+"/priority", strings.NewReader(body))
-req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-rec := httptest.NewRecorder()
-e.ServeHTTP(rec, req)
+	body := `{"priority":"not-a-priority"}`
+	req := httptest.NewRequest(http.MethodPut, "/api/v1/issues/"+issueID.String()+"/priority", strings.NewReader(body))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
 
-require.Equal(t, http.StatusBadRequest, rec.Code)
-service.AssertNotCalled(t, "UpdateIssuePriority")
+	require.Equal(t, http.StatusBadRequest, rec.Code)
+	service.AssertNotCalled(t, "UpdateIssuePriority")
 }
 
 func Test_UpdateIssuePriority_IssueNotFound_Returns404(t *testing.T) {
-service := &mockIssueService{}
-issueID := uuid.New()
+	service := &mockIssueService{}
+	issueID := uuid.New()
 
-service.On("UpdateIssuePriority", mock.Anything, issueID, issuedomain.PriorityLow).
-Return((*issuedomain.Issue)(nil), api.ErrIssueNotFound)
+	service.On("UpdateIssuePriority", mock.Anything, issueID, issuedomain.PriorityLow).
+		Return((*issuedomain.Issue)(nil), api.ErrIssueNotFound)
 
-e := newIssueTestServer(t, service)
-e.Use(injectUser(uuid.New()))
+	e := newIssueTestServer(t, service)
+	e.Use(injectUser(uuid.New()))
 
-body := `{"priority":"low"}`
-req := httptest.NewRequest(http.MethodPut, "/api/v1/issues/"+issueID.String()+"/priority", strings.NewReader(body))
-req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-rec := httptest.NewRecorder()
-e.ServeHTTP(rec, req)
+	body := `{"priority":"low"}`
+	req := httptest.NewRequest(http.MethodPut, "/api/v1/issues/"+issueID.String()+"/priority", strings.NewReader(body))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
 
-require.Equal(t, http.StatusNotFound, rec.Code)
-service.AssertExpectations(t)
+	require.Equal(t, http.StatusNotFound, rec.Code)
+	service.AssertExpectations(t)
 }
 
 func Test_UpdateIssuePriority_ServiceError_Returns500(t *testing.T) {
-service := &mockIssueService{}
-issueID := uuid.New()
+	service := &mockIssueService{}
+	issueID := uuid.New()
 
-service.On("UpdateIssuePriority", mock.Anything, issueID, issuedomain.PriorityMedium).
-Return((*issuedomain.Issue)(nil), errors.New("db down"))
+	service.On("UpdateIssuePriority", mock.Anything, issueID, issuedomain.PriorityMedium).
+		Return((*issuedomain.Issue)(nil), errors.New("db down"))
 
-e := newIssueTestServer(t, service)
-e.Use(injectUser(uuid.New()))
+	e := newIssueTestServer(t, service)
+	e.Use(injectUser(uuid.New()))
 
-body := `{"priority":"medium"}`
-req := httptest.NewRequest(http.MethodPut, "/api/v1/issues/"+issueID.String()+"/priority", strings.NewReader(body))
-req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-rec := httptest.NewRecorder()
-e.ServeHTTP(rec, req)
+	body := `{"priority":"medium"}`
+	req := httptest.NewRequest(http.MethodPut, "/api/v1/issues/"+issueID.String()+"/priority", strings.NewReader(body))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
 
-require.Equal(t, http.StatusInternalServerError, rec.Code)
-service.AssertExpectations(t)
+	require.Equal(t, http.StatusInternalServerError, rec.Code)
+	service.AssertExpectations(t)
 }
