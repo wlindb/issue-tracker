@@ -2,8 +2,10 @@ package api
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
 
 	"github.com/google/uuid"
 
@@ -14,6 +16,7 @@ import (
 // Sentinel errors returned by IssueService implementations.
 var (
 	ErrIssueProjectNotFound = errors.New("issue: project not found")
+	ErrIssueNotFound        = errors.New("issue: not found")
 	ErrIssueUnprocessable   = errors.New("issue: unprocessable entity")
 )
 
@@ -21,6 +24,17 @@ var (
 type IssueService interface {
 	ListIssues(ctx context.Context, projectID uuid.UUID, query issuedomain.ListIssueQuery) (issuedomain.IssuePage, error)
 	CreateIssue(ctx context.Context, command issuedomain.CreateIssueCommand) (*issuedomain.Issue, error)
+	UpdateIssueDescription(ctx context.Context, issueID uuid.UUID, description *string) (*issuedomain.Issue, error)
+}
+
+// updateIssueDescription501Response is returned by the UpdateIssueDescription
+// handler until the happy-path mapping is fully implemented.
+type updateIssueDescription501Response struct{}
+
+func (r updateIssueDescription501Response) VisitUpdateIssueDescriptionResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusNotImplemented)
+	return json.NewEncoder(w).Encode(notImplemented())
 }
 
 // IssueHandler holds the issue service dependency.
@@ -101,8 +115,22 @@ func (h *Handler) UpdateIssueTitle(_ context.Context, _ model.UpdateIssueTitleRe
 	return model.UpdateIssueTitle500JSONResponse{InternalServerErrorJSONResponse: model.InternalServerErrorJSONResponse(notImplemented())}, nil
 }
 
-func (h *Handler) UpdateIssueDescription(_ context.Context, _ model.UpdateIssueDescriptionRequestObject) (model.UpdateIssueDescriptionResponseObject, error) {
-	return model.UpdateIssueDescription500JSONResponse{InternalServerErrorJSONResponse: model.InternalServerErrorJSONResponse(notImplemented())}, nil
+func (h *Handler) UpdateIssueDescription(ctx context.Context, req model.UpdateIssueDescriptionRequestObject) (model.UpdateIssueDescriptionResponseObject, error) {
+	if _, err := userIDFromContext(ctx); err != nil {
+		return model.UpdateIssueDescription401JSONResponse{
+			UnauthorizedJSONResponse: newUnauthorized("unauthorized", "authentication required"),
+		}, nil
+	}
+	_, err := h.IssueHandler.service.UpdateIssueDescription(ctx, req.IssueId, req.Body.Description)
+	if errors.Is(err, ErrIssueNotFound) {
+		return model.UpdateIssueDescription404JSONResponse{
+			NotFoundJSONResponse: newNotFound("not_found", "issue not found"),
+		}, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("update issue description: %w", err)
+	}
+	return updateIssueDescription501Response{}, nil
 }
 
 func (h *Handler) UpdateIssueStatus(_ context.Context, _ model.UpdateIssueStatusRequestObject) (model.UpdateIssueStatusResponseObject, error) {
