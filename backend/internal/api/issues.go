@@ -22,6 +22,7 @@ var (
 type IssueService interface {
 	ListIssues(ctx context.Context, projectID uuid.UUID, query issuedomain.ListIssueQuery) (issuedomain.IssuePage, error)
 	CreateIssue(ctx context.Context, command issuedomain.CreateIssueCommand) (*issuedomain.Issue, error)
+	GetIssue(ctx context.Context, issueID uuid.UUID) (*issuedomain.Issue, error)
 	UpdateIssueAssignee(ctx context.Context, issueID uuid.UUID, assigneeID *uuid.UUID) (*issuedomain.Issue, error)
 }
 
@@ -95,8 +96,22 @@ func (h *Handler) SearchIssues(_ context.Context, req model.SearchIssuesRequestO
 	return model.SearchIssues501JSONResponse{NotImplementedJSONResponse: model.NotImplementedJSONResponse(notImplemented())}, nil
 }
 
-func (h *Handler) GetIssue(_ context.Context, _ model.GetIssueRequestObject) (model.GetIssueResponseObject, error) {
-	return model.GetIssue500JSONResponse{InternalServerErrorJSONResponse: model.InternalServerErrorJSONResponse(notImplemented())}, nil
+func (h *Handler) GetIssue(ctx context.Context, req model.GetIssueRequestObject) (model.GetIssueResponseObject, error) {
+	if _, err := userIDFromContext(ctx); err != nil {
+		return model.GetIssue401JSONResponse{
+			UnauthorizedJSONResponse: newUnauthorized("unauthorized", "authentication required"),
+		}, nil
+	}
+	issue, err := h.IssueHandler.service.GetIssue(ctx, req.IssueId)
+	if errors.Is(err, ErrIssueNotFound) {
+		return model.GetIssue404JSONResponse{
+			NotFoundJSONResponse: newNotFound("not_found", "issue not found"),
+		}, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("get issue: %w", err)
+	}
+	return model.GetIssue200JSONResponse(issueFromDomain(*issue)), nil
 }
 
 func (h *Handler) UpdateIssueTitle(_ context.Context, _ model.UpdateIssueTitleRequestObject) (model.UpdateIssueTitleResponseObject, error) {
