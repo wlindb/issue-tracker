@@ -17,6 +17,7 @@ type issueServicer interface {
 	ListIssues(ctx context.Context, projectID uuid.UUID, query issuedomain.ListIssueQuery) (issuedomain.IssuePage, error)
 	CreateIssue(ctx context.Context, command issuedomain.CreateIssueCommand) (*issuedomain.Issue, error)
 	GetIssue(ctx context.Context, issueID uuid.UUID) (*issuedomain.Issue, error)
+	UpdateIssueAssignee(ctx context.Context, issueID uuid.UUID, assigneeID *uuid.UUID) (*issuedomain.Issue, error)
 }
 
 // TracingIssueService wraps an issueServicer and adds an OTel child span to each operation.
@@ -65,6 +66,19 @@ func (s *TracingIssueService) GetIssue(ctx context.Context, issueID uuid.UUID) (
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
 		return nil, fmt.Errorf("get issue: %w", err)
+	}
+	return issue, nil
+}
+
+func (s *TracingIssueService) UpdateIssueAssignee(ctx context.Context, issueID uuid.UUID, assigneeID *uuid.UUID) (*issuedomain.Issue, error) {
+	ctx, span := s.tracer.Start(ctx, "tracker.IssueService.UpdateIssueAssignee")
+	defer span.End()
+
+	issue, err := s.inner.UpdateIssueAssignee(ctx, issueID, assigneeID)
+	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+		return nil, fmt.Errorf("update issue assignee: %w", err)
 	}
 	return issue, nil
 }

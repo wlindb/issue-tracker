@@ -2,6 +2,7 @@ package issue
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/google/uuid"
@@ -24,6 +25,11 @@ func (s *IssueService) ListIssues(ctx context.Context, projectID uuid.UUID, quer
 		return IssuePage{}, fmt.Errorf("list issues: %w", err)
 	}
 	return page, nil
+}
+
+// UpdateIssueAssignee updates the assignee of an issue.
+func (s *IssueService) UpdateIssueAssignee(_ context.Context, _ uuid.UUID, _ *uuid.UUID) (*Issue, error) {
+	return nil, errors.New("not implemented")
 }
 
 // CreateIssue creates a new issue from the given command.

@@ -23,6 +23,7 @@ type IssueService interface {
 	ListIssues(ctx context.Context, projectID uuid.UUID, query issuedomain.ListIssueQuery) (issuedomain.IssuePage, error)
 	CreateIssue(ctx context.Context, command issuedomain.CreateIssueCommand) (*issuedomain.Issue, error)
 	GetIssue(ctx context.Context, issueID uuid.UUID) (*issuedomain.Issue, error)
+	UpdateIssueAssignee(ctx context.Context, issueID uuid.UUID, assigneeID *uuid.UUID) (*issuedomain.Issue, error)
 }
 
 // IssueHandler holds the issue service dependency.
@@ -129,8 +130,22 @@ func (h *Handler) UpdateIssuePriority(_ context.Context, _ model.UpdateIssuePrio
 	return model.UpdateIssuePriority500JSONResponse{InternalServerErrorJSONResponse: model.InternalServerErrorJSONResponse(notImplemented())}, nil
 }
 
-func (h *Handler) UpdateIssueAssignee(_ context.Context, _ model.UpdateIssueAssigneeRequestObject) (model.UpdateIssueAssigneeResponseObject, error) {
-	return model.UpdateIssueAssignee500JSONResponse{InternalServerErrorJSONResponse: model.InternalServerErrorJSONResponse(notImplemented())}, nil
+func (h *Handler) UpdateIssueAssignee(ctx context.Context, req model.UpdateIssueAssigneeRequestObject) (model.UpdateIssueAssigneeResponseObject, error) {
+	if _, err := userIDFromContext(ctx); err != nil {
+		return model.UpdateIssueAssignee401JSONResponse{
+			UnauthorizedJSONResponse: newUnauthorized("unauthorized", "authentication required"),
+		}, nil
+	}
+	issue, err := h.IssueHandler.service.UpdateIssueAssignee(ctx, req.IssueId, req.Body.AssigneeId)
+	if errors.Is(err, ErrIssueNotFound) {
+		return model.UpdateIssueAssignee422JSONResponse{
+			UnprocessableEntityJSONResponse: newUnprocessable("unprocessable_entity", "issue not found"),
+		}, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("update issue assignee: %w", err)
+	}
+	return model.UpdateIssueAssignee200JSONResponse(issueFromDomain(*issue)), nil
 }
 
 func (h *Handler) DeleteIssue(_ context.Context, _ model.DeleteIssueRequestObject) (model.DeleteIssueResponseObject, error) {
