@@ -27,6 +27,11 @@ func (s *IssueService) ListIssues(ctx context.Context, projectID uuid.UUID, quer
 	return page, nil
 }
 
+// UpdateIssueAssignee updates the assignee of an issue.
+func (s *IssueService) UpdateIssueAssignee(_ context.Context, _ uuid.UUID, _ *uuid.UUID) (*Issue, error) {
+	return nil, errors.New("not implemented")
+}
+
 // CreateIssue creates a new issue from the given command.
 func (s *IssueService) CreateIssue(ctx context.Context, command CreateIssueCommand) (*Issue, error) {
 	issue := command.ToIssue(uuid.New(), command.Slugify)
@@ -40,4 +45,13 @@ func (s *IssueService) CreateIssue(ctx context.Context, command CreateIssueComma
 // UpdateIssueDescription is not yet implemented.
 func (s *IssueService) UpdateIssueDescription(_ context.Context, _ uuid.UUID, _ *string) (*Issue, error) {
 	return nil, errors.New("not implemented")
+}
+
+func (s *IssueService) UpdateIssuePriority(_ context.Context, _ uuid.UUID, _ Priority) (*Issue, error) {
+	return nil, errors.New("UpdateIssuePriority: not implemented")
+}
+
+// GetIssue retrieves a single issue by its ID.
+func (s *IssueService) GetIssue(_ context.Context, _ uuid.UUID) (*Issue, error) {
+	return nil, fmt.Errorf("get issue: not implemented")
 }
