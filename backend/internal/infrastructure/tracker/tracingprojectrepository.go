@@ -2,6 +2,7 @@ package tracker
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/google/uuid"
 	"go.opentelemetry.io/otel/codes"
@@ -31,7 +32,7 @@ func (r *TracingProjectRepository) Create(ctx context.Context, id uuid.UUID, own
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
-		return nil, err
+		return nil, fmt.Errorf("create project: %w", err)
 	}
 	return project, nil
 }
@@ -44,7 +45,7 @@ func (r *TracingProjectRepository) List(ctx context.Context, query projectdomain
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
-		return projectdomain.Projects{}, err
+		return projectdomain.Projects{}, fmt.Errorf("list projects: %w", err)
 	}
 	return projects, nil
 }
