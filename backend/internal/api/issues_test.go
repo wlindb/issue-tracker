@@ -467,10 +467,12 @@ func Test_GetIssue_ServiceError_Returns500(t *testing.T) {
 	service.AssertExpectations(t)
 }
 
-func Test_GetIssue_IssueExists_ReturnsNotImplemented(t *testing.T) {
+func Test_GetIssue_IssueExists_Returns200(t *testing.T) {
 	service := &mockIssueService{}
 	issueID := uuid.New()
-	now := time.Now().UTC()
+	projectID := uuid.New()
+	reporterID := uuid.New()
+	now := time.Now().UTC().Truncate(time.Second)
 
 	service.On("GetIssue", mock.Anything, issueID).
 		Return(&issuedomain.Issue{
@@ -480,8 +482,8 @@ func Test_GetIssue_IssueExists_ReturnsNotImplemented(t *testing.T) {
 			Status:     issuedomain.StatusBacklog,
 			Priority:   issuedomain.PriorityNone,
 			Labels:     []string{},
-			ProjectID:  uuid.New(),
-			ReporterID: uuid.New(),
+			ProjectID:  projectID,
+			ReporterID: reporterID,
 			CreatedAt:  now,
 			UpdatedAt:  now,
 		}, nil)
@@ -493,9 +495,15 @@ func Test_GetIssue_IssueExists_ReturnsNotImplemented(t *testing.T) {
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 
-	require.Equal(t, http.StatusInternalServerError, rec.Code)
-	var actual model.Error
+	require.Equal(t, http.StatusOK, rec.Code)
+	var actual model.Issue
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &actual))
-	assert.Equal(t, "not_implemented", actual.Code)
+	assert.Equal(t, issueID, actual.Id)
+	assert.Equal(t, "PROJ-1", actual.Identifier)
+	assert.Equal(t, "Fix login bug", actual.Title)
+	assert.Equal(t, model.IssueStatus(issuedomain.StatusBacklog), actual.Status)
+	assert.Equal(t, model.IssuePriority(issuedomain.PriorityNone), actual.Priority)
+	assert.Equal(t, projectID, actual.ProjectId)
+	assert.Equal(t, reporterID, actual.ReporterId)
 	service.AssertExpectations(t)
 }

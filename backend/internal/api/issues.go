@@ -101,7 +101,7 @@ func (h *Handler) GetIssue(ctx context.Context, req model.GetIssueRequestObject)
 			UnauthorizedJSONResponse: newUnauthorized("unauthorized", "authentication required"),
 		}, nil
 	}
-	_, err := h.IssueHandler.service.GetIssue(ctx, req.IssueId)
+	issue, err := h.IssueHandler.service.GetIssue(ctx, req.IssueId)
 	if errors.Is(err, ErrIssueNotFound) {
 		return model.GetIssue404JSONResponse{
 			NotFoundJSONResponse: newNotFound("not_found", "issue not found"),
@@ -110,7 +110,7 @@ func (h *Handler) GetIssue(ctx context.Context, req model.GetIssueRequestObject)
 	if err != nil {
 		return nil, fmt.Errorf("get issue: %w", err)
 	}
-	return model.GetIssue500JSONResponse{InternalServerErrorJSONResponse: model.InternalServerErrorJSONResponse(notImplemented())}, nil
+	return model.GetIssue200JSONResponse(issueFromDomain(*issue)), nil
 }
 
 func (h *Handler) UpdateIssueTitle(_ context.Context, _ model.UpdateIssueTitleRequestObject) (model.UpdateIssueTitleResponseObject, error) {
