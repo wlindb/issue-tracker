@@ -1372,6 +1372,17 @@ func (response UpdateIssueDescription404JSONResponse) VisitUpdateIssueDescriptio
 	return json.NewEncoder(w).Encode(response)
 }
 
+type UpdateIssueDescription422JSONResponse struct {
+	UnprocessableEntityJSONResponse
+}
+
+func (response UpdateIssueDescription422JSONResponse) VisitUpdateIssueDescriptionResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(422)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
 type UpdateIssueDescription500JSONResponse struct {
 	InternalServerErrorJSONResponse
 }
