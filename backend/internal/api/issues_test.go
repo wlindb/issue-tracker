@@ -571,7 +571,6 @@ func Test_UpdateIssueStatus_ServiceError_Returns500(t *testing.T) {
 	service.AssertExpectations(t)
 }
 
-
 // — GetIssue —
 
 func Test_GetIssue_NoUserID_Returns401(t *testing.T) {

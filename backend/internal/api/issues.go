@@ -1,173 +1,173 @@
 package api
 
 import (
-"context"
-"errors"
-"fmt"
+	"context"
+	"errors"
+	"fmt"
 
-"github.com/google/uuid"
+	"github.com/google/uuid"
 
-"github.com/wlindb/issue-tracker/internal/api/model"
-issuedomain "github.com/wlindb/issue-tracker/internal/domain/tracker/issue"
+	"github.com/wlindb/issue-tracker/internal/api/model"
+	issuedomain "github.com/wlindb/issue-tracker/internal/domain/tracker/issue"
 )
 
 // Sentinel errors returned by IssueService implementations.
 var (
-ErrIssueProjectNotFound = errors.New("issue: project not found")
-ErrIssueNotFound        = errors.New("issue: not found")
-ErrIssueUnprocessable   = errors.New("issue: unprocessable entity")
+	ErrIssueProjectNotFound = errors.New("issue: project not found")
+	ErrIssueNotFound        = errors.New("issue: not found")
+	ErrIssueUnprocessable   = errors.New("issue: unprocessable entity")
 )
 
 // IssueService is what the handler needs from the domain.
 type IssueService interface {
-ListIssues(ctx context.Context, projectID uuid.UUID, query issuedomain.ListIssueQuery) (issuedomain.IssuePage, error)
-CreateIssue(ctx context.Context, command issuedomain.CreateIssueCommand) (*issuedomain.Issue, error)
-GetIssue(ctx context.Context, issueID uuid.UUID) (*issuedomain.Issue, error)
-UpdateIssueStatus(ctx context.Context, issueID uuid.UUID, status issuedomain.Status) (*issuedomain.Issue, error)
-UpdateIssueAssignee(ctx context.Context, issueID uuid.UUID, assigneeID *uuid.UUID) (*issuedomain.Issue, error)
+	ListIssues(ctx context.Context, projectID uuid.UUID, query issuedomain.ListIssueQuery) (issuedomain.IssuePage, error)
+	CreateIssue(ctx context.Context, command issuedomain.CreateIssueCommand) (*issuedomain.Issue, error)
+	GetIssue(ctx context.Context, issueID uuid.UUID) (*issuedomain.Issue, error)
+	UpdateIssueStatus(ctx context.Context, issueID uuid.UUID, status issuedomain.Status) (*issuedomain.Issue, error)
+	UpdateIssueAssignee(ctx context.Context, issueID uuid.UUID, assigneeID *uuid.UUID) (*issuedomain.Issue, error)
 }
 
 // IssueHandler holds the issue service dependency.
 type IssueHandler struct {
-service IssueService
+	service IssueService
 }
 
 // NewIssueHandler creates an IssueHandler wired to the given service.
 func NewIssueHandler(service IssueService) IssueHandler {
-return IssueHandler{service: service}
+	return IssueHandler{service: service}
 }
 
 func (h *Handler) ListIssues(ctx context.Context, req model.ListIssuesRequestObject) (model.ListIssuesResponseObject, error) {
-if _, err := userIDFromContext(ctx); err != nil {
-return model.ListIssues401JSONResponse{
-UnauthorizedJSONResponse: newUnauthorized("unauthorized", "authentication required"),
-}, nil
-}
-query := listIssueQueryFromRequest(req.Params)
-page, err := h.IssueHandler.service.ListIssues(ctx, req.Params.ProjectId, query)
-if errors.Is(err, ErrIssueProjectNotFound) {
-return model.ListIssues404JSONResponse{
-NotFoundJSONResponse: newNotFound("not_found", "project not found"),
-}, nil
-}
-if err != nil {
-return nil, fmt.Errorf("list issues: %w", err)
-}
-return model.ListIssues200JSONResponse{
-Items:      issuesFromDomain(page.Items),
-NextCursor: page.NextCursor,
-}, nil
+	if _, err := userIDFromContext(ctx); err != nil {
+		return model.ListIssues401JSONResponse{
+			UnauthorizedJSONResponse: newUnauthorized("unauthorized", "authentication required"),
+		}, nil
+	}
+	query := listIssueQueryFromRequest(req.Params)
+	page, err := h.IssueHandler.service.ListIssues(ctx, req.Params.ProjectId, query)
+	if errors.Is(err, ErrIssueProjectNotFound) {
+		return model.ListIssues404JSONResponse{
+			NotFoundJSONResponse: newNotFound("not_found", "project not found"),
+		}, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("list issues: %w", err)
+	}
+	return model.ListIssues200JSONResponse{
+		Items:      issuesFromDomain(page.Items),
+		NextCursor: page.NextCursor,
+	}, nil
 }
 
 func (h *Handler) CreateIssue(ctx context.Context, req model.CreateIssueRequestObject) (model.CreateIssueResponseObject, error) {
-if req.Body.ProjectId == uuid.Nil {
-return model.CreateIssue400JSONResponse{
-BadRequestJSONResponse: newBadRequest("invalid_input", "projectId is required"),
-}, nil
-}
-if req.Body.Title == "" {
-return model.CreateIssue400JSONResponse{
-BadRequestJSONResponse: newBadRequest("invalid_input", "title is required"),
-}, nil
-}
-userID, err := userIDFromContext(ctx)
-if err != nil {
-return model.CreateIssue401JSONResponse{
-UnauthorizedJSONResponse: newUnauthorized("unauthorized", "authentication required"),
-}, nil
-}
-issue, err := h.IssueHandler.service.CreateIssue(ctx, createIssueCommandFromModel(req.Body.ProjectId, userID, *req.Body))
-if errors.Is(err, ErrIssueUnprocessable) {
-return model.CreateIssue422JSONResponse{
-UnprocessableEntityJSONResponse: newUnprocessable("unprocessable_entity", "request could not be processed"),
-}, nil
-}
-if err != nil {
-return nil, fmt.Errorf("create issue: %w", err)
-}
-return model.CreateIssue201JSONResponse(issueFromDomain(*issue)), nil
+	if req.Body.ProjectId == uuid.Nil {
+		return model.CreateIssue400JSONResponse{
+			BadRequestJSONResponse: newBadRequest("invalid_input", "projectId is required"),
+		}, nil
+	}
+	if req.Body.Title == "" {
+		return model.CreateIssue400JSONResponse{
+			BadRequestJSONResponse: newBadRequest("invalid_input", "title is required"),
+		}, nil
+	}
+	userID, err := userIDFromContext(ctx)
+	if err != nil {
+		return model.CreateIssue401JSONResponse{
+			UnauthorizedJSONResponse: newUnauthorized("unauthorized", "authentication required"),
+		}, nil
+	}
+	issue, err := h.IssueHandler.service.CreateIssue(ctx, createIssueCommandFromModel(req.Body.ProjectId, userID, *req.Body))
+	if errors.Is(err, ErrIssueUnprocessable) {
+		return model.CreateIssue422JSONResponse{
+			UnprocessableEntityJSONResponse: newUnprocessable("unprocessable_entity", "request could not be processed"),
+		}, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("create issue: %w", err)
+	}
+	return model.CreateIssue201JSONResponse(issueFromDomain(*issue)), nil
 }
 
 func (h *Handler) SearchIssues(_ context.Context, req model.SearchIssuesRequestObject) (model.SearchIssuesResponseObject, error) {
-if req.Body == nil || req.Body.Query == "" {
-return model.SearchIssues400JSONResponse{
-BadRequestJSONResponse: newBadRequest("invalid_input", "query is required"),
-}, nil
-}
-return model.SearchIssues501JSONResponse{NotImplementedJSONResponse: model.NotImplementedJSONResponse(notImplemented())}, nil
+	if req.Body == nil || req.Body.Query == "" {
+		return model.SearchIssues400JSONResponse{
+			BadRequestJSONResponse: newBadRequest("invalid_input", "query is required"),
+		}, nil
+	}
+	return model.SearchIssues501JSONResponse{NotImplementedJSONResponse: model.NotImplementedJSONResponse(notImplemented())}, nil
 }
 
 func (h *Handler) GetIssue(ctx context.Context, req model.GetIssueRequestObject) (model.GetIssueResponseObject, error) {
-if _, err := userIDFromContext(ctx); err != nil {
-return model.GetIssue401JSONResponse{
-UnauthorizedJSONResponse: newUnauthorized("unauthorized", "authentication required"),
-}, nil
-}
-issue, err := h.IssueHandler.service.GetIssue(ctx, req.IssueId)
-if errors.Is(err, ErrIssueNotFound) {
-return model.GetIssue404JSONResponse{
-NotFoundJSONResponse: newNotFound("not_found", "issue not found"),
-}, nil
-}
-if err != nil {
-return nil, fmt.Errorf("get issue: %w", err)
-}
-return model.GetIssue200JSONResponse(issueFromDomain(*issue)), nil
+	if _, err := userIDFromContext(ctx); err != nil {
+		return model.GetIssue401JSONResponse{
+			UnauthorizedJSONResponse: newUnauthorized("unauthorized", "authentication required"),
+		}, nil
+	}
+	issue, err := h.IssueHandler.service.GetIssue(ctx, req.IssueId)
+	if errors.Is(err, ErrIssueNotFound) {
+		return model.GetIssue404JSONResponse{
+			NotFoundJSONResponse: newNotFound("not_found", "issue not found"),
+		}, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("get issue: %w", err)
+	}
+	return model.GetIssue200JSONResponse(issueFromDomain(*issue)), nil
 }
 
 func (h *Handler) UpdateIssueTitle(_ context.Context, _ model.UpdateIssueTitleRequestObject) (model.UpdateIssueTitleResponseObject, error) {
-return model.UpdateIssueTitle500JSONResponse{InternalServerErrorJSONResponse: model.InternalServerErrorJSONResponse(notImplemented())}, nil
+	return model.UpdateIssueTitle500JSONResponse{InternalServerErrorJSONResponse: model.InternalServerErrorJSONResponse(notImplemented())}, nil
 }
 
 func (h *Handler) UpdateIssueDescription(_ context.Context, _ model.UpdateIssueDescriptionRequestObject) (model.UpdateIssueDescriptionResponseObject, error) {
-return model.UpdateIssueDescription500JSONResponse{InternalServerErrorJSONResponse: model.InternalServerErrorJSONResponse(notImplemented())}, nil
+	return model.UpdateIssueDescription500JSONResponse{InternalServerErrorJSONResponse: model.InternalServerErrorJSONResponse(notImplemented())}, nil
 }
 
 func (h *Handler) UpdateIssueStatus(ctx context.Context, req model.UpdateIssueStatusRequestObject) (model.UpdateIssueStatusResponseObject, error) {
-if _, err := userIDFromContext(ctx); err != nil {
-return model.UpdateIssueStatus401JSONResponse{
-UnauthorizedJSONResponse: newUnauthorized("unauthorized", "authentication required"),
-}, nil
-}
-if req.Body == nil || !req.Body.Status.Valid() {
-return model.UpdateIssueStatus400JSONResponse{
-BadRequestJSONResponse: newBadRequest("invalid_input", "status is required and must be a valid value"),
-}, nil
-}
-issue, err := h.IssueHandler.service.UpdateIssueStatus(ctx, req.IssueId, issuedomain.Status(req.Body.Status))
-if errors.Is(err, ErrIssueNotFound) {
-return model.UpdateIssueStatus422JSONResponse{
-UnprocessableEntityJSONResponse: newUnprocessable("not_found", "issue not found"),
-}, nil
-}
-if err != nil {
-return nil, fmt.Errorf("update issue status: %w", err)
-}
-return model.UpdateIssueStatus200JSONResponse(issueFromDomain(*issue)), nil
+	if _, err := userIDFromContext(ctx); err != nil {
+		return model.UpdateIssueStatus401JSONResponse{
+			UnauthorizedJSONResponse: newUnauthorized("unauthorized", "authentication required"),
+		}, nil
+	}
+	if req.Body == nil || !req.Body.Status.Valid() {
+		return model.UpdateIssueStatus400JSONResponse{
+			BadRequestJSONResponse: newBadRequest("invalid_input", "status is required and must be a valid value"),
+		}, nil
+	}
+	issue, err := h.IssueHandler.service.UpdateIssueStatus(ctx, req.IssueId, issuedomain.Status(req.Body.Status))
+	if errors.Is(err, ErrIssueNotFound) {
+		return model.UpdateIssueStatus422JSONResponse{
+			UnprocessableEntityJSONResponse: newUnprocessable("not_found", "issue not found"),
+		}, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("update issue status: %w", err)
+	}
+	return model.UpdateIssueStatus200JSONResponse(issueFromDomain(*issue)), nil
 }
 
 func (h *Handler) UpdateIssuePriority(_ context.Context, _ model.UpdateIssuePriorityRequestObject) (model.UpdateIssuePriorityResponseObject, error) {
-return model.UpdateIssuePriority500JSONResponse{InternalServerErrorJSONResponse: model.InternalServerErrorJSONResponse(notImplemented())}, nil
+	return model.UpdateIssuePriority500JSONResponse{InternalServerErrorJSONResponse: model.InternalServerErrorJSONResponse(notImplemented())}, nil
 }
 
 func (h *Handler) UpdateIssueAssignee(ctx context.Context, req model.UpdateIssueAssigneeRequestObject) (model.UpdateIssueAssigneeResponseObject, error) {
-if _, err := userIDFromContext(ctx); err != nil {
-return model.UpdateIssueAssignee401JSONResponse{
-UnauthorizedJSONResponse: newUnauthorized("unauthorized", "authentication required"),
-}, nil
-}
-issue, err := h.IssueHandler.service.UpdateIssueAssignee(ctx, req.IssueId, req.Body.AssigneeId)
-if errors.Is(err, ErrIssueNotFound) {
-return model.UpdateIssueAssignee422JSONResponse{
-UnprocessableEntityJSONResponse: newUnprocessable("unprocessable_entity", "issue not found"),
-}, nil
-}
-if err != nil {
-return nil, fmt.Errorf("update issue assignee: %w", err)
-}
-return model.UpdateIssueAssignee200JSONResponse(issueFromDomain(*issue)), nil
+	if _, err := userIDFromContext(ctx); err != nil {
+		return model.UpdateIssueAssignee401JSONResponse{
+			UnauthorizedJSONResponse: newUnauthorized("unauthorized", "authentication required"),
+		}, nil
+	}
+	issue, err := h.IssueHandler.service.UpdateIssueAssignee(ctx, req.IssueId, req.Body.AssigneeId)
+	if errors.Is(err, ErrIssueNotFound) {
+		return model.UpdateIssueAssignee422JSONResponse{
+			UnprocessableEntityJSONResponse: newUnprocessable("unprocessable_entity", "issue not found"),
+		}, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("update issue assignee: %w", err)
+	}
+	return model.UpdateIssueAssignee200JSONResponse(issueFromDomain(*issue)), nil
 }
 
 func (h *Handler) DeleteIssue(_ context.Context, _ model.DeleteIssueRequestObject) (model.DeleteIssueResponseObject, error) {
-return model.DeleteIssue500JSONResponse{InternalServerErrorJSONResponse: model.InternalServerErrorJSONResponse(notImplemented())}, nil
+	return model.DeleteIssue500JSONResponse{InternalServerErrorJSONResponse: model.InternalServerErrorJSONResponse(notImplemented())}, nil
 }
