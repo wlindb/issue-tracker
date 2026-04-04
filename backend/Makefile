@@ -16,7 +16,7 @@ test:
 	go test ./...
 
 test-integration:
-	go test -tags integration -v -json -coverprofile=coverage-integration.out ./... > test-integration-results.json 2>&1
+	@go test -tags integration -v -json -coverprofile=coverage-integration.out ./...
 
 sqlc-tracker:
 	cd internal/infrastructure/tracker && go run github.com/sqlc-dev/sqlc/cmd/sqlc generate
