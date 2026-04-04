@@ -12,11 +12,12 @@ import (
 
 func projectToDomain(row trackerdb.Project) *projectdomain.Project {
 	p := &projectdomain.Project{
-		ID:        row.ID,
-		OwnerID:   row.OwnerID,
-		Name:      row.Name,
-		CreatedAt: row.CreatedAt.Time,
-		UpdatedAt: row.UpdatedAt.Time,
+		ID:         row.ID,
+		Identifier: row.Identifier,
+		OwnerID:    row.OwnerID,
+		Name:       row.Name,
+		CreatedAt:  row.CreatedAt.Time,
+		UpdatedAt:  row.UpdatedAt.Time,
 	}
 	if row.Description.Valid {
 		s := row.Description.String

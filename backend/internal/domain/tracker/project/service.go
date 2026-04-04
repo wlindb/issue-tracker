@@ -3,8 +3,6 @@ package project
 import (
 	"context"
 	"fmt"
-
-	"github.com/google/uuid"
 )
 
 type ProjectService struct {
@@ -15,15 +13,12 @@ func NewProjectService(repository ProjectRepository) *ProjectService {
 	return &ProjectService{repository: repository}
 }
 
-func (s *ProjectService) Create(ctx context.Context, id uuid.UUID, ownerID uuid.UUID, name string, description *string) (*Project, error) {
-	if name == "" {
-		return nil, fmt.Errorf("%w: name is required", ErrInvalidProject)
-	}
-	p, err := s.repository.Create(ctx, id, ownerID, name, description)
+func (s *ProjectService) Create(ctx context.Context, project Project) (Project, error) {
+	result, err := s.repository.Create(ctx, project)
 	if err != nil {
-		return nil, fmt.Errorf("create project: %w", err)
+		return Project{}, fmt.Errorf("create project: %w", err)
 	}
-	return p, nil
+	return result, nil
 }
 
 func (s *ProjectService) List(ctx context.Context, query ListProjectQuery) (Projects, error) {

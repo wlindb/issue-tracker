@@ -10,6 +10,7 @@ import (
 
 type Project struct {
 	ID          uuid.UUID
+	Identifier  string
 	Name        string
 	Description *string
 	OwnerID     uuid.UUID
@@ -38,8 +39,33 @@ func NewListProjectQuery(cursor *string, limit *int) ListProjectQuery {
 	return ListProjectQuery{Cursor: cursor, Limit: limit}
 }
 
+func New(id uuid.UUID, identifier string, name string, description *string, ownerID uuid.UUID) (Project, error) {
+	if id == uuid.Nil {
+		return Project{}, ErrInvalidProject
+	}
+	if identifier == "" {
+		return Project{}, ErrInvalidProject
+	}
+	if name == "" {
+		return Project{}, ErrInvalidProject
+	}
+	if ownerID == uuid.Nil {
+		return Project{}, ErrInvalidProject
+	}
+	now := time.Now()
+	return Project{
+		ID:          id,
+		Identifier:  identifier,
+		Name:        name,
+		Description: description,
+		OwnerID:     ownerID,
+		CreatedAt:   now,
+		UpdatedAt:   now,
+	}, nil
+}
+
 type ProjectRepository interface {
-	Create(ctx context.Context, id uuid.UUID, ownerID uuid.UUID, name string, description *string) (*Project, error)
+	Create(ctx context.Context, project Project) (Project, error)
 	List(ctx context.Context, query ListProjectQuery) (Projects, error)
 }
 

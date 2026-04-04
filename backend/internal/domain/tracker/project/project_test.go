@@ -5,6 +5,7 @@ package project_test
 import (
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -31,4 +32,52 @@ func Test_NewListProjectQuery_NilCursor_CursorIsNil(t *testing.T) {
 	actual := project.NewListProjectQuery(nil, nil)
 
 	assert.Nil(t, actual.Cursor)
+}
+
+func Test_New_NilID_ReturnsError(t *testing.T) {
+	actual, err := project.New(uuid.Nil, "my-project", "My Project", nil, uuid.New())
+
+	require.Error(t, err)
+	assert.ErrorIs(t, err, project.ErrInvalidProject)
+	assert.Zero(t, actual)
+}
+
+func Test_New_EmptyIdentifier_ReturnsError(t *testing.T) {
+	actual, err := project.New(uuid.New(), "", "My Project", nil, uuid.New())
+
+	require.Error(t, err)
+	assert.ErrorIs(t, err, project.ErrInvalidProject)
+	assert.Zero(t, actual)
+}
+
+func Test_New_EmptyName_ReturnsError(t *testing.T) {
+	actual, err := project.New(uuid.New(), "my-project", "", nil, uuid.New())
+
+	require.Error(t, err)
+	assert.ErrorIs(t, err, project.ErrInvalidProject)
+	assert.Zero(t, actual)
+}
+
+func Test_New_NilOwnerID_ReturnsError(t *testing.T) {
+	actual, err := project.New(uuid.New(), "my-project", "My Project", nil, uuid.Nil)
+
+	require.Error(t, err)
+	assert.ErrorIs(t, err, project.ErrInvalidProject)
+	assert.Zero(t, actual)
+}
+
+func Test_New_ValidArguments_ReturnsProject(t *testing.T) {
+	id := uuid.New()
+	ownerID := uuid.New()
+
+	actual, err := project.New(id, "my-project", "My Project", nil, ownerID)
+
+	require.NoError(t, err)
+	assert.Equal(t, id, actual.ID)
+	assert.Equal(t, "my-project", actual.Identifier)
+	assert.Equal(t, "My Project", actual.Name)
+	assert.Nil(t, actual.Description)
+	assert.Equal(t, ownerID, actual.OwnerID)
+	assert.False(t, actual.CreatedAt.IsZero())
+	assert.False(t, actual.UpdatedAt.IsZero())
 }

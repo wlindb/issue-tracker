@@ -33,6 +33,7 @@ type Project struct {
 	CreatedAt   pgtype.Timestamptz
 	UpdatedAt   pgtype.Timestamptz
 	WorkspaceID uuid.UUID
+	Identifier  string
 }
 
 type Workspace struct {

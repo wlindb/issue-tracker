@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -27,21 +26,22 @@ func NewProjectRepository(pool *pgxpool.Pool) *ProjectRepository {
 }
 
 // Create inserts a new project row and returns the domain model.
-func (r *ProjectRepository) Create(ctx context.Context, id, ownerID uuid.UUID, name string, description *string) (*projectdomain.Project, error) {
+func (r *ProjectRepository) Create(ctx context.Context, project projectdomain.Project) (projectdomain.Project, error) {
 	var pgDescription pgtype.Text
-	if description != nil {
-		pgDescription = pgtype.Text{String: *description, Valid: true}
+	if project.Description != nil {
+		pgDescription = pgtype.Text{String: *project.Description, Valid: true}
 	}
 	row, err := r.queries.CreateProject(ctx, trackerdb.CreateProjectParams{
-		ID:          id,
-		OwnerID:     ownerID,
-		Name:        name,
+		ID:          project.ID,
+		Identifier:  project.Identifier,
+		OwnerID:     project.OwnerID,
+		Name:        project.Name,
 		Description: pgDescription,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("create project: %w", err)
+		return projectdomain.Project{}, fmt.Errorf("create project: %w", err)
 	}
-	return projectToDomain(row), nil
+	return *projectToDomain(row), nil
 }
 
 // List returns up to query.Limit projects ordered by created_at descending.

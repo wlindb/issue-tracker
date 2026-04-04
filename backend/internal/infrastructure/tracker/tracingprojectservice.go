@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/google/uuid"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 
@@ -14,7 +13,7 @@ import (
 // projectServicer mirrors api.ProjectService without importing the api package,
 // avoiding a layering violation (infrastructure must not depend on api).
 type projectServicer interface {
-	Create(ctx context.Context, id uuid.UUID, ownerID uuid.UUID, name string, description *string) (*projectdomain.Project, error)
+	Create(ctx context.Context, project projectdomain.Project) (projectdomain.Project, error)
 	List(ctx context.Context, query projectdomain.ListProjectQuery) (projectdomain.Projects, error)
 }
 
@@ -29,17 +28,17 @@ func NewTracingProjectService(inner projectServicer, tracer trace.Tracer) *Traci
 	return &TracingProjectService{inner: inner, tracer: tracer}
 }
 
-func (s *TracingProjectService) Create(ctx context.Context, id uuid.UUID, ownerID uuid.UUID, name string, description *string) (*projectdomain.Project, error) {
+func (s *TracingProjectService) Create(ctx context.Context, project projectdomain.Project) (projectdomain.Project, error) {
 	ctx, span := s.tracer.Start(ctx, "tracker.ProjectService.Create")
 	defer span.End()
 
-	project, err := s.inner.Create(ctx, id, ownerID, name, description)
+	result, err := s.inner.Create(ctx, project)
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
-		return nil, fmt.Errorf("create project: %w", err)
+		return projectdomain.Project{}, fmt.Errorf("create project: %w", err)
 	}
-	return project, nil
+	return result, nil
 }
 
 func (s *TracingProjectService) List(ctx context.Context, query projectdomain.ListProjectQuery) (projectdomain.Projects, error) {

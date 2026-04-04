@@ -2,7 +2,9 @@ package api
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/google/uuid"
 
@@ -12,7 +14,7 @@ import (
 
 // ProjectService is what the handler needs from the domain.
 type ProjectService interface {
-	Create(ctx context.Context, id uuid.UUID, ownerID uuid.UUID, name string, description *string) (*trackerdomain.Project, error)
+	Create(ctx context.Context, project trackerdomain.Project) (trackerdomain.Project, error)
 	List(ctx context.Context, query trackerdomain.ListProjectQuery) (trackerdomain.Projects, error)
 }
 
@@ -41,21 +43,28 @@ func (h *ProjectHandler) ListProjects(ctx context.Context, req model.ListProject
 }
 
 func (h *ProjectHandler) CreateProject(ctx context.Context, req model.CreateProjectRequestObject) (model.CreateProjectResponseObject, error) {
-	if req.Body.Name == "" {
-		return model.CreateProject400JSONResponse{
-			BadRequestJSONResponse: newBadRequest("invalid_input", "name is required"),
-		}, nil
-	}
 	userID, err := userIDFromContext(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("create project: %w", err)
 	}
-	id := uuid.New()
-	project, err := h.service.Create(ctx, id, userID, req.Body.Name, req.Body.Description)
+	project, err := trackerdomain.New(uuid.New(), slugFromName(req.Body.Name), req.Body.Name, req.Body.Description, userID)
+	if errors.Is(err, trackerdomain.ErrInvalidProject) {
+		return model.CreateProject400JSONResponse{
+			BadRequestJSONResponse: newBadRequest("invalid_input", "name is required"),
+		}, nil
+	}
 	if err != nil {
 		return nil, fmt.Errorf("create project: %w", err)
 	}
-	return model.CreateProject201JSONResponse(projectFromDomain(*project)), nil
+	result, err := h.service.Create(ctx, project)
+	if err != nil {
+		return nil, fmt.Errorf("create project: %w", err)
+	}
+	return model.CreateProject201JSONResponse(projectFromDomain(result)), nil
+}
+
+func slugFromName(name string) string {
+	return strings.ReplaceAll(strings.ToLower(name), " ", "-")
 }
 
 func (h *Handler) GetProject(_ context.Context, _ model.GetProjectRequestObject) (model.GetProjectResponseObject, error) {
