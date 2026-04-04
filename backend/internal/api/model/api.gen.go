@@ -1428,11 +1428,13 @@ func (response UpdateIssuePriority403JSONResponse) VisitUpdateIssuePriorityRespo
 	return json.NewEncoder(w).Encode(response)
 }
 
-type UpdateIssuePriority404JSONResponse struct{ NotFoundJSONResponse }
+type UpdateIssuePriority422JSONResponse struct {
+	UnprocessableEntityJSONResponse
+}
 
-func (response UpdateIssuePriority404JSONResponse) VisitUpdateIssuePriorityResponse(w http.ResponseWriter) error {
+func (response UpdateIssuePriority422JSONResponse) VisitUpdateIssuePriorityResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(404)
+	w.WriteHeader(422)
 
 	return json.NewEncoder(w).Encode(response)
 }
@@ -2517,12 +2519,12 @@ var swaggerSpec = []string{
 	"XV27oF75+qn1RzjLGwDVUIcbiDZ3VPx6Oe8TANyKGDlPdFLnPfideATu3urXVBkcsnXY7Jixtzsqawc7",
 	"k893btDe2e7hOd2QyYj/IKlXOlI5mF+fqk0K4w6MOGsE1U9UQLbZdEfu4xephsp+Nh53nTj/KV+0bePQ",
 	"Vd3OkwM9Bxq9iqKqwocU78J6I4VutBoGji28/tfw4UVDs+0lwng6VO5FCZ7yDgsU/FbmwBCfVTXWgfG9",
-	"2cB9AfeTBLfD5mHIrvriA+P62vUjBkZ1/R3AC6afJKYtKg9DdPnGYmBA3xSPOAfGc+1ByQucnyScDSR7",
-	"obnoXu+uSMzcoF+kIuG/eexVkXBaOrwiccxygZMGkVDnanSegM6mTHlq6+9qfcuXxu5qgrqXnEMWAjbe",
-	"lJ24EFC+VW0wv/3VeQoBj6y3WSCmBUQ+gQQP5R8c9Gi7+QDrarw5ezzH51CFTk3vjSSJ6b+51xot97qt",
-	"/9aq8vEpL9Vz7cI5Q2714eqcvJd33fhvGB0x5LCc3vhO+MTR4w74ufix5LOXCLIBsZ8hS0jo8c6/JEpz",
-	"pd0MWlBIIrnDEehgQwb2bXIbB/056AMA8yy8qbKfCwFM2X8zkgm+oAmcPZLT7KAjttAKl6w6YjejXq1q",
-	"76m1IQn/kfWXO00C9p+WWArJRYInOCAZDb5f4vXd+v8BAAD//4d4O9iHSQAA",
+	"2cB9AfcB4H5U0bCD6WEgr1rkA0P82rUmBgZ4/UnAC7yfJHdbVB6G6PK5xcCAvinecw6M59rbkhc4P0k4",
+	"G0j2QnPRyN5dnJi5Qb9IccJ//tirOOG0dHhx4piVAycNIqH293SegE6sTKVq609sfcuXxu7qh7pHnUPW",
+	"BDael524JlA+W20wv/3VeWoCj6zNWSCmBUQ+gQQP5d8e9OjA+QDr6sE5ezzHl1GFTk0bjiSJacW5hxst",
+	"97qtFdeq8vEpL9Vzbcg5Q2615OqcvJd33fjHGB0x5LCc3vhk+MTR4w74ufix5LOXCLIBsZ8hS0jo8c6/",
+	"JEpzpd0MWlBIIrnDEehgQwb2mXIbB/056FsA80K8qcifCwFM2f84kgm+oAmcPZLT7KAjttAKl6w6Yjej",
+	"Xq1q79W1IQn/vfWXO00C9v+XWArJRYInOCAZDb5f4vXd+v8BAAD//9mvsIaSSQAA",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

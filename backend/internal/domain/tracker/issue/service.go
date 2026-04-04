@@ -42,6 +42,10 @@ func (s *IssueService) CreateIssue(ctx context.Context, command CreateIssueComma
 	return result, nil
 }
 
+func (s *IssueService) UpdateIssuePriority(_ context.Context, _ uuid.UUID, _ Priority) (*Issue, error) {
+	return nil, errors.New("UpdateIssuePriority: not implemented")
+}
+
 // GetIssue retrieves a single issue by its ID.
 func (s *IssueService) GetIssue(_ context.Context, _ uuid.UUID) (*Issue, error) {
 	return nil, fmt.Errorf("get issue: not implemented")
