@@ -477,7 +477,7 @@ func Test_UpdateIssuePriority_InvalidPriority_Returns400(t *testing.T) {
 	service.AssertNotCalled(t, "UpdateIssuePriority")
 }
 
-func Test_UpdateIssuePriority_IssueNotFound_Returns404(t *testing.T) {
+func Test_UpdateIssuePriority_IssueNotFound_Returns422(t *testing.T) {
 	service := &mockIssueService{}
 	issueID := uuid.New()
 
@@ -493,7 +493,7 @@ func Test_UpdateIssuePriority_IssueNotFound_Returns404(t *testing.T) {
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 
-	require.Equal(t, http.StatusNotFound, rec.Code)
+	require.Equal(t, http.StatusUnprocessableEntity, rec.Code)
 	service.AssertExpectations(t)
 }
 

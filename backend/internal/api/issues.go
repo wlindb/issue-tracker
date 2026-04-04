@@ -124,8 +124,8 @@ func (h *Handler) UpdateIssuePriority(ctx context.Context, req model.UpdateIssue
 	}
 	issue, err := h.IssueHandler.service.UpdateIssuePriority(ctx, req.IssueId, issuedomain.Priority(req.Body.Priority))
 	if errors.Is(err, ErrIssueNotFound) {
-		return model.UpdateIssuePriority404JSONResponse{
-			NotFoundJSONResponse: newNotFound("not_found", "issue not found"),
+		return model.UpdateIssuePriority422JSONResponse{
+			UnprocessableEntityJSONResponse: newUnprocessable("unprocessable_entity", "issue not found"),
 		}, nil
 	}
 	if err != nil {
