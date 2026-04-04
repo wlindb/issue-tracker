@@ -44,6 +44,14 @@ func (m *mockIssueService) CreateIssue(ctx context.Context, command issuedomain.
 	return nil, args.Error(1)
 }
 
+func (m *mockIssueService) UpdateIssueStatus(ctx context.Context, issueID uuid.UUID, status issuedomain.Status) (*issuedomain.Issue, error) {
+	args := m.Called(ctx, issueID, status)
+	if issue, ok := args.Get(0).(*issuedomain.Issue); ok {
+		return issue, args.Error(1)
+	}
+	return nil, args.Error(1)
+}
+
 // newIssueTestServer builds a minimal Echo server wired to the given issue service.
 func newIssueTestServer(t *testing.T, service api.IssueService) *echo.Echo {
 	t.Helper()
@@ -406,12 +414,28 @@ func Test_SearchIssues_EmptyQuery_Returns400(t *testing.T) {
 
 // — UpdateIssueStatus —
 
-func Test_UpdateIssueStatus_ValidRequest_Returns501(t *testing.T) {
+func Test_UpdateIssueStatus_ValidRequest_Returns200(t *testing.T) {
 	service := &mockIssueService{}
 	issueID := uuid.New()
+	userID := uuid.New()
+	now := time.Now().UTC()
+
+	service.On("UpdateIssueStatus", mock.Anything, issueID, issuedomain.StatusInProgress).
+		Return(&issuedomain.Issue{
+			ID:         issueID,
+			Identifier: "PROJ-1",
+			Title:      "Fix login bug",
+			Status:     issuedomain.StatusInProgress,
+			Priority:   issuedomain.PriorityNone,
+			Labels:     []string{},
+			ProjectID:  uuid.New(),
+			ReporterID: userID,
+			CreatedAt:  now,
+			UpdatedAt:  now,
+		}, nil)
 
 	e := newIssueTestServer(t, service)
-	e.Use(injectUser(uuid.New()))
+	e.Use(injectUser(userID))
 
 	body := `{"status":"in_progress"}`
 	req := httptest.NewRequest(http.MethodPut, "/api/v1/issues/"+issueID.String()+"/status", strings.NewReader(body))
@@ -419,10 +443,10 @@ func Test_UpdateIssueStatus_ValidRequest_Returns501(t *testing.T) {
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 
-	require.Equal(t, http.StatusNotImplemented, rec.Code)
-	var actual model.Error
+	require.Equal(t, http.StatusOK, rec.Code)
+	var actual model.Issue
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &actual))
-	assert.Equal(t, "not_implemented", actual.Code)
+	assert.Equal(t, model.InProgress, actual.Status)
 	service.AssertExpectations(t)
 }
 
@@ -472,5 +496,61 @@ func Test_UpdateIssueStatus_InvalidStatus_Returns400(t *testing.T) {
 	e.ServeHTTP(rec, req)
 
 	require.Equal(t, http.StatusBadRequest, rec.Code)
+	service.AssertExpectations(t)
+}
+
+func Test_UpdateIssueStatus_MalformedIssueID_Returns400(t *testing.T) {
+	service := &mockIssueService{}
+
+	e := newIssueTestServer(t, service)
+	e.Use(injectUser(uuid.New()))
+
+	body := `{"status":"in_progress"}`
+	req := httptest.NewRequest(http.MethodPut, "/api/v1/issues/not-a-uuid/status", strings.NewReader(body))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusBadRequest, rec.Code)
+	service.AssertNotCalled(t, "UpdateIssueStatus")
+}
+
+func Test_UpdateIssueStatus_IssueNotFound_Returns422(t *testing.T) {
+	service := &mockIssueService{}
+	issueID := uuid.New()
+
+	service.On("UpdateIssueStatus", mock.Anything, issueID, issuedomain.StatusInProgress).
+		Return(nil, api.ErrIssueNotFound)
+
+	e := newIssueTestServer(t, service)
+	e.Use(injectUser(uuid.New()))
+
+	body := `{"status":"in_progress"}`
+	req := httptest.NewRequest(http.MethodPut, "/api/v1/issues/"+issueID.String()+"/status", strings.NewReader(body))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusUnprocessableEntity, rec.Code)
+	service.AssertExpectations(t)
+}
+
+func Test_UpdateIssueStatus_ServiceError_Returns500(t *testing.T) {
+	service := &mockIssueService{}
+	issueID := uuid.New()
+
+	service.On("UpdateIssueStatus", mock.Anything, issueID, issuedomain.StatusInProgress).
+		Return(nil, errors.New("db down"))
+
+	e := newIssueTestServer(t, service)
+	e.Use(injectUser(uuid.New()))
+
+	body := `{"status":"in_progress"}`
+	req := httptest.NewRequest(http.MethodPut, "/api/v1/issues/"+issueID.String()+"/status", strings.NewReader(body))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusInternalServerError, rec.Code)
 	service.AssertExpectations(t)
 }

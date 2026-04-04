@@ -15,12 +15,14 @@ import (
 var (
 	ErrIssueProjectNotFound = errors.New("issue: project not found")
 	ErrIssueUnprocessable   = errors.New("issue: unprocessable entity")
+	ErrIssueNotFound        = errors.New("issue: not found")
 )
 
 // IssueService is what the handler needs from the domain.
 type IssueService interface {
 	ListIssues(ctx context.Context, projectID uuid.UUID, query issuedomain.ListIssueQuery) (issuedomain.IssuePage, error)
 	CreateIssue(ctx context.Context, command issuedomain.CreateIssueCommand) (*issuedomain.Issue, error)
+	UpdateIssueStatus(ctx context.Context, issueID uuid.UUID, status issuedomain.Status) (*issuedomain.Issue, error)
 }
 
 // IssueHandler holds the issue service dependency.
@@ -116,7 +118,16 @@ func (h *Handler) UpdateIssueStatus(ctx context.Context, req model.UpdateIssueSt
 			BadRequestJSONResponse: newBadRequest("invalid_input", "status is required and must be a valid value"),
 		}, nil
 	}
-	return model.UpdateIssueStatus501JSONResponse{NotImplementedJSONResponse: model.NotImplementedJSONResponse(notImplemented())}, nil
+	issue, err := h.IssueHandler.service.UpdateIssueStatus(ctx, req.IssueId, issuedomain.Status(req.Body.Status))
+	if errors.Is(err, ErrIssueNotFound) {
+		return model.UpdateIssueStatus422JSONResponse{
+			UnprocessableEntityJSONResponse: newUnprocessable("not_found", "issue not found"),
+		}, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("update issue status: %w", err)
+	}
+	return model.UpdateIssueStatus200JSONResponse(issueFromDomain(*issue)), nil
 }
 
 func (h *Handler) UpdateIssuePriority(_ context.Context, _ model.UpdateIssuePriorityRequestObject) (model.UpdateIssuePriorityResponseObject, error) {

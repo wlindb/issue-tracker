@@ -2,6 +2,7 @@ package issue
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/google/uuid"
@@ -34,4 +35,9 @@ func (s *IssueService) CreateIssue(ctx context.Context, command CreateIssueComma
 		return nil, fmt.Errorf("create issue: %w", err)
 	}
 	return result, nil
+}
+
+// UpdateIssueStatus updates the status of the issue with the given ID.
+func (s *IssueService) UpdateIssueStatus(_ context.Context, _ uuid.UUID, _ Status) (*Issue, error) {
+	return nil, errors.New("not implemented")
 }
