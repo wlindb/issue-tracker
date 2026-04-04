@@ -38,7 +38,7 @@ jobs:
         run: go test -v -json -coverprofile=coverage.out ./... > test-results.json 2>&1
 
       - name: Publish test report
-        uses: dorny/test-reporter@v2
+        uses: dorny/test-reporter@v3
         if: always()
         with:
           name: Go Tests
@@ -78,10 +78,10 @@ jobs:
           cache-dependency-path: backend/go.sum
 
       - name: Run integration tests
-        run: make test-integration
+        run: make test-integration > test-integration-results.json
 
       - name: Publish integration test report
-        uses: dorny/test-reporter@v2
+        uses: dorny/test-reporter@v3
         if: always()
         with:
           name: Integration Tests
