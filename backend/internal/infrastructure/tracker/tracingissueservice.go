@@ -2,6 +2,7 @@ package tracker
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/google/uuid"
 	"go.opentelemetry.io/otel/codes"
@@ -63,7 +64,7 @@ func (s *TracingIssueService) UpdateIssueStatus(ctx context.Context, issueID uui
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
-		return nil, err
+		return nil, fmt.Errorf("tracker.IssueService.UpdateIssueStatus: %w", err)
 	}
 	return issue, nil
 }
