@@ -82,3 +82,15 @@ func (r *WorkspaceRepository) List(ctx context.Context, userID uuid.UUID) ([]wor
 	}
 	return workspacesToDomain(rows), nil
 }
+
+// IsMember reports whether userID is a member of workspaceID.
+func (r *WorkspaceRepository) IsMember(ctx context.Context, workspaceID uuid.UUID, userID uuid.UUID) (bool, error) {
+	member, err := r.queries.IsMember(ctx, trackerdb.IsMemberParams{
+		WorkspaceID: workspaceID,
+		UserID:      userID,
+	})
+	if err != nil {
+		return false, fmt.Errorf("check workspace membership: %w", err)
+	}
+	return member, nil
+}

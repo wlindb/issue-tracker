@@ -68,6 +68,25 @@ func (q *Queries) InsertWorkspaceMember(ctx context.Context, arg InsertWorkspace
 	return err
 }
 
+const isMember = `-- name: IsMember :one
+SELECT EXISTS(
+    SELECT 1 FROM workspace_members
+    WHERE workspace_id = $1 AND user_id = $2
+) AS is_member
+`
+
+type IsMemberParams struct {
+	WorkspaceID uuid.UUID
+	UserID      uuid.UUID
+}
+
+func (q *Queries) IsMember(ctx context.Context, arg IsMemberParams) (bool, error) {
+	row := q.db.QueryRow(ctx, isMember, arg.WorkspaceID, arg.UserID)
+	var is_member bool
+	err := row.Scan(&is_member)
+	return is_member, err
+}
+
 const listWorkspacesForUser = `-- name: ListWorkspacesForUser :many
 SELECT w.id, w.name, w.owner_id, w.created_at, w.updated_at FROM workspaces w
 JOIN workspace_members m ON m.workspace_id = w.id

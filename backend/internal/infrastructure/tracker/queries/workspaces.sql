@@ -10,6 +10,12 @@ VALUES (@workspace_id, @user_id);
 -- name: GetWorkspace :one
 SELECT * FROM workspaces WHERE id = @id;
 
+-- name: IsMember :one
+SELECT EXISTS(
+    SELECT 1 FROM workspace_members
+    WHERE workspace_id = @workspace_id AND user_id = @user_id
+) AS is_member;
+
 -- name: ListWorkspacesForUser :many
 SELECT w.* FROM workspaces w
 JOIN workspace_members m ON m.workspace_id = w.id

@@ -42,6 +42,11 @@ func (m *mockWorkspaceRepository) List(ctx context.Context, userID uuid.UUID) ([
 	return workspaces, args.Error(1)
 }
 
+func (m *mockWorkspaceRepository) IsMember(ctx context.Context, workspaceID uuid.UUID, userID uuid.UUID) (bool, error) {
+	args := m.Called(ctx, workspaceID, userID)
+	return args.Bool(0), args.Error(1)
+}
+
 func Test_Create_ValidName_ReturnsWorkspace(t *testing.T) {
 	repository := &mockWorkspaceRepository{}
 	ownerID := uuid.New()
@@ -144,6 +149,49 @@ func Test_List_ExistingUser_ReturnsWorkspaces(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Equal(t, expected, actual)
+	repository.AssertExpectations(t)
+}
+
+func Test_IsMember_MemberExists_ReturnsTrue(t *testing.T) {
+	repository := &mockWorkspaceRepository{}
+	workspaceID, userID := uuid.New(), uuid.New()
+
+	repository.On("IsMember", mock.Anything, workspaceID, userID).Return(true, nil)
+
+	service := workspace.NewWorkspaceService(repository)
+	actual, err := service.IsMember(context.Background(), workspaceID, userID)
+
+	require.NoError(t, err)
+	assert.True(t, actual)
+	repository.AssertExpectations(t)
+}
+
+func Test_IsMember_NotAMember_ReturnsFalse(t *testing.T) {
+	repository := &mockWorkspaceRepository{}
+	workspaceID, userID := uuid.New(), uuid.New()
+
+	repository.On("IsMember", mock.Anything, workspaceID, userID).Return(false, nil)
+
+	service := workspace.NewWorkspaceService(repository)
+	actual, err := service.IsMember(context.Background(), workspaceID, userID)
+
+	require.NoError(t, err)
+	assert.False(t, actual)
+	repository.AssertExpectations(t)
+}
+
+func Test_IsMember_RepositoryError_ReturnsWrappedError(t *testing.T) {
+	repository := &mockWorkspaceRepository{}
+	workspaceID, userID := uuid.New(), uuid.New()
+	repoErr := errors.New("db down")
+
+	repository.On("IsMember", mock.Anything, workspaceID, userID).Return(false, repoErr)
+
+	service := workspace.NewWorkspaceService(repository)
+	_, err := service.IsMember(context.Background(), workspaceID, userID)
+
+	require.Error(t, err)
+	assert.ErrorIs(t, err, repoErr)
 	repository.AssertExpectations(t)
 }
 

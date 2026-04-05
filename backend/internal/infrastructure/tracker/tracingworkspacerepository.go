@@ -62,3 +62,16 @@ func (r *TracingWorkspaceRepository) List(ctx context.Context, userID uuid.UUID)
 	}
 	return workspaces, nil
 }
+
+func (r *TracingWorkspaceRepository) IsMember(ctx context.Context, workspaceID uuid.UUID, userID uuid.UUID) (bool, error) {
+	ctx, span := r.tracer.Start(ctx, "tracker.WorkspaceRepository.IsMember")
+	defer span.End()
+
+	member, err := r.inner.IsMember(ctx, workspaceID, userID)
+	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+		return false, fmt.Errorf("check workspace membership: %w", err)
+	}
+	return member, nil
+}

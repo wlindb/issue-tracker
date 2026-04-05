@@ -30,4 +30,5 @@ type WorkspaceRepository interface {
 	Create(ctx context.Context, id uuid.UUID, ownerID uuid.UUID, name string) (*Workspace, error)
 	Get(ctx context.Context, id uuid.UUID) (*Workspace, error)
 	List(ctx context.Context, userID uuid.UUID) ([]Workspace, error)
+	IsMember(ctx context.Context, workspaceID uuid.UUID, userID uuid.UUID) (bool, error)
 }

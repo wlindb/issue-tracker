@@ -31,6 +31,7 @@ type Project struct {
 	Description pgtype.Text
 	CreatedAt   pgtype.Timestamptz
 	UpdatedAt   pgtype.Timestamptz
+	WorkspaceID uuid.UUID
 }
 
 type Workspace struct {

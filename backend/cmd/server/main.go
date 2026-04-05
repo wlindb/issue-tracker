@@ -15,6 +15,7 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/trace"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/wlindb/issue-tracker/internal/api"
@@ -56,7 +57,7 @@ func run() error {
 	}()
 	log.Println("telemetry initialised")
 
-	pool, err := db.New(ctx, cfg.DatabaseURL)
+	pool, err := db.New(ctx, cfg.DatabaseURL, withWorkspaceHooks)
 	if err != nil {
 		return fmt.Errorf("database: %w", err)
 	}
@@ -69,9 +70,13 @@ func run() error {
 	log.Println("tracker migrations applied")
 
 	tracer := otel.Tracer(cfg.OTELServiceName)
-	h := newHandler(pool, tracer)
 
-	e, err := newServer(h, cfg)
+	workspaceService := workspacedomain.NewWorkspaceService(
+		trackerinfra.NewTracingWorkspaceRepository(trackerinfra.NewWorkspaceRepository(pool), tracer),
+	)
+	h := newHandler(pool, tracer, workspaceService)
+
+	e, err := newServer(h, cfg, workspaceService)
 	if err != nil {
 		return fmt.Errorf("server: %w", err)
 	}
@@ -93,11 +98,25 @@ func run() error {
 	return nil
 }
 
-func newHandler(pool *pgxpool.Pool, tracer trace.Tracer) *api.Handler {
-	workspaceRepository := trackerinfra.NewTracingWorkspaceRepository(
-		trackerinfra.NewWorkspaceRepository(pool),
-		tracer,
-	)
+func withWorkspaceHooks(config *pgxpool.Config) {
+	config.PrepareConn = func(ctx context.Context, conn *pgx.Conn) (bool, error) {
+		workspaceID, ok := api.WorkspaceIDFromContext(ctx)
+		if !ok {
+			return true, nil
+		}
+		_, err := conn.Exec(ctx, "SELECT set_config('app.workspace_id', $1, false)", workspaceID.String())
+		if err != nil {
+			return false, fmt.Errorf("set workspace_id: %w", err)
+		}
+		return true, nil
+	}
+	config.AfterRelease = func(conn *pgx.Conn) bool {
+		_, err := conn.Exec(context.Background(), "SELECT set_config('app.workspace_id', '', false)")
+		return err == nil
+	}
+}
+
+func newHandler(pool *pgxpool.Pool, tracer trace.Tracer, workspaceService *workspacedomain.WorkspaceService) *api.Handler {
 	projectRepository := trackerinfra.NewTracingProjectRepository(
 		trackerinfra.NewProjectRepository(pool),
 		tracer,
@@ -107,9 +126,7 @@ func newHandler(pool *pgxpool.Pool, tracer trace.Tracer) *api.Handler {
 		tracer,
 	)
 	return &api.Handler{
-		WorkspaceHandler: api.NewWorkspaceHandler(
-			workspacedomain.NewWorkspaceService(workspaceRepository),
-		),
+		WorkspaceHandler: api.NewWorkspaceHandler(workspaceService),
 		ProjectHandler: api.NewProjectHandler(
 			trackerinfra.NewTracingProjectService(
 				trackerdomain.NewProjectService(projectRepository),
