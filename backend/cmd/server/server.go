@@ -15,7 +15,7 @@ import (
 	"github.com/wlindb/issue-tracker/internal/config"
 )
 
-func newServer(h *api.Handler, cfg *config.Config) (*echo.Echo, error) {
+func newServer(h *api.Handler, cfg *config.Config, workspaceChecker apimiddleware.WorkspaceMemberChecker) (*echo.Echo, error) {
 	logger := slog.New(slog.NewMultiHandler(
 		slog.NewJSONHandler(os.Stdout, nil),
 		otelslog.NewHandler(cfg.OTELServiceName),
@@ -30,7 +30,11 @@ func newServer(h *api.Handler, cfg *config.Config) (*echo.Echo, error) {
 
 	api.RegisterPublicRoutes(e)
 
-	protected := e.Group("", apimiddleware.JwtMiddleware(cfg.JWKSUrl), apimiddleware.UserIDMiddleware())
+	protected := e.Group("",
+		apimiddleware.JwtMiddleware(cfg.JWKSUrl),
+		apimiddleware.UserIDMiddleware(),
+		apimiddleware.WorkspaceMembershipMiddleware(workspaceChecker),
+	)
 	strict := model.NewStrictHandler(h, nil)
 	model.RegisterHandlersWithBaseURL(protected, strict, "/api/v1")
 

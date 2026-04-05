@@ -13,9 +13,9 @@ import (
 )
 
 const createIssue = `-- name: CreateIssue :one
-INSERT INTO issues (id, identifier, title, description, status, priority, labels, assignee_id, project_id, reporter_id, created_at, updated_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW())
-RETURNING id, identifier, title, description, status, priority, labels, assignee_id, project_id, reporter_id, created_at, updated_at
+INSERT INTO issues (id, identifier, title, description, status, priority, labels, assignee_id, project_id, reporter_id, workspace_id, created_at, updated_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, current_setting('app.workspace_id')::uuid, NOW(), NOW())
+RETURNING id, identifier, title, description, status, priority, labels, assignee_id, project_id, reporter_id, created_at, updated_at, workspace_id
 `
 
 type CreateIssueParams struct {
@@ -58,13 +58,15 @@ func (q *Queries) CreateIssue(ctx context.Context, arg CreateIssueParams) (Issue
 		&i.ReporterID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.WorkspaceID,
 	)
 	return i, err
 }
 
 const listIssues = `-- name: ListIssues :many
-SELECT id, identifier, title, description, status, priority, labels, assignee_id, project_id, reporter_id, created_at, updated_at FROM issues
+SELECT id, identifier, title, description, status, priority, labels, assignee_id, project_id, reporter_id, created_at, updated_at, workspace_id FROM issues
 WHERE project_id = $1
+  AND workspace_id = current_setting('app.workspace_id')::uuid
   AND ($2::text      IS NULL OR status      = $2)
   AND ($3::text    IS NULL OR priority    = $3)
   AND ($4::uuid IS NULL OR assignee_id = $4)
@@ -106,6 +108,7 @@ func (q *Queries) ListIssues(ctx context.Context, arg ListIssuesParams) ([]Issue
 			&i.ReporterID,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.WorkspaceID,
 		); err != nil {
 			return nil, err
 		}

@@ -1,12 +1,15 @@
 package api
 
 import (
+	"fmt"
+
 	"github.com/google/uuid"
 
 	"github.com/wlindb/issue-tracker/internal/api/model"
 	commentdomain "github.com/wlindb/issue-tracker/internal/domain/tracker/comment"
 	issuedomain "github.com/wlindb/issue-tracker/internal/domain/tracker/issue"
 	trackerdomain "github.com/wlindb/issue-tracker/internal/domain/tracker/project"
+	workspacedomain "github.com/wlindb/issue-tracker/internal/domain/tracker/workspace"
 )
 
 func projectFromDomain(domain trackerdomain.Project) model.Project {
@@ -24,6 +27,32 @@ func projectsFromDomain(domain []trackerdomain.Project) []model.Project {
 	items := make([]model.Project, len(domain))
 	for i, p := range domain {
 		items[i] = projectFromDomain(p)
+	}
+	return items
+}
+
+func workspaceToDomain(ownerID uuid.UUID, req model.CreateWorkspaceRequest) (workspacedomain.Workspace, error) {
+	workspace, err := workspacedomain.New(uuid.New(), req.Name, ownerID)
+	if err != nil {
+		return workspacedomain.Workspace{}, fmt.Errorf("workspace: %w", err)
+	}
+	return workspace, nil
+}
+
+func workspaceFromDomain(domain workspacedomain.Workspace) model.Workspace {
+	return model.Workspace{
+		Id:        domain.ID,
+		Name:      domain.Name,
+		OwnerId:   domain.OwnerID,
+		CreatedAt: domain.CreatedAt,
+		UpdatedAt: domain.UpdatedAt,
+	}
+}
+
+func workspacesFromDomain(domain []workspacedomain.Workspace) []model.Workspace {
+	items := make([]model.Workspace, len(domain))
+	for i, w := range domain {
+		items[i] = workspaceFromDomain(w)
 	}
 	return items
 }

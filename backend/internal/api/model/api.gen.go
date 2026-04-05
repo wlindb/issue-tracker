@@ -24,7 +24,8 @@ import (
 )
 
 const (
-	BearerAuthScopes = "bearerAuth.Scopes"
+	BearerAuthScopes  = "bearerAuth.Scopes"
+	WorkspaceIdScopes = "workspaceId.Scopes"
 )
 
 // Defines values for IssuePriority.
@@ -116,6 +117,11 @@ type CreateIssueRequest struct {
 type CreateProjectRequest struct {
 	Description *string `json:"description,omitempty"`
 	Name        string  `json:"name"`
+}
+
+// CreateWorkspaceRequest defines model for CreateWorkspaceRequest.
+type CreateWorkspaceRequest struct {
+	Name string `json:"name"`
 }
 
 // Error defines model for Error.
@@ -215,6 +221,21 @@ type User struct {
 	UpdatedAt time.Time `json:"updatedAt"`
 }
 
+// Workspace defines model for Workspace.
+type Workspace struct {
+	CreatedAt time.Time `json:"createdAt"`
+	Id        uuid.UUID `json:"id"`
+	Name      string    `json:"name"`
+	OwnerId   uuid.UUID `json:"ownerId"`
+	UpdatedAt time.Time `json:"updatedAt"`
+}
+
+// WorkspacePage defines model for WorkspacePage.
+type WorkspacePage struct {
+	Items      []Workspace `json:"items"`
+	NextCursor *string     `json:"nextCursor,omitempty"`
+}
+
 // CommentIdParam defines model for CommentIdParam.
 type CommentIdParam = uuid.UUID
 
@@ -229,6 +250,9 @@ type LimitParam = int
 
 // ProjectIdParam defines model for ProjectIdParam.
 type ProjectIdParam = uuid.UUID
+
+// WorkspaceIdParam defines model for WorkspaceIdParam.
+type WorkspaceIdParam = uuid.UUID
 
 // BadRequest defines model for BadRequest.
 type BadRequest = Error
@@ -303,6 +327,9 @@ type CreateProjectJSONRequestBody = CreateProjectRequest
 // UpdateProjectJSONRequestBody defines body for UpdateProject for application/json ContentType.
 type UpdateProjectJSONRequestBody = UpdateProjectRequest
 
+// CreateWorkspaceJSONRequestBody defines body for CreateWorkspace for application/json ContentType.
+type CreateWorkspaceJSONRequestBody = CreateWorkspaceRequest
+
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 	// Delete a comment.
@@ -362,6 +389,15 @@ type ServerInterface interface {
 	// Get the currently authenticated user.
 	// (GET /users/me)
 	GetMe(ctx echo.Context) error
+	// List workspaces the authenticated user belongs to.
+	// (GET /workspaces)
+	ListWorkspaces(ctx echo.Context) error
+	// Create a new workspace.
+	// (POST /workspaces)
+	CreateWorkspace(ctx echo.Context) error
+	// Get a single workspace by ID.
+	// (GET /workspaces/{workspaceId})
+	GetWorkspace(ctx echo.Context, workspaceId WorkspaceIdParam) error
 }
 
 // ServerInterfaceWrapper converts echo contexts to parameters.
@@ -382,6 +418,8 @@ func (w *ServerInterfaceWrapper) DeleteComment(ctx echo.Context) error {
 
 	ctx.Set(BearerAuthScopes, []string{})
 
+	ctx.Set(WorkspaceIdScopes, []string{})
+
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.DeleteComment(ctx, commentId)
 	return err
@@ -392,6 +430,8 @@ func (w *ServerInterfaceWrapper) ListIssues(ctx echo.Context) error {
 	var err error
 
 	ctx.Set(BearerAuthScopes, []string{})
+
+	ctx.Set(WorkspaceIdScopes, []string{})
 
 	// Parameter object where we will unmarshal all parameters from the context
 	var params ListIssuesParams
@@ -448,6 +488,8 @@ func (w *ServerInterfaceWrapper) CreateIssue(ctx echo.Context) error {
 
 	ctx.Set(BearerAuthScopes, []string{})
 
+	ctx.Set(WorkspaceIdScopes, []string{})
+
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.CreateIssue(ctx)
 	return err
@@ -458,6 +500,8 @@ func (w *ServerInterfaceWrapper) SearchIssues(ctx echo.Context) error {
 	var err error
 
 	ctx.Set(BearerAuthScopes, []string{})
+
+	ctx.Set(WorkspaceIdScopes, []string{})
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.SearchIssues(ctx)
@@ -477,6 +521,8 @@ func (w *ServerInterfaceWrapper) DeleteIssue(ctx echo.Context) error {
 
 	ctx.Set(BearerAuthScopes, []string{})
 
+	ctx.Set(WorkspaceIdScopes, []string{})
+
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.DeleteIssue(ctx, issueId)
 	return err
@@ -494,6 +540,8 @@ func (w *ServerInterfaceWrapper) GetIssue(ctx echo.Context) error {
 	}
 
 	ctx.Set(BearerAuthScopes, []string{})
+
+	ctx.Set(WorkspaceIdScopes, []string{})
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.GetIssue(ctx, issueId)
@@ -513,6 +561,8 @@ func (w *ServerInterfaceWrapper) UpdateIssueAssignee(ctx echo.Context) error {
 
 	ctx.Set(BearerAuthScopes, []string{})
 
+	ctx.Set(WorkspaceIdScopes, []string{})
+
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.UpdateIssueAssignee(ctx, issueId)
 	return err
@@ -530,6 +580,8 @@ func (w *ServerInterfaceWrapper) ListComments(ctx echo.Context) error {
 	}
 
 	ctx.Set(BearerAuthScopes, []string{})
+
+	ctx.Set(WorkspaceIdScopes, []string{})
 
 	// Parameter object where we will unmarshal all parameters from the context
 	var params ListCommentsParams
@@ -565,6 +617,8 @@ func (w *ServerInterfaceWrapper) CreateComment(ctx echo.Context) error {
 
 	ctx.Set(BearerAuthScopes, []string{})
 
+	ctx.Set(WorkspaceIdScopes, []string{})
+
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.CreateComment(ctx, issueId)
 	return err
@@ -582,6 +636,8 @@ func (w *ServerInterfaceWrapper) UpdateIssueDescription(ctx echo.Context) error 
 	}
 
 	ctx.Set(BearerAuthScopes, []string{})
+
+	ctx.Set(WorkspaceIdScopes, []string{})
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.UpdateIssueDescription(ctx, issueId)
@@ -601,6 +657,8 @@ func (w *ServerInterfaceWrapper) UpdateIssuePriority(ctx echo.Context) error {
 
 	ctx.Set(BearerAuthScopes, []string{})
 
+	ctx.Set(WorkspaceIdScopes, []string{})
+
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.UpdateIssuePriority(ctx, issueId)
 	return err
@@ -618,6 +676,8 @@ func (w *ServerInterfaceWrapper) UpdateIssueStatus(ctx echo.Context) error {
 	}
 
 	ctx.Set(BearerAuthScopes, []string{})
+
+	ctx.Set(WorkspaceIdScopes, []string{})
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.UpdateIssueStatus(ctx, issueId)
@@ -637,6 +697,8 @@ func (w *ServerInterfaceWrapper) UpdateIssueTitle(ctx echo.Context) error {
 
 	ctx.Set(BearerAuthScopes, []string{})
 
+	ctx.Set(WorkspaceIdScopes, []string{})
+
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.UpdateIssueTitle(ctx, issueId)
 	return err
@@ -647,6 +709,8 @@ func (w *ServerInterfaceWrapper) ListProjects(ctx echo.Context) error {
 	var err error
 
 	ctx.Set(BearerAuthScopes, []string{})
+
+	ctx.Set(WorkspaceIdScopes, []string{})
 
 	// Parameter object where we will unmarshal all parameters from the context
 	var params ListProjectsParams
@@ -675,6 +739,8 @@ func (w *ServerInterfaceWrapper) CreateProject(ctx echo.Context) error {
 
 	ctx.Set(BearerAuthScopes, []string{})
 
+	ctx.Set(WorkspaceIdScopes, []string{})
+
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.CreateProject(ctx)
 	return err
@@ -692,6 +758,8 @@ func (w *ServerInterfaceWrapper) DeleteProject(ctx echo.Context) error {
 	}
 
 	ctx.Set(BearerAuthScopes, []string{})
+
+	ctx.Set(WorkspaceIdScopes, []string{})
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.DeleteProject(ctx, projectId)
@@ -711,6 +779,8 @@ func (w *ServerInterfaceWrapper) GetProject(ctx echo.Context) error {
 
 	ctx.Set(BearerAuthScopes, []string{})
 
+	ctx.Set(WorkspaceIdScopes, []string{})
+
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.GetProject(ctx, projectId)
 	return err
@@ -729,6 +799,8 @@ func (w *ServerInterfaceWrapper) UpdateProject(ctx echo.Context) error {
 
 	ctx.Set(BearerAuthScopes, []string{})
 
+	ctx.Set(WorkspaceIdScopes, []string{})
+
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.UpdateProject(ctx, projectId)
 	return err
@@ -740,8 +812,50 @@ func (w *ServerInterfaceWrapper) GetMe(ctx echo.Context) error {
 
 	ctx.Set(BearerAuthScopes, []string{})
 
+	ctx.Set(WorkspaceIdScopes, []string{})
+
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.GetMe(ctx)
+	return err
+}
+
+// ListWorkspaces converts echo context to params.
+func (w *ServerInterfaceWrapper) ListWorkspaces(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(BearerAuthScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.ListWorkspaces(ctx)
+	return err
+}
+
+// CreateWorkspace converts echo context to params.
+func (w *ServerInterfaceWrapper) CreateWorkspace(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(BearerAuthScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.CreateWorkspace(ctx)
+	return err
+}
+
+// GetWorkspace converts echo context to params.
+func (w *ServerInterfaceWrapper) GetWorkspace(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", ctx.Param("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter workspaceId: %s", err))
+	}
+
+	ctx.Set(BearerAuthScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetWorkspace(ctx, workspaceId)
 	return err
 }
 
@@ -792,6 +906,9 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 	router.GET(baseURL+"/projects/:projectId", wrapper.GetProject)
 	router.PUT(baseURL+"/projects/:projectId", wrapper.UpdateProject)
 	router.GET(baseURL+"/users/me", wrapper.GetMe)
+	router.GET(baseURL+"/workspaces", wrapper.ListWorkspaces)
+	router.POST(baseURL+"/workspaces", wrapper.CreateWorkspace)
+	router.GET(baseURL+"/workspaces/:workspaceId", wrapper.GetWorkspace)
 
 }
 
@@ -1906,6 +2023,134 @@ func (response GetMe500JSONResponse) VisitGetMeResponse(w http.ResponseWriter) e
 	return json.NewEncoder(w).Encode(response)
 }
 
+type ListWorkspacesRequestObject struct {
+}
+
+type ListWorkspacesResponseObject interface {
+	VisitListWorkspacesResponse(w http.ResponseWriter) error
+}
+
+type ListWorkspaces200JSONResponse WorkspacePage
+
+func (response ListWorkspaces200JSONResponse) VisitListWorkspacesResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListWorkspaces401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response ListWorkspaces401JSONResponse) VisitListWorkspacesResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListWorkspaces500JSONResponse struct {
+	InternalServerErrorJSONResponse
+}
+
+func (response ListWorkspaces500JSONResponse) VisitListWorkspacesResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateWorkspaceRequestObject struct {
+	Body *CreateWorkspaceJSONRequestBody
+}
+
+type CreateWorkspaceResponseObject interface {
+	VisitCreateWorkspaceResponse(w http.ResponseWriter) error
+}
+
+type CreateWorkspace201JSONResponse Workspace
+
+func (response CreateWorkspace201JSONResponse) VisitCreateWorkspaceResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(201)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateWorkspace400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response CreateWorkspace400JSONResponse) VisitCreateWorkspaceResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateWorkspace401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response CreateWorkspace401JSONResponse) VisitCreateWorkspaceResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateWorkspace500JSONResponse struct {
+	InternalServerErrorJSONResponse
+}
+
+func (response CreateWorkspace500JSONResponse) VisitCreateWorkspaceResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetWorkspaceRequestObject struct {
+	WorkspaceId WorkspaceIdParam `json:"workspaceId"`
+}
+
+type GetWorkspaceResponseObject interface {
+	VisitGetWorkspaceResponse(w http.ResponseWriter) error
+}
+
+type GetWorkspace200JSONResponse Workspace
+
+func (response GetWorkspace200JSONResponse) VisitGetWorkspaceResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetWorkspace401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response GetWorkspace401JSONResponse) VisitGetWorkspaceResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetWorkspace404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response GetWorkspace404JSONResponse) VisitGetWorkspaceResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetWorkspace500JSONResponse struct {
+	InternalServerErrorJSONResponse
+}
+
+func (response GetWorkspace500JSONResponse) VisitGetWorkspaceResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
 	// Delete a comment.
@@ -1965,6 +2210,15 @@ type StrictServerInterface interface {
 	// Get the currently authenticated user.
 	// (GET /users/me)
 	GetMe(ctx context.Context, request GetMeRequestObject) (GetMeResponseObject, error)
+	// List workspaces the authenticated user belongs to.
+	// (GET /workspaces)
+	ListWorkspaces(ctx context.Context, request ListWorkspacesRequestObject) (ListWorkspacesResponseObject, error)
+	// Create a new workspace.
+	// (POST /workspaces)
+	CreateWorkspace(ctx context.Context, request CreateWorkspaceRequestObject) (CreateWorkspaceResponseObject, error)
+	// Get a single workspace by ID.
+	// (GET /workspaces/{workspaceId})
+	GetWorkspace(ctx context.Context, request GetWorkspaceRequestObject) (GetWorkspaceResponseObject, error)
 }
 
 type StrictHandlerFunc = strictecho.StrictEchoHandlerFunc
@@ -2507,46 +2761,127 @@ func (sh *strictHandler) GetMe(ctx echo.Context) error {
 	return nil
 }
 
+// ListWorkspaces operation middleware
+func (sh *strictHandler) ListWorkspaces(ctx echo.Context) error {
+	var request ListWorkspacesRequestObject
+
+	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.ListWorkspaces(ctx.Request().Context(), request.(ListWorkspacesRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListWorkspaces")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(ListWorkspacesResponseObject); ok {
+		return validResponse.VisitListWorkspacesResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
+}
+
+// CreateWorkspace operation middleware
+func (sh *strictHandler) CreateWorkspace(ctx echo.Context) error {
+	var request CreateWorkspaceRequestObject
+
+	var body CreateWorkspaceJSONRequestBody
+	if err := ctx.Bind(&body); err != nil {
+		return err
+	}
+	request.Body = &body
+
+	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.CreateWorkspace(ctx.Request().Context(), request.(CreateWorkspaceRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CreateWorkspace")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(CreateWorkspaceResponseObject); ok {
+		return validResponse.VisitCreateWorkspaceResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
+}
+
+// GetWorkspace operation middleware
+func (sh *strictHandler) GetWorkspace(ctx echo.Context, workspaceId WorkspaceIdParam) error {
+	var request GetWorkspaceRequestObject
+
+	request.WorkspaceId = workspaceId
+
+	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.GetWorkspace(ctx.Request().Context(), request.(GetWorkspaceRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetWorkspace")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(GetWorkspaceResponseObject); ok {
+		return validResponse.VisitGetWorkspaceResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
+}
+
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
+	"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",
+	"4+9Xer6/AgAA//8E86UWEFQAAA==",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

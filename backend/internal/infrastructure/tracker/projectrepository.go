@@ -41,7 +41,7 @@ func (r *ProjectRepository) Create(ctx context.Context, id, ownerID uuid.UUID, n
 	if err != nil {
 		return nil, fmt.Errorf("create project: %w", err)
 	}
-	return rowToProject(row), nil
+	return projectToDomain(row), nil
 }
 
 // List returns up to query.Limit projects ordered by created_at descending.
@@ -54,5 +54,5 @@ func (r *ProjectRepository) List(ctx context.Context, query projectdomain.ListPr
 	if err != nil {
 		return projectdomain.Projects{}, fmt.Errorf("list projects: %w", err)
 	}
-	return projectdomain.Projects{Items: rowsToProjects(rows)}, nil
+	return projectdomain.Projects{Items: projectsToDomain(rows)}, nil
 }
