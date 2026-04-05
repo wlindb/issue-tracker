@@ -22,6 +22,20 @@ import (
 	tracker "github.com/wlindb/issue-tracker/internal/infrastructure/tracker"
 )
 
+type testContextKey string
+
+const (
+	testWorkspaceIDKey testContextKey = "workspace_id"
+	testUserIDKey      testContextKey = "user_id"
+)
+
+func withWorkspaceContext(workspaceID uuid.UUID, userID uuid.UUID) context.Context {
+	ctx := context.Background()
+	ctx = context.WithValue(ctx, testWorkspaceIDKey, workspaceID)
+	ctx = context.WithValue(ctx, testUserIDKey, userID)
+	return ctx
+}
+
 var testPool *pgxpool.Pool
 
 func TestMain(m *testing.M) {
@@ -69,7 +83,22 @@ func startPostgres(ctx context.Context) (*pgxpool.Pool, func(), error) {
 		return nil, nil, errors.Join(fmt.Errorf("host: %w", err), c.Terminate(ctx))
 	}
 	dsn := fmt.Sprintf("postgres://test:test@%s:%s/test", host, port.Port())
-	pool, err := infradb.New(ctx, dsn)
+	pool, err := infradb.New(ctx, dsn, infradb.WithAppSessionVars(
+		func(ctx context.Context) (string, bool) {
+			id, ok := ctx.Value(testWorkspaceIDKey).(uuid.UUID)
+			if !ok || id == uuid.Nil {
+				return "", false
+			}
+			return id.String(), true
+		},
+		func(ctx context.Context) (string, bool) {
+			id, ok := ctx.Value(testUserIDKey).(uuid.UUID)
+			if !ok || id == uuid.Nil {
+				return "", false
+			}
+			return id.String(), true
+		},
+	))
 	if err != nil {
 		return nil, nil, errors.Join(fmt.Errorf("connect: %w", err), c.Terminate(ctx))
 	}
@@ -81,11 +110,31 @@ func startPostgres(ctx context.Context) (*pgxpool.Pool, func(), error) {
 	}, nil
 }
 
+func createTestWorkspace(t *testing.T) (uuid.UUID, context.Context) {
+	t.Helper()
+	workspaceRepository := tracker.NewWorkspaceRepository(testPool)
+	workspaceID := uuid.New()
+	ownerID := uuid.New()
+	_, err := workspaceRepository.Create(context.Background(), workspaceID, ownerID, "Test Workspace")
+	require.NoError(t, err)
+	return workspaceID, withWorkspaceContext(workspaceID, ownerID)
+}
+
+func createTestProject(t *testing.T, ctx context.Context) uuid.UUID {
+	t.Helper()
+	repository := tracker.NewProjectRepository(testPool)
+	id := uuid.New()
+	_, err := repository.Create(ctx, id, uuid.New(), "TestProject-"+id.String()[:8], nil)
+	require.NoError(t, err)
+	return id
+}
+
 func Test_Create_NoDescription_SuccessfulProjectCreation(t *testing.T) {
 	repository := tracker.NewProjectRepository(testPool)
+	_, ctx := createTestWorkspace(t)
 	id, ownerID := uuid.New(), uuid.New()
 
-	actual, err := repository.Create(context.Background(), id, ownerID, "Acme", nil)
+	actual, err := repository.Create(ctx, id, ownerID, "Acme", nil)
 
 	require.NoError(t, err)
 	require.NotNil(t, actual)
@@ -99,9 +148,10 @@ func Test_Create_NoDescription_SuccessfulProjectCreation(t *testing.T) {
 
 func Test_Create_WithDescription_SuccessfulProjectCreation(t *testing.T) {
 	repository := tracker.NewProjectRepository(testPool)
+	_, ctx := createTestWorkspace(t)
 	description := "My description"
 
-	actual, err := repository.Create(context.Background(), uuid.New(), uuid.New(), "Described", &description)
+	actual, err := repository.Create(ctx, uuid.New(), uuid.New(), "Described", &description)
 
 	require.NoError(t, err)
 	require.NotNil(t, actual.Description)
@@ -110,7 +160,7 @@ func Test_Create_WithDescription_SuccessfulProjectCreation(t *testing.T) {
 
 func Test_Create_DuplicateID_ReturnsError(t *testing.T) {
 	repository := tracker.NewProjectRepository(testPool)
-	ctx := context.Background()
+	_, ctx := createTestWorkspace(t)
 	id := uuid.New()
 
 	_, err := repository.Create(ctx, id, uuid.New(), "First", nil)
@@ -122,7 +172,7 @@ func Test_Create_DuplicateID_ReturnsError(t *testing.T) {
 
 func Test_List_WithLimit_ReturnsLimitedProjects(t *testing.T) {
 	repository := tracker.NewProjectRepository(testPool)
-	ctx := context.Background()
+	_, ctx := createTestWorkspace(t)
 
 	for i := 0; i < 3; i++ {
 		_, err := repository.Create(ctx, uuid.New(), uuid.New(), "LimitTest", nil)
@@ -139,7 +189,7 @@ func Test_List_WithLimit_ReturnsLimitedProjects(t *testing.T) {
 
 func Test_List_LimitExceedsTotal_ReturnsAllProjects(t *testing.T) {
 	repository := tracker.NewProjectRepository(testPool)
-	ctx := context.Background()
+	_, ctx := createTestWorkspace(t)
 
 	id1, id2 := uuid.New(), uuid.New()
 	_, err := repository.Create(ctx, id1, uuid.New(), "ExceedA", nil)
@@ -160,23 +210,12 @@ func Test_List_LimitExceedsTotal_ReturnsAllProjects(t *testing.T) {
 	assert.Contains(t, ids, id2)
 }
 
-// — Issue integration helpers —
-
-func createTestProject(t *testing.T) uuid.UUID {
-	t.Helper()
-	repo := tracker.NewProjectRepository(testPool)
-	id := uuid.New()
-	_, err := repo.Create(context.Background(), id, uuid.New(), "TestProject-"+id.String()[:8], nil)
-	require.NoError(t, err)
-	return id
-}
-
 // — CreateIssue full-flow integration tests —
 
 func Test_CreateIssue_FromCommand_HasEmptyLabels(t *testing.T) {
 	repository := tracker.NewIssueRepository(testPool)
-	projectID := createTestProject(t)
-	ctx := context.Background()
+	_, ctx := createTestWorkspace(t)
+	projectID := createTestProject(t, ctx)
 
 	command := issuedomain.CreateIssueCommand{
 		ProjectID:  projectID,
@@ -201,8 +240,8 @@ func Test_CreateIssue_FromCommand_HasEmptyLabels(t *testing.T) {
 
 func Test_CreateIssue_NoOptionalFields_SuccessfulCreation(t *testing.T) {
 	repository := tracker.NewIssueRepository(testPool)
-	projectID := createTestProject(t)
-	ctx := context.Background()
+	_, ctx := createTestWorkspace(t)
+	projectID := createTestProject(t, ctx)
 
 	issue := issuedomain.Issue{
 		ID:         uuid.New(),
@@ -235,8 +274,8 @@ func Test_CreateIssue_NoOptionalFields_SuccessfulCreation(t *testing.T) {
 
 func Test_CreateIssue_WithOptionalFields_SuccessfulCreation(t *testing.T) {
 	repository := tracker.NewIssueRepository(testPool)
-	projectID := createTestProject(t)
-	ctx := context.Background()
+	_, ctx := createTestWorkspace(t)
+	projectID := createTestProject(t, ctx)
 
 	description := "detailed description"
 	assigneeID := uuid.New()
@@ -268,8 +307,8 @@ func Test_CreateIssue_WithOptionalFields_SuccessfulCreation(t *testing.T) {
 
 func Test_CreateIssue_DuplicateID_ReturnsError(t *testing.T) {
 	repository := tracker.NewIssueRepository(testPool)
-	projectID := createTestProject(t)
-	ctx := context.Background()
+	_, ctx := createTestWorkspace(t)
+	projectID := createTestProject(t, ctx)
 
 	issueID := uuid.New()
 	issue := issuedomain.Issue{
@@ -292,8 +331,8 @@ func Test_CreateIssue_DuplicateID_ReturnsError(t *testing.T) {
 
 func Test_CreateIssue_DuplicateIdentifierSameProject_ReturnsError(t *testing.T) {
 	repository := tracker.NewIssueRepository(testPool)
-	projectID := createTestProject(t)
-	ctx := context.Background()
+	_, ctx := createTestWorkspace(t)
+	projectID := createTestProject(t, ctx)
 
 	identifier := "dup-ident-" + uuid.New().String()[:8]
 	issue := issuedomain.Issue{
@@ -316,9 +355,9 @@ func Test_CreateIssue_DuplicateIdentifierSameProject_ReturnsError(t *testing.T) 
 
 func Test_CreateIssue_DuplicateIdentifierDifferentProject_Succeeds(t *testing.T) {
 	repository := tracker.NewIssueRepository(testPool)
-	projectA := createTestProject(t)
-	projectB := createTestProject(t)
-	ctx := context.Background()
+	_, ctx := createTestWorkspace(t)
+	projectA := createTestProject(t, ctx)
+	projectB := createTestProject(t, ctx)
 
 	identifier := "cross-proj-" + uuid.New().String()[:8]
 	issueA := issuedomain.Issue{
@@ -371,8 +410,8 @@ func Test_CreateIssue_InvalidProjectID_ReturnsError(t *testing.T) {
 
 func Test_ListIssues_EmptyProject_ReturnsEmptyPage(t *testing.T) {
 	repository := tracker.NewIssueRepository(testPool)
-	projectID := createTestProject(t)
-	ctx := context.Background()
+	_, ctx := createTestWorkspace(t)
+	projectID := createTestProject(t, ctx)
 
 	query := issuedomain.ListIssueQuery{}
 	actual, err := repository.ListIssues(ctx, projectID, query)
@@ -383,8 +422,8 @@ func Test_ListIssues_EmptyProject_ReturnsEmptyPage(t *testing.T) {
 
 func Test_ListIssues_WithIssues_ReturnsAllIssues(t *testing.T) {
 	repository := tracker.NewIssueRepository(testPool)
-	projectID := createTestProject(t)
-	ctx := context.Background()
+	_, ctx := createTestWorkspace(t)
+	projectID := createTestProject(t, ctx)
 
 	for idx := 0; idx < 3; idx++ {
 		_, err := repository.CreateIssue(ctx, issuedomain.Issue{
@@ -409,8 +448,8 @@ func Test_ListIssues_WithIssues_ReturnsAllIssues(t *testing.T) {
 
 func Test_ListIssues_FilterByStatus_ReturnsFilteredIssues(t *testing.T) {
 	repository := tracker.NewIssueRepository(testPool)
-	projectID := createTestProject(t)
-	ctx := context.Background()
+	_, ctx := createTestWorkspace(t)
+	projectID := createTestProject(t, ctx)
 
 	statuses := []issuedomain.Status{issuedomain.StatusBacklog, issuedomain.StatusTodo, issuedomain.StatusBacklog}
 	for idx, status := range statuses {
@@ -440,8 +479,8 @@ func Test_ListIssues_FilterByStatus_ReturnsFilteredIssues(t *testing.T) {
 
 func Test_ListIssues_FilterByPriority_ReturnsFilteredIssues(t *testing.T) {
 	repository := tracker.NewIssueRepository(testPool)
-	projectID := createTestProject(t)
-	ctx := context.Background()
+	_, ctx := createTestWorkspace(t)
+	projectID := createTestProject(t, ctx)
 
 	priorities := []issuedomain.Priority{issuedomain.PriorityHigh, issuedomain.PriorityLow, issuedomain.PriorityHigh}
 	for idx, priority := range priorities {
@@ -471,8 +510,8 @@ func Test_ListIssues_FilterByPriority_ReturnsFilteredIssues(t *testing.T) {
 
 func Test_ListIssues_FilterByAssignee_ReturnsFilteredIssues(t *testing.T) {
 	repository := tracker.NewIssueRepository(testPool)
-	projectID := createTestProject(t)
-	ctx := context.Background()
+	_, ctx := createTestWorkspace(t)
+	projectID := createTestProject(t, ctx)
 
 	assigneeID := uuid.New()
 	otherID := uuid.New()
@@ -505,9 +544,9 @@ func Test_ListIssues_FilterByAssignee_ReturnsFilteredIssues(t *testing.T) {
 
 func Test_ListIssues_IsolatesByProject_ReturnsOnlyProjectIssues(t *testing.T) {
 	repository := tracker.NewIssueRepository(testPool)
-	projectA := createTestProject(t)
-	projectB := createTestProject(t)
-	ctx := context.Background()
+	_, ctx := createTestWorkspace(t)
+	projectA := createTestProject(t, ctx)
+	projectB := createTestProject(t, ctx)
 
 	_, err := repository.CreateIssue(ctx, issuedomain.Issue{
 		ID:         uuid.New(),
