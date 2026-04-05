@@ -13,9 +13,9 @@ import (
 )
 
 const createProject = `-- name: CreateProject :one
-INSERT INTO projects (id, owner_id, name, description, created_at, updated_at)
-VALUES ($1, $2, $3, $4, NOW(), NOW())
-RETURNING id, owner_id, name, description, created_at, updated_at
+INSERT INTO projects (id, owner_id, name, description, workspace_id, created_at, updated_at)
+VALUES ($1, $2, $3, $4, current_setting('app.workspace_id')::uuid, NOW(), NOW())
+RETURNING id, owner_id, name, description, created_at, updated_at, workspace_id
 `
 
 type CreateProjectParams struct {
@@ -40,12 +40,34 @@ func (q *Queries) CreateProject(ctx context.Context, arg CreateProjectParams) (P
 		&i.Description,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.WorkspaceID,
+	)
+	return i, err
+}
+
+const getProject = `-- name: GetProject :one
+SELECT id, owner_id, name, description, created_at, updated_at, workspace_id FROM projects
+WHERE id = $1 AND workspace_id = current_setting('app.workspace_id')::uuid
+`
+
+func (q *Queries) GetProject(ctx context.Context, id uuid.UUID) (Project, error) {
+	row := q.db.QueryRow(ctx, getProject, id)
+	var i Project
+	err := row.Scan(
+		&i.ID,
+		&i.OwnerID,
+		&i.Name,
+		&i.Description,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.WorkspaceID,
 	)
 	return i, err
 }
 
 const listProjects = `-- name: ListProjects :many
-SELECT id, owner_id, name, description, created_at, updated_at FROM projects
+SELECT id, owner_id, name, description, created_at, updated_at, workspace_id FROM projects
+WHERE workspace_id = current_setting('app.workspace_id')::uuid
 ORDER BY created_at DESC
 LIMIT $1::int4
 `
@@ -66,6 +88,7 @@ func (q *Queries) ListProjects(ctx context.Context, projectLimit int32) ([]Proje
 			&i.Description,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.WorkspaceID,
 		); err != nil {
 			return nil, err
 		}

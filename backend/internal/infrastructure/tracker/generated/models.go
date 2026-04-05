@@ -31,4 +31,19 @@ type Project struct {
 	Description pgtype.Text
 	CreatedAt   pgtype.Timestamptz
 	UpdatedAt   pgtype.Timestamptz
+	WorkspaceID uuid.UUID
+}
+
+type Workspace struct {
+	ID        uuid.UUID
+	Name      string
+	OwnerID   uuid.UUID
+	CreatedAt pgtype.Timestamptz
+	UpdatedAt pgtype.Timestamptz
+}
+
+type WorkspaceMember struct {
+	WorkspaceID uuid.UUID
+	UserID      uuid.UUID
+	CreatedAt   pgtype.Timestamptz
 }

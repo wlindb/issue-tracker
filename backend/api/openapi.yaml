@@ -132,7 +132,34 @@ components:
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
 
+    Workspace:
+      type: object
+      required: [id, name, ownerId, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+          x-go-type: uuid.UUID
+          x-go-type-import:
+            path: github.com/google/uuid
+        name: { type: string }
+        ownerId:
+          type: string
+          format: uuid
+          x-go-type: uuid.UUID
+          x-go-type-import:
+            path: github.com/google/uuid
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
     # Pagination — oapi-codegen has no generics support; spell out each page type
+    WorkspacePage:
+      type: object
+      required: [items]
+      properties:
+        items:      { type: array, items: { $ref: "#/components/schemas/Workspace" } }
+        nextCursor: { type: string, nullable: true }
+
     ProjectPage:
       type: object
       required: [items]
@@ -162,6 +189,12 @@ components:
         message: { type: string }
 
     # ── Request bodies ──────────────────────────────────────────────────────
+    CreateWorkspaceRequest:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string }
+
     CreateProjectRequest:
       type: object
       required: [name]
@@ -247,6 +280,17 @@ components:
         body: { type: string, minLength: 1 }
 
   parameters:
+    WorkspaceIdParam:
+      name: workspaceId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+        x-go-type: uuid.UUID
+        x-go-type-import:
+          path: github.com/google/uuid
+
     ProjectIdParam:
       name: projectId
       in: path
@@ -330,6 +374,57 @@ components:
           schema: { $ref: "#/components/schemas/Error" }
 
 paths:
+
+  /workspaces:
+    get:
+      operationId: listWorkspaces
+      summary: List workspaces the authenticated user belongs to.
+      tags: [workspaces]
+      responses:
+        "200":
+          description: List of workspaces.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WorkspacePage" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "500": { $ref: "#/components/responses/InternalServerError" }
+
+    post:
+      operationId: createWorkspace
+      summary: Create a new workspace.
+      tags: [workspaces]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateWorkspaceRequest" }
+      responses:
+        "201":
+          description: Workspace created.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Workspace" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "500": { $ref: "#/components/responses/InternalServerError" }
+
+  /workspaces/{workspaceId}:
+    parameters:
+      - { $ref: "#/components/parameters/WorkspaceIdParam" }
+
+    get:
+      operationId: getWorkspace
+      summary: Get a single workspace by ID.
+      tags: [workspaces]
+      responses:
+        "200":
+          description: Workspace details.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Workspace" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "500": { $ref: "#/components/responses/InternalServerError" }
 
   /users/me:
     get:
