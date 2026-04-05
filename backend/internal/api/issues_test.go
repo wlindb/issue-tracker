@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -326,6 +327,7 @@ func Test_CreateIssue_InvalidProjectID_Returns422(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/issues", strings.NewReader(body))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
 
 	require.Equal(t, http.StatusUnprocessableEntity, rec.Code)
 	service.AssertExpectations(t)
@@ -578,8 +580,6 @@ func Test_UpdateIssueStatus_ServiceError_Returns500(t *testing.T) {
 
 	body := `{"status":"in_progress"}`
 	req := httptest.NewRequest(http.MethodPut, "/api/v1/issues/"+issueID.String()+"/status", strings.NewReader(body))
-	body := `{"description":"updated description"}`
-	req := httptest.NewRequest(http.MethodPut, "/api/v1/issues/"+issueID.String()+"/description", strings.NewReader(body))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
@@ -609,27 +609,28 @@ func Test_UpdateIssueDescription_NoUserID_Returns401(t *testing.T) {
 func Test_UpdateIssueDescription_ValidRequest_Returns200(t *testing.T) {
 	service := &mockIssueService{}
 	issueID := uuid.New()
-	desc := "updated description"
+	description := "updated description"
 	now := time.Now().UTC()
 
-	service.On("UpdateIssueDescription", mock.Anything, issueID, &desc).
+	service.On("UpdateIssueDescription", mock.Anything, issueID, &description).
 		Return(&issuedomain.Issue{
-			ID:         issueID,
-			Identifier: "PROJ-1",
-			Title:      "Some issue",
-			Status:     issuedomain.StatusTodo,
-			Priority:   issuedomain.PriorityNone,
-			Labels:     []string{},
-			ProjectID:  uuid.New(),
-			ReporterID: uuid.New(),
-			CreatedAt:  now,
-			UpdatedAt:  now,
+			ID:          issueID,
+			Identifier:  "PROJ-1",
+			Title:       "Some issue",
+			Description: &description,
+			Status:      issuedomain.StatusTodo,
+			Priority:    issuedomain.PriorityNone,
+			Labels:      []string{},
+			ProjectID:   uuid.New(),
+			ReporterID:  uuid.New(),
+			CreatedAt:   now,
+			UpdatedAt:   now,
 		}, nil)
 
 	e := newIssueTestServer(t, service)
 	e.Use(injectUser(uuid.New()))
 
-	body := `{"description":"updated description"}`
+	body := fmt.Sprintf(`{"description":"%s"}`, description)
 	req := httptest.NewRequest(http.MethodPut, "/api/v1/issues/"+issueID.String()+"/description", strings.NewReader(body))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	rec := httptest.NewRecorder()
@@ -638,7 +639,7 @@ func Test_UpdateIssueDescription_ValidRequest_Returns200(t *testing.T) {
 	require.Equal(t, http.StatusOK, rec.Code)
 	var actual model.Issue
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &actual))
-	assert.Equal(t, model.InProgress, actual.Status)
+	assert.Equal(t, description, *actual.Description)
 	service.AssertExpectations(t)
 }
 
@@ -670,7 +671,7 @@ func Test_UpdateIssueDescription_NullDescription_Returns200(t *testing.T) {
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 
-	require.Equal(t, http.StatusBadRequest, rec.Code)
+	require.Equal(t, http.StatusOK, rec.Code)
 	service.AssertExpectations(t)
 }
 
@@ -704,8 +705,6 @@ func Test_UpdateIssueDescription_ServiceError_Returns500(t *testing.T) {
 	e := newIssueTestServer(t, service)
 	e.Use(injectUser(uuid.New()))
 
-	body := `{"status":"in_progress"}`
-	req := httptest.NewRequest(http.MethodPut, "/api/v1/issues/"+issueID.String()+"/status", strings.NewReader(body))
 	body := `{"description":"updated description"}`
 	req := httptest.NewRequest(http.MethodPut, "/api/v1/issues/"+issueID.String()+"/description", strings.NewReader(body))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
