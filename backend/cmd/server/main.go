@@ -57,6 +57,7 @@ func run() error {
 	log.Println("telemetry initialised")
 
 	pool, err := db.New(ctx, cfg.DatabaseURL, db.WithAppSessionVars(
+		// TODO: Fix signatures of these funcs to be streamlined with middleware extractor
 		func(ctx context.Context) (string, bool) {
 			id, ok := api.WorkspaceIDFromContext(ctx)
 			return id.String(), ok
