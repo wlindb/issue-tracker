@@ -6,10 +6,11 @@ import (
 
 	issuedomain "github.com/wlindb/issue-tracker/internal/domain/tracker/issue"
 	projectdomain "github.com/wlindb/issue-tracker/internal/domain/tracker/project"
+	workspacedomain "github.com/wlindb/issue-tracker/internal/domain/tracker/workspace"
 	trackerdb "github.com/wlindb/issue-tracker/internal/infrastructure/tracker/generated"
 )
 
-func rowToProject(row trackerdb.Project) *projectdomain.Project {
+func projectToDomain(row trackerdb.Project) *projectdomain.Project {
 	p := &projectdomain.Project{
 		ID:        row.ID,
 		OwnerID:   row.OwnerID,
@@ -24,10 +25,10 @@ func rowToProject(row trackerdb.Project) *projectdomain.Project {
 	return p
 }
 
-func rowsToProjects(rows []trackerdb.Project) []projectdomain.Project {
+func projectsToDomain(rows []trackerdb.Project) []projectdomain.Project {
 	projects := make([]projectdomain.Project, len(rows))
 	for i, row := range rows {
-		projects[i] = *rowToProject(row)
+		projects[i] = *projectToDomain(row)
 	}
 	return projects
 }
@@ -111,4 +112,22 @@ func issuesToDomain(rows []trackerdb.Issue) []issuedomain.Issue {
 		issues[idx] = *issueToDomain(row)
 	}
 	return issues
+}
+
+func workspaceToDomain(row trackerdb.Workspace) *workspacedomain.Workspace {
+	return &workspacedomain.Workspace{
+		ID:        row.ID,
+		Name:      row.Name,
+		OwnerID:   row.OwnerID,
+		CreatedAt: row.CreatedAt.Time,
+		UpdatedAt: row.UpdatedAt.Time,
+	}
+}
+
+func workspacesToDomain(rows []trackerdb.Workspace) []workspacedomain.Workspace {
+	workspaces := make([]workspacedomain.Workspace, len(rows))
+	for i, row := range rows {
+		workspaces[i] = *workspaceToDomain(row)
+	}
+	return workspaces
 }

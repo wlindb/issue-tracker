@@ -13,11 +13,15 @@ import (
 	"time"
 
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/trace"
+
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/wlindb/issue-tracker/internal/api"
 	"github.com/wlindb/issue-tracker/internal/config"
 	issuedomain "github.com/wlindb/issue-tracker/internal/domain/tracker/issue"
 	trackerdomain "github.com/wlindb/issue-tracker/internal/domain/tracker/project"
+	workspacedomain "github.com/wlindb/issue-tracker/internal/domain/tracker/workspace"
 	"github.com/wlindb/issue-tracker/internal/infrastructure/db"
 	trackerinfra "github.com/wlindb/issue-tracker/internal/infrastructure/tracker"
 	"github.com/wlindb/issue-tracker/internal/pkg/telemetry"
@@ -65,29 +69,7 @@ func run() error {
 	log.Println("tracker migrations applied")
 
 	tracer := otel.Tracer(cfg.OTELServiceName)
-
-	projectRepository := trackerinfra.NewTracingProjectRepository(
-		trackerinfra.NewProjectRepository(pool),
-		tracer,
-	)
-	issueRepository := trackerinfra.NewTracingIssueRepository(
-		trackerinfra.NewIssueRepository(pool),
-		tracer,
-	)
-	h := &api.Handler{
-		ProjectHandler: api.NewProjectHandler(
-			trackerinfra.NewTracingProjectService(
-				trackerdomain.NewProjectService(projectRepository),
-				tracer,
-			),
-		),
-		IssueHandler: api.NewIssueHandler(
-			trackerinfra.NewTracingIssueService(
-				issuedomain.NewIssueService(issueRepository),
-				tracer,
-			),
-		),
-	}
+	h := newHandler(pool, tracer)
 
 	e, err := newServer(h, cfg)
 	if err != nil {
@@ -109,4 +91,36 @@ func run() error {
 		return fmt.Errorf("server: %w", err)
 	}
 	return nil
+}
+
+func newHandler(pool *pgxpool.Pool, tracer trace.Tracer) *api.Handler {
+	workspaceRepository := trackerinfra.NewTracingWorkspaceRepository(
+		trackerinfra.NewWorkspaceRepository(pool),
+		tracer,
+	)
+	projectRepository := trackerinfra.NewTracingProjectRepository(
+		trackerinfra.NewProjectRepository(pool),
+		tracer,
+	)
+	issueRepository := trackerinfra.NewTracingIssueRepository(
+		trackerinfra.NewIssueRepository(pool),
+		tracer,
+	)
+	return &api.Handler{
+		WorkspaceHandler: api.NewWorkspaceHandler(
+			workspacedomain.NewWorkspaceService(workspaceRepository),
+		),
+		ProjectHandler: api.NewProjectHandler(
+			trackerinfra.NewTracingProjectService(
+				trackerdomain.NewProjectService(projectRepository),
+				tracer,
+			),
+		),
+		IssueHandler: api.NewIssueHandler(
+			trackerinfra.NewTracingIssueService(
+				issuedomain.NewIssueService(issueRepository),
+				tracer,
+			),
+		),
+	}
 }

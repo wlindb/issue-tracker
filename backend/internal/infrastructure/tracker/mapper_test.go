@@ -15,7 +15,7 @@ import (
 	trackerdb "github.com/wlindb/issue-tracker/internal/infrastructure/tracker/generated"
 )
 
-func Test_RowToProject_NilDescription_SetsDescriptionNil(t *testing.T) {
+func Test_ProjectToDomain_NilDescription_SetsDescriptionNil(t *testing.T) {
 	id, ownerID := uuid.New(), uuid.New()
 	now := time.Now().UTC()
 	row := trackerdb.Project{
@@ -27,7 +27,7 @@ func Test_RowToProject_NilDescription_SetsDescriptionNil(t *testing.T) {
 		UpdatedAt:   pgtype.Timestamptz{Time: now, Valid: true},
 	}
 
-	actual := rowToProject(row)
+	actual := projectToDomain(row)
 
 	require.NotNil(t, actual)
 	assert.Equal(t, id, actual.ID)
@@ -37,7 +37,7 @@ func Test_RowToProject_NilDescription_SetsDescriptionNil(t *testing.T) {
 	assert.Equal(t, now, actual.CreatedAt)
 }
 
-func Test_RowToProject_WithDescription_SetsDescription(t *testing.T) {
+func Test_ProjectToDomain_WithDescription_SetsDescription(t *testing.T) {
 	description := "hello"
 	now := time.Now().UTC()
 	row := trackerdb.Project{
@@ -49,20 +49,20 @@ func Test_RowToProject_WithDescription_SetsDescription(t *testing.T) {
 		UpdatedAt:   pgtype.Timestamptz{Time: now, Valid: true},
 	}
 
-	actual := rowToProject(row)
+	actual := projectToDomain(row)
 
 	require.NotNil(t, actual.Description)
 	assert.Equal(t, description, *actual.Description)
 }
 
-func Test_RowsToProjects_Empty_ReturnsEmptySlice(t *testing.T) {
-	actual := rowsToProjects([]trackerdb.Project{})
+func Test_ProjectsToDomain_Empty_ReturnsEmptySlice(t *testing.T) {
+	actual := projectsToDomain([]trackerdb.Project{})
 
 	assert.NotNil(t, actual)
 	assert.Empty(t, actual)
 }
 
-func Test_RowsToProjects_MultipleRows_ReturnsMappedProjects(t *testing.T) {
+func Test_ProjectsToDomain_MultipleRows_ReturnsMappedProjects(t *testing.T) {
 	now := time.Now().UTC()
 	id1, id2 := uuid.New(), uuid.New()
 	rows := []trackerdb.Project{
@@ -82,7 +82,7 @@ func Test_RowsToProjects_MultipleRows_ReturnsMappedProjects(t *testing.T) {
 		},
 	}
 
-	actual := rowsToProjects(rows)
+	actual := projectsToDomain(rows)
 
 	require.Len(t, actual, 2)
 	assert.Equal(t, id1, actual[0].ID)
