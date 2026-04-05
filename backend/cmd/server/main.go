@@ -15,7 +15,6 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/trace"
 
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/wlindb/issue-tracker/internal/api"
@@ -57,7 +56,19 @@ func run() error {
 	}()
 	log.Println("telemetry initialised")
 
-	pool, err := db.New(ctx, cfg.DatabaseURL, withWorkspaceHooks)
+	pool, err := db.New(ctx, cfg.DatabaseURL, db.WithAppSessionVars(
+		func(ctx context.Context) (string, bool) {
+			id, ok := api.WorkspaceIDFromContext(ctx)
+			return id.String(), ok
+		},
+		func(ctx context.Context) (string, bool) {
+			id, err := api.UserIDFromContext(ctx)
+			if err != nil {
+				return "", false
+			}
+			return id.String(), true
+		},
+	))
 	if err != nil {
 		return fmt.Errorf("database: %w", err)
 	}
@@ -96,24 +107,6 @@ func run() error {
 		return fmt.Errorf("server: %w", err)
 	}
 	return nil
-}
-
-func withWorkspaceHooks(config *pgxpool.Config) {
-	config.PrepareConn = func(ctx context.Context, conn *pgx.Conn) (bool, error) {
-		workspaceID, ok := api.WorkspaceIDFromContext(ctx)
-		if !ok {
-			return true, nil
-		}
-		_, err := conn.Exec(ctx, "SELECT set_config('app.workspace_id', $1, false)", workspaceID.String())
-		if err != nil {
-			return false, fmt.Errorf("set workspace_id: %w", err)
-		}
-		return true, nil
-	}
-	config.AfterRelease = func(conn *pgx.Conn) bool {
-		_, err := conn.Exec(context.Background(), "SELECT set_config('app.workspace_id', '', false)")
-		return err == nil
-	}
 }
 
 func newHandler(pool *pgxpool.Pool, tracer trace.Tracer, workspaceService *workspacedomain.WorkspaceService) *api.Handler {
