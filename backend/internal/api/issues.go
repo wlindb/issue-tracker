@@ -23,6 +23,7 @@ type IssueService interface {
 	ListIssues(ctx context.Context, projectID uuid.UUID, query issuedomain.ListIssueQuery) (issuedomain.IssuePage, error)
 	CreateIssue(ctx context.Context, command issuedomain.CreateIssueCommand) (*issuedomain.Issue, error)
 	GetIssue(ctx context.Context, issueID uuid.UUID) (*issuedomain.Issue, error)
+	UpdateIssueStatus(ctx context.Context, issueID uuid.UUID, status issuedomain.Status) (*issuedomain.Issue, error)
 	UpdateIssueDescription(ctx context.Context, issueID uuid.UUID, description *string) (*issuedomain.Issue, error)
 	UpdateIssuePriority(ctx context.Context, issueID uuid.UUID, priority issuedomain.Priority) (*issuedomain.Issue, error)
 	UpdateIssueAssignee(ctx context.Context, issueID uuid.UUID, assigneeID *uuid.UUID) (*issuedomain.Issue, error)
@@ -138,8 +139,27 @@ func (h *Handler) UpdateIssueDescription(ctx context.Context, req model.UpdateIs
 	return model.UpdateIssueDescription200JSONResponse(issueFromDomain(*issue)), nil
 }
 
-func (h *Handler) UpdateIssueStatus(_ context.Context, _ model.UpdateIssueStatusRequestObject) (model.UpdateIssueStatusResponseObject, error) {
-	return model.UpdateIssueStatus500JSONResponse{InternalServerErrorJSONResponse: model.InternalServerErrorJSONResponse(notImplemented())}, nil
+func (h *Handler) UpdateIssueStatus(ctx context.Context, req model.UpdateIssueStatusRequestObject) (model.UpdateIssueStatusResponseObject, error) {
+	if _, err := userIDFromContext(ctx); err != nil {
+		return model.UpdateIssueStatus401JSONResponse{
+			UnauthorizedJSONResponse: newUnauthorized("unauthorized", "authentication required"),
+		}, nil
+	}
+	if req.Body == nil || !req.Body.Status.Valid() {
+		return model.UpdateIssueStatus400JSONResponse{
+			BadRequestJSONResponse: newBadRequest("invalid_input", "status is required and must be a valid value"),
+		}, nil
+	}
+	issue, err := h.IssueHandler.service.UpdateIssueStatus(ctx, req.IssueId, issuedomain.Status(req.Body.Status))
+	if errors.Is(err, ErrIssueNotFound) {
+		return model.UpdateIssueStatus422JSONResponse{
+			UnprocessableEntityJSONResponse: newUnprocessable("not_found", "issue not found"),
+		}, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("update issue status: %w", err)
+	}
+	return model.UpdateIssueStatus200JSONResponse(issueFromDomain(*issue)), nil
 }
 
 func (h *Handler) UpdateIssuePriority(ctx context.Context, req model.UpdateIssuePriorityRequestObject) (model.UpdateIssuePriorityResponseObject, error) {

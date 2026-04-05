@@ -55,3 +55,8 @@ func (s *IssueService) UpdateIssuePriority(_ context.Context, _ uuid.UUID, _ Pri
 func (s *IssueService) GetIssue(_ context.Context, _ uuid.UUID) (*Issue, error) {
 	return nil, fmt.Errorf("get issue: not implemented")
 }
+
+// UpdateIssueStatus updates the status of the issue with the given ID.
+func (s *IssueService) UpdateIssueStatus(_ context.Context, _ uuid.UUID, _ Status) (*Issue, error) {
+	return nil, errors.New("not implemented")
+}
