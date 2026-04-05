@@ -44,8 +44,24 @@ func (m *mockIssueService) CreateIssue(ctx context.Context, command issuedomain.
 	return nil, args.Error(1)
 }
 
+func (m *mockIssueService) UpdateIssueDescription(ctx context.Context, issueID uuid.UUID, description *string) (*issuedomain.Issue, error) {
+	args := m.Called(ctx, issueID, description)
+	if issue, ok := args.Get(0).(*issuedomain.Issue); ok {
+		return issue, args.Error(1)
+	}
+	return nil, args.Error(1)
+}
+
 func (m *mockIssueService) GetIssue(ctx context.Context, issueID uuid.UUID) (*issuedomain.Issue, error) {
 	args := m.Called(ctx, issueID)
+	if issue, ok := args.Get(0).(*issuedomain.Issue); ok {
+		return issue, args.Error(1)
+	}
+	return nil, args.Error(1)
+}
+
+func (m *mockIssueService) UpdateIssuePriority(ctx context.Context, issueID uuid.UUID, priority issuedomain.Priority) (*issuedomain.Issue, error) {
+	args := m.Called(ctx, issueID, priority)
 	if issue, ok := args.Get(0).(*issuedomain.Issue); ok {
 		return issue, args.Error(1)
 	}
@@ -310,7 +326,6 @@ func Test_CreateIssue_InvalidProjectID_Returns422(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/issues", strings.NewReader(body))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	rec := httptest.NewRecorder()
-	e.ServeHTTP(rec, req)
 
 	require.Equal(t, http.StatusUnprocessableEntity, rec.Code)
 	service.AssertExpectations(t)
@@ -563,6 +578,257 @@ func Test_UpdateIssueStatus_ServiceError_Returns500(t *testing.T) {
 
 	body := `{"status":"in_progress"}`
 	req := httptest.NewRequest(http.MethodPut, "/api/v1/issues/"+issueID.String()+"/status", strings.NewReader(body))
+	body := `{"description":"updated description"}`
+	req := httptest.NewRequest(http.MethodPut, "/api/v1/issues/"+issueID.String()+"/description", strings.NewReader(body))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusInternalServerError, rec.Code)
+	service.AssertExpectations(t)
+}
+
+// — UpdateIssueDescription —
+
+func Test_UpdateIssueDescription_NoUserID_Returns401(t *testing.T) {
+	service := &mockIssueService{}
+	issueID := uuid.New()
+
+	e := newIssueTestServer(t, service) // no injectUser — userID absent from context
+
+	body := `{"description":"updated description"}`
+	req := httptest.NewRequest(http.MethodPut, "/api/v1/issues/"+issueID.String()+"/description", strings.NewReader(body))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusUnauthorized, rec.Code)
+	service.AssertNotCalled(t, "UpdateIssueDescription")
+}
+
+func Test_UpdateIssueDescription_ValidRequest_Returns200(t *testing.T) {
+	service := &mockIssueService{}
+	issueID := uuid.New()
+	desc := "updated description"
+	now := time.Now().UTC()
+
+	service.On("UpdateIssueDescription", mock.Anything, issueID, &desc).
+		Return(&issuedomain.Issue{
+			ID:         issueID,
+			Identifier: "PROJ-1",
+			Title:      "Some issue",
+			Status:     issuedomain.StatusTodo,
+			Priority:   issuedomain.PriorityNone,
+			Labels:     []string{},
+			ProjectID:  uuid.New(),
+			ReporterID: uuid.New(),
+			CreatedAt:  now,
+			UpdatedAt:  now,
+		}, nil)
+
+	e := newIssueTestServer(t, service)
+	e.Use(injectUser(uuid.New()))
+
+	body := `{"description":"updated description"}`
+	req := httptest.NewRequest(http.MethodPut, "/api/v1/issues/"+issueID.String()+"/description", strings.NewReader(body))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusOK, rec.Code)
+	var actual model.Issue
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &actual))
+	assert.Equal(t, model.InProgress, actual.Status)
+	service.AssertExpectations(t)
+}
+
+func Test_UpdateIssueDescription_NullDescription_Returns200(t *testing.T) {
+	service := &mockIssueService{}
+	issueID := uuid.New()
+	now := time.Now().UTC()
+
+	service.On("UpdateIssueDescription", mock.Anything, issueID, (*string)(nil)).
+		Return(&issuedomain.Issue{
+			ID:         issueID,
+			Identifier: "PROJ-1",
+			Title:      "Some issue",
+			Status:     issuedomain.StatusTodo,
+			Priority:   issuedomain.PriorityNone,
+			Labels:     []string{},
+			ProjectID:  uuid.New(),
+			ReporterID: uuid.New(),
+			CreatedAt:  now,
+			UpdatedAt:  now,
+		}, nil)
+
+	e := newIssueTestServer(t, service)
+	e.Use(injectUser(uuid.New()))
+
+	body := `{"description":null}`
+	req := httptest.NewRequest(http.MethodPut, "/api/v1/issues/"+issueID.String()+"/description", strings.NewReader(body))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusBadRequest, rec.Code)
+	service.AssertExpectations(t)
+}
+
+func Test_UpdateIssueDescription_IssueNotFound_Returns422(t *testing.T) {
+	service := &mockIssueService{}
+	issueID := uuid.New()
+
+	service.On("UpdateIssueDescription", mock.Anything, issueID, mock.Anything).
+		Return(nil, api.ErrIssueNotFound)
+
+	e := newIssueTestServer(t, service)
+	e.Use(injectUser(uuid.New()))
+
+	body := `{"description":"updated description"}`
+	req := httptest.NewRequest(http.MethodPut, "/api/v1/issues/"+issueID.String()+"/description", strings.NewReader(body))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusUnprocessableEntity, rec.Code)
+	service.AssertExpectations(t)
+}
+
+func Test_UpdateIssueDescription_ServiceError_Returns500(t *testing.T) {
+	service := &mockIssueService{}
+	issueID := uuid.New()
+
+	service.On("UpdateIssueDescription", mock.Anything, issueID, mock.Anything).
+		Return(nil, errors.New("db down"))
+
+	e := newIssueTestServer(t, service)
+	e.Use(injectUser(uuid.New()))
+
+	body := `{"status":"in_progress"}`
+	req := httptest.NewRequest(http.MethodPut, "/api/v1/issues/"+issueID.String()+"/status", strings.NewReader(body))
+	body := `{"description":"updated description"}`
+	req := httptest.NewRequest(http.MethodPut, "/api/v1/issues/"+issueID.String()+"/description", strings.NewReader(body))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusInternalServerError, rec.Code)
+	service.AssertExpectations(t)
+}
+
+func Test_UpdateIssueDescription_MissingBody_Returns400(t *testing.T) {
+	service := &mockIssueService{}
+	issueID := uuid.New()
+
+	e := newIssueTestServer(t, service)
+	e.Use(injectUser(uuid.New()))
+
+	req := httptest.NewRequest(http.MethodPut, "/api/v1/issues/"+issueID.String()+"/description", strings.NewReader(`not valid json`))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusBadRequest, rec.Code)
+	service.AssertNotCalled(t, "UpdateIssueDescription")
+}
+
+// — UpdateIssuePriority —
+
+func Test_UpdateIssuePriority_ValidRequest_Returns200(t *testing.T) {
+	service := &mockIssueService{}
+	issueID := uuid.New()
+	updatedIssue := &issuedomain.Issue{
+		ID:         issueID,
+		Identifier: "ISS-1",
+		Title:      "Test issue",
+		Status:     issuedomain.StatusTodo,
+		Priority:   issuedomain.PriorityHigh,
+		Labels:     []string{},
+		ProjectID:  uuid.New(),
+		ReporterID: uuid.New(),
+	}
+
+	service.On("UpdateIssuePriority", mock.Anything, issueID, issuedomain.PriorityHigh).
+		Return(updatedIssue, nil)
+
+	e := newIssueTestServer(t, service)
+	e.Use(injectUser(uuid.New()))
+
+	body := `{"priority":"high"}`
+	req := httptest.NewRequest(http.MethodPut, "/api/v1/issues/"+issueID.String()+"/priority", strings.NewReader(body))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusOK, rec.Code)
+	service.AssertExpectations(t)
+}
+
+func Test_UpdateIssuePriority_NoUserID_Returns401(t *testing.T) {
+	service := &mockIssueService{}
+	issueID := uuid.New()
+
+	e := newIssueTestServer(t, service) // no injectUser — userID absent from context
+
+	body := `{"priority":"high"}`
+	req := httptest.NewRequest(http.MethodPut, "/api/v1/issues/"+issueID.String()+"/priority", strings.NewReader(body))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusUnauthorized, rec.Code)
+	service.AssertNotCalled(t, "UpdateIssuePriority")
+}
+
+func Test_UpdateIssuePriority_InvalidPriority_Returns400(t *testing.T) {
+	service := &mockIssueService{}
+	issueID := uuid.New()
+
+	e := newIssueTestServer(t, service)
+	e.Use(injectUser(uuid.New()))
+
+	body := `{"priority":"not-a-priority"}`
+	req := httptest.NewRequest(http.MethodPut, "/api/v1/issues/"+issueID.String()+"/priority", strings.NewReader(body))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusBadRequest, rec.Code)
+	service.AssertNotCalled(t, "UpdateIssuePriority")
+}
+
+func Test_UpdateIssuePriority_IssueNotFound_Returns422(t *testing.T) {
+	service := &mockIssueService{}
+	issueID := uuid.New()
+
+	service.On("UpdateIssuePriority", mock.Anything, issueID, issuedomain.PriorityLow).
+		Return((*issuedomain.Issue)(nil), api.ErrIssueNotFound)
+
+	e := newIssueTestServer(t, service)
+	e.Use(injectUser(uuid.New()))
+
+	body := `{"priority":"low"}`
+	req := httptest.NewRequest(http.MethodPut, "/api/v1/issues/"+issueID.String()+"/priority", strings.NewReader(body))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusUnprocessableEntity, rec.Code)
+	service.AssertExpectations(t)
+}
+
+func Test_UpdateIssuePriority_ServiceError_Returns500(t *testing.T) {
+	service := &mockIssueService{}
+	issueID := uuid.New()
+
+	service.On("UpdateIssuePriority", mock.Anything, issueID, issuedomain.PriorityMedium).
+		Return((*issuedomain.Issue)(nil), errors.New("db down"))
+
+	e := newIssueTestServer(t, service)
+	e.Use(injectUser(uuid.New()))
+
+	body := `{"priority":"medium"}`
+	req := httptest.NewRequest(http.MethodPut, "/api/v1/issues/"+issueID.String()+"/priority", strings.NewReader(body))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
