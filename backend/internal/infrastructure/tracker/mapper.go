@@ -82,8 +82,28 @@ func listIssuesParamsFromDomain(projectID uuid.UUID, query issuedomain.ListIssue
 	}
 }
 
-func issueToDomain(row trackerdb.Issue) *issuedomain.Issue {
-	issue := &issuedomain.Issue{
+func updateIssueParamsFromDomain(issue issuedomain.Issue) trackerdb.UpdateIssueParams {
+	var description pgtype.Text
+	if issue.Description != nil {
+		description = pgtype.Text{String: *issue.Description, Valid: true}
+	}
+
+	var assigneeID pgtype.UUID
+	if issue.AssigneeID != nil {
+		assigneeID = pgtype.UUID{Bytes: *issue.AssigneeID, Valid: true}
+	}
+
+	return trackerdb.UpdateIssueParams{
+		ID:          issue.ID,
+		Description: description,
+		Status:      string(issue.Status),
+		Priority:    string(issue.Priority),
+		AssigneeID:  assigneeID,
+	}
+}
+
+func issueToDomain(row trackerdb.Issue) issuedomain.Issue {
+	issue := issuedomain.Issue{
 		ID:         row.ID,
 		Identifier: row.Identifier,
 		Title:      row.Title,
@@ -109,7 +129,7 @@ func issueToDomain(row trackerdb.Issue) *issuedomain.Issue {
 func issuesToDomain(rows []trackerdb.Issue) []issuedomain.Issue {
 	issues := make([]issuedomain.Issue, len(rows))
 	for idx, row := range rows {
-		issues[idx] = *issueToDomain(row)
+		issues[idx] = issueToDomain(row)
 	}
 	return issues
 }

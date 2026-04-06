@@ -81,6 +81,51 @@ type ListIssuesParams struct {
 	AssigneeID pgtype.UUID
 }
 
+const updateIssue = `-- name: UpdateIssue :one
+UPDATE issues
+SET description = $2,
+    status      = $3,
+    priority    = $4,
+    assignee_id = $5,
+    updated_at  = NOW()
+WHERE id = $1
+RETURNING id, identifier, title, description, status, priority, labels, assignee_id, project_id, reporter_id, created_at, updated_at
+`
+
+type UpdateIssueParams struct {
+	ID          uuid.UUID
+	Description pgtype.Text
+	Status      string
+	Priority    string
+	AssigneeID  pgtype.UUID
+}
+
+func (q *Queries) UpdateIssue(ctx context.Context, arg UpdateIssueParams) (Issue, error) {
+	row := q.db.QueryRow(ctx, updateIssue,
+		arg.ID,
+		arg.Description,
+		arg.Status,
+		arg.Priority,
+		arg.AssigneeID,
+	)
+	var i Issue
+	err := row.Scan(
+		&i.ID,
+		&i.Identifier,
+		&i.Title,
+		&i.Description,
+		&i.Status,
+		&i.Priority,
+		&i.Labels,
+		&i.AssigneeID,
+		&i.ProjectID,
+		&i.ReporterID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 func (q *Queries) ListIssues(ctx context.Context, arg ListIssuesParams) ([]Issue, error) {
 	rows, err := q.db.Query(ctx, listIssues,
 		arg.ProjectID,

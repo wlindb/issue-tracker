@@ -12,3 +12,13 @@ WHERE project_id = @project_id
   AND (sqlc.narg('assignee_id')::uuid IS NULL OR assignee_id = sqlc.narg('assignee_id'))
 ORDER BY created_at DESC
 LIMIT 100;
+
+-- name: UpdateIssue :one
+UPDATE issues
+SET description = @description,
+    status      = @status,
+    priority    = @priority,
+    assignee_id = @assignee_id,
+    updated_at  = NOW()
+WHERE id = @id
+RETURNING *;

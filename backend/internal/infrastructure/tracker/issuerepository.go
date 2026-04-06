@@ -15,6 +15,7 @@ import (
 type issueQuerier interface {
 	CreateIssue(ctx context.Context, arg trackerdb.CreateIssueParams) (trackerdb.Issue, error)
 	ListIssues(ctx context.Context, arg trackerdb.ListIssuesParams) ([]trackerdb.Issue, error)
+	UpdateIssue(ctx context.Context, arg trackerdb.UpdateIssueParams) (trackerdb.Issue, error)
 }
 
 // Compile-time: *IssueRepository must satisfy domain interface.
@@ -31,10 +32,19 @@ func NewIssueRepository(pool *pgxpool.Pool) *IssueRepository {
 }
 
 // CreateIssue inserts a new issue row and returns the domain model.
-func (r *IssueRepository) CreateIssue(ctx context.Context, issue issuedomain.Issue) (*issuedomain.Issue, error) {
+func (r *IssueRepository) CreateIssue(ctx context.Context, issue issuedomain.Issue) (issuedomain.Issue, error) {
 	row, err := r.queries.CreateIssue(ctx, createIssueParamsFromDomain(issue))
 	if err != nil {
-		return nil, fmt.Errorf("create issue: %w", err)
+		return issuedomain.Issue{}, fmt.Errorf("create issue: %w", err)
+	}
+	return issueToDomain(row), nil
+}
+
+// Update persists mutable fields of an existing issue and returns the updated domain model.
+func (r *IssueRepository) Update(ctx context.Context, issue issuedomain.Issue) (issuedomain.Issue, error) {
+	row, err := r.queries.UpdateIssue(ctx, updateIssueParamsFromDomain(issue))
+	if err != nil {
+		return issuedomain.Issue{}, fmt.Errorf("update issue: %w", err)
 	}
 	return issueToDomain(row), nil
 }

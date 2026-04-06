@@ -15,12 +15,12 @@ import (
 // avoiding a layering violation (infrastructure must not depend on api).
 type issueServicer interface {
 	ListIssues(ctx context.Context, projectID uuid.UUID, query issuedomain.ListIssueQuery) (issuedomain.IssuePage, error)
-	CreateIssue(ctx context.Context, command issuedomain.CreateIssueCommand) (*issuedomain.Issue, error)
-	GetIssue(ctx context.Context, issueID uuid.UUID) (*issuedomain.Issue, error)
-	UpdateIssueStatus(ctx context.Context, issueID uuid.UUID, status issuedomain.Status) (*issuedomain.Issue, error)
-	UpdateIssueDescription(ctx context.Context, issueID uuid.UUID, description *string) (*issuedomain.Issue, error)
-	UpdateIssuePriority(ctx context.Context, issueID uuid.UUID, priority issuedomain.Priority) (*issuedomain.Issue, error)
-	UpdateIssueAssignee(ctx context.Context, issueID uuid.UUID, assigneeID *uuid.UUID) (*issuedomain.Issue, error)
+	CreateIssue(ctx context.Context, command issuedomain.CreateIssueCommand) (issuedomain.Issue, error)
+	GetIssue(ctx context.Context, issueID uuid.UUID) (issuedomain.Issue, error)
+	UpdateIssueStatus(ctx context.Context, issueID uuid.UUID, status issuedomain.Status) (issuedomain.Issue, error)
+	UpdateIssueDescription(ctx context.Context, issueID uuid.UUID, description *string) (issuedomain.Issue, error)
+	UpdateIssuePriority(ctx context.Context, issueID uuid.UUID, priority issuedomain.Priority) (issuedomain.Issue, error)
+	UpdateIssueAssignee(ctx context.Context, issueID uuid.UUID, assigneeID *uuid.UUID) (issuedomain.Issue, error)
 }
 
 // TracingIssueService wraps an issueServicer and adds an OTel child span to each operation.
@@ -47,7 +47,7 @@ func (s *TracingIssueService) ListIssues(ctx context.Context, projectID uuid.UUI
 	return page, nil
 }
 
-func (s *TracingIssueService) CreateIssue(ctx context.Context, command issuedomain.CreateIssueCommand) (*issuedomain.Issue, error) {
+func (s *TracingIssueService) CreateIssue(ctx context.Context, command issuedomain.CreateIssueCommand) (issuedomain.Issue, error) {
 	ctx, span := s.tracer.Start(ctx, "tracker.IssueService.CreateIssue")
 	defer span.End()
 
@@ -55,12 +55,12 @@ func (s *TracingIssueService) CreateIssue(ctx context.Context, command issuedoma
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
-		return nil, fmt.Errorf("create issue: %w", err)
+		return issuedomain.Issue{}, fmt.Errorf("create issue: %w", err)
 	}
 	return issue, nil
 }
 
-func (s *TracingIssueService) UpdateIssueDescription(ctx context.Context, issueID uuid.UUID, description *string) (*issuedomain.Issue, error) {
+func (s *TracingIssueService) UpdateIssueDescription(ctx context.Context, issueID uuid.UUID, description *string) (issuedomain.Issue, error) {
 	ctx, span := s.tracer.Start(ctx, "tracker.IssueService.UpdateIssueDescription")
 	defer span.End()
 
@@ -68,12 +68,12 @@ func (s *TracingIssueService) UpdateIssueDescription(ctx context.Context, issueI
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
-		return nil, fmt.Errorf("update issue description: %w", err)
+		return issuedomain.Issue{}, fmt.Errorf("update issue description: %w", err)
 	}
 	return issue, nil
 }
 
-func (s *TracingIssueService) UpdateIssuePriority(ctx context.Context, issueID uuid.UUID, priority issuedomain.Priority) (*issuedomain.Issue, error) {
+func (s *TracingIssueService) UpdateIssuePriority(ctx context.Context, issueID uuid.UUID, priority issuedomain.Priority) (issuedomain.Issue, error) {
 	ctx, span := s.tracer.Start(ctx, "tracker.IssueService.UpdateIssuePriority")
 	defer span.End()
 
@@ -81,12 +81,12 @@ func (s *TracingIssueService) UpdateIssuePriority(ctx context.Context, issueID u
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
-		return nil, fmt.Errorf("update issue priority: %w", err)
+		return issuedomain.Issue{}, fmt.Errorf("update issue priority: %w", err)
 	}
 	return issue, nil
 }
 
-func (s *TracingIssueService) GetIssue(ctx context.Context, issueID uuid.UUID) (*issuedomain.Issue, error) {
+func (s *TracingIssueService) GetIssue(ctx context.Context, issueID uuid.UUID) (issuedomain.Issue, error) {
 	ctx, span := s.tracer.Start(ctx, "tracker.IssueService.GetIssue")
 	defer span.End()
 
@@ -94,12 +94,12 @@ func (s *TracingIssueService) GetIssue(ctx context.Context, issueID uuid.UUID) (
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
-		return nil, fmt.Errorf("get issue: %w", err)
+		return issuedomain.Issue{}, fmt.Errorf("get issue: %w", err)
 	}
 	return issue, nil
 }
 
-func (s *TracingIssueService) UpdateIssueAssignee(ctx context.Context, issueID uuid.UUID, assigneeID *uuid.UUID) (*issuedomain.Issue, error) {
+func (s *TracingIssueService) UpdateIssueAssignee(ctx context.Context, issueID uuid.UUID, assigneeID *uuid.UUID) (issuedomain.Issue, error) {
 	ctx, span := s.tracer.Start(ctx, "tracker.IssueService.UpdateIssueAssignee")
 	defer span.End()
 
@@ -107,12 +107,12 @@ func (s *TracingIssueService) UpdateIssueAssignee(ctx context.Context, issueID u
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
-		return nil, fmt.Errorf("update issue assignee: %w", err)
+		return issuedomain.Issue{}, fmt.Errorf("update issue assignee: %w", err)
 	}
 	return issue, nil
 }
 
-func (s *TracingIssueService) UpdateIssueStatus(ctx context.Context, issueID uuid.UUID, status issuedomain.Status) (*issuedomain.Issue, error) {
+func (s *TracingIssueService) UpdateIssueStatus(ctx context.Context, issueID uuid.UUID, status issuedomain.Status) (issuedomain.Issue, error) {
 	ctx, span := s.tracer.Start(ctx, "tracker.IssueService.UpdateIssueStatus")
 	defer span.End()
 
@@ -120,7 +120,7 @@ func (s *TracingIssueService) UpdateIssueStatus(ctx context.Context, issueID uui
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
-		return nil, fmt.Errorf("tracker.IssueService.UpdateIssueStatus: %w", err)
+		return issuedomain.Issue{}, fmt.Errorf("tracker.IssueService.UpdateIssueStatus: %w", err)
 	}
 	return issue, nil
 }

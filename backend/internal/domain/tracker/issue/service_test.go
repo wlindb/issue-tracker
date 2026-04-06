@@ -27,12 +27,20 @@ func (m *mockIssueRepository) ListIssues(ctx context.Context, projectID uuid.UUI
 	return issue.IssuePage{}, args.Error(1)
 }
 
-func (m *mockIssueRepository) CreateIssue(ctx context.Context, i issue.Issue) (*issue.Issue, error) {
+func (m *mockIssueRepository) CreateIssue(ctx context.Context, i issue.Issue) (issue.Issue, error) {
 	args := m.Called(ctx, i)
-	if result, ok := args.Get(0).(*issue.Issue); ok {
+	if result, ok := args.Get(0).(issue.Issue); ok {
 		return result, args.Error(1)
 	}
-	return nil, args.Error(1)
+	return issue.Issue{}, args.Error(1)
+}
+
+func (m *mockIssueRepository) Update(ctx context.Context, i issue.Issue) (issue.Issue, error) {
+	args := m.Called(ctx, i)
+	if result, ok := args.Get(0).(issue.Issue); ok {
+		return result, args.Error(1)
+	}
+	return issue.Issue{}, args.Error(1)
 }
 
 func Test_ListIssues_WithIssues_ReturnsPage(t *testing.T) {
@@ -133,7 +141,7 @@ func Test_CreateIssue_ValidCommand_ReturnsCreatedIssue(t *testing.T) {
 		Status:     issue.StatusTodo,
 		Priority:   issue.PriorityMedium,
 	}
-	returned := &issue.Issue{
+	returned := issue.Issue{
 		ID:         uuid.New(),
 		Identifier: "PROJ-1",
 		ProjectID:  projectID,

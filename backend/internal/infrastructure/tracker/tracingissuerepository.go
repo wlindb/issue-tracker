@@ -37,7 +37,7 @@ func (r *TracingIssueRepository) ListIssues(ctx context.Context, projectID uuid.
 	return page, nil
 }
 
-func (r *TracingIssueRepository) CreateIssue(ctx context.Context, issue issuedomain.Issue) (*issuedomain.Issue, error) {
+func (r *TracingIssueRepository) CreateIssue(ctx context.Context, issue issuedomain.Issue) (issuedomain.Issue, error) {
 	ctx, span := r.tracer.Start(ctx, "tracker.IssueRepository.CreateIssue")
 	defer span.End()
 
@@ -45,7 +45,20 @@ func (r *TracingIssueRepository) CreateIssue(ctx context.Context, issue issuedom
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
-		return nil, fmt.Errorf("create issue: %w", err)
+		return issuedomain.Issue{}, fmt.Errorf("create issue: %w", err)
+	}
+	return result, nil
+}
+
+func (r *TracingIssueRepository) Update(ctx context.Context, issue issuedomain.Issue) (issuedomain.Issue, error) {
+	ctx, span := r.tracer.Start(ctx, "tracker.IssueRepository.Update")
+	defer span.End()
+
+	result, err := r.inner.Update(ctx, issue)
+	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+		return issuedomain.Issue{}, fmt.Errorf("update issue: %w", err)
 	}
 	return result, nil
 }
