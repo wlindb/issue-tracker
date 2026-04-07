@@ -1,3 +1,8 @@
+include:
+  - path: keycloak/docker-compose.yml
+    env_file:
+      - keycloak/.env
+
 services:
   postgres:
     image: postgres:17-alpine
@@ -10,16 +15,24 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
-  keycloak:
-    image: quay.io/keycloak/keycloak:26.2
-    command: start-dev --import-realm
-    environment:
-      KEYCLOAK_ADMIN: admin
-      KEYCLOAK_ADMIN_PASSWORD: admin
-    volumes:
-      - ./keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json
-    ports:
-      - "8180:8080"
+  # Runs once after Keycloak is healthy to disable the master realm's sslRequired.
+  # Needed locally because Docker Desktop on macOS routes traffic through an external
+  # IP, which triggers sslRequired=external and blocks HTTP admin access.
+  # Not needed on the VPS — KC_PROXY_HEADERS=xforwarded handles SSL there.
+  keycloak-setup:
+    image: quay.io/keycloak/keycloak:26.3.5
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - |
+        /opt/keycloak/bin/kcadm.sh config credentials \
+          --server http://keycloak:8080 \
+          --realm master \
+          --user admin \
+          --password admin &&
+        /opt/keycloak/bin/kcadm.sh update realms/master -s sslRequired=NONE
+    depends_on:
+      keycloak:
+        condition: service_healthy
 
   grafana:
     image: grafana/otel-lgtm:latest
