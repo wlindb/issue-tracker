@@ -7,6 +7,15 @@ import (
 	"github.com/wlindb/issue-tracker/internal/api"
 )
 
+// testWorkspaceID is a fixed workspace UUID used across contract tests.
+// It is used only for routing (no workspace middleware runs in unit tests).
+var testWorkspaceID = uuid.MustParse("00000000-0000-0000-0000-000000000099")
+
+// wsPath returns the full API path prefixed with the test workspace segment.
+func wsPath(path string) string {
+	return "/api/v1/workspaces/" + testWorkspaceID.String() + path
+}
+
 // injectUser returns an Echo middleware that injects a fixed user UUID into the
 // request context, simulating what a future JWT middleware would do.
 func injectUser(id uuid.UUID) echo.MiddlewareFunc {

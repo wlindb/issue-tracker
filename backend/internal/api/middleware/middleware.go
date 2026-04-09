@@ -20,22 +20,20 @@ type WorkspaceMemberChecker interface {
 	IsMember(ctx context.Context, workspaceID uuid.UUID, userID uuid.UUID) (bool, error)
 }
 
-// WorkspaceMembershipMiddleware reads X-Workspace-ID, validates membership, and
-// stores the workspace ID in context. Must be applied after UserIDMiddleware.
+// WorkspaceMembershipMiddleware reads the workspaceId path parameter, validates
+// membership, and stores the workspace ID in context. Routes without a
+// workspaceId path parameter (e.g. GET /workspaces) are passed through
+// unchanged. Must be applied after UserIDMiddleware.
 func WorkspaceMembershipMiddleware(checker WorkspaceMemberChecker) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
-			path := c.Path()
-			if path == "/api/v1/workspaces" || path == "/api/v1/workspaces/:workspaceId" {
+			param := c.Param("workspaceId")
+			if param == "" {
 				return next(c)
 			}
-			header := c.Request().Header.Get("X-Workspace-ID")
-			if header == "" {
-				return echo.NewHTTPError(http.StatusBadRequest, "X-Workspace-ID header is required")
-			}
-			workspaceID, err := uuid.Parse(header)
+			workspaceID, err := uuid.Parse(param)
 			if err != nil {
-				return echo.NewHTTPError(http.StatusBadRequest, "X-Workspace-ID must be a valid UUID")
+				return echo.NewHTTPError(http.StatusBadRequest, "workspaceId must be a valid UUID")
 			}
 			userID, err := api.UserIDFromContext(c.Request().Context())
 			if err != nil {

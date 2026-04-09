@@ -127,7 +127,7 @@ func Test_ListIssues_IssuesExist_Returns200(t *testing.T) {
 	e := newIssueTestServer(t, service)
 	e.Use(injectUser(userID))
 
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/issues?project_id="+projectID.String(), nil)
+	req := httptest.NewRequest(http.MethodGet, wsPath("/issues?project_id="+projectID.String()), nil)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 
@@ -149,7 +149,7 @@ func Test_ListIssues_EmptyList_Returns200(t *testing.T) {
 	e := newIssueTestServer(t, service)
 	e.Use(injectUser(uuid.New()))
 
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/issues?project_id="+projectID.String(), nil)
+	req := httptest.NewRequest(http.MethodGet, wsPath("/issues?project_id="+projectID.String()), nil)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 
@@ -166,7 +166,7 @@ func Test_ListIssues_NoUserID_Returns401(t *testing.T) {
 
 	e := newIssueTestServer(t, service) // no injectUser — userID absent from context
 
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/issues?project_id="+projectID.String(), nil)
+	req := httptest.NewRequest(http.MethodGet, wsPath("/issues?project_id="+projectID.String()), nil)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 
@@ -184,7 +184,7 @@ func Test_ListIssues_ProjectNotFound_Returns404(t *testing.T) {
 	e := newIssueTestServer(t, service)
 	e.Use(injectUser(uuid.New()))
 
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/issues?project_id="+projectID.String(), nil)
+	req := httptest.NewRequest(http.MethodGet, wsPath("/issues?project_id="+projectID.String()), nil)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 
@@ -202,7 +202,7 @@ func Test_ListIssues_ServiceError_Returns500(t *testing.T) {
 	e := newIssueTestServer(t, service)
 	e.Use(injectUser(uuid.New()))
 
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/issues?project_id="+projectID.String(), nil)
+	req := httptest.NewRequest(http.MethodGet, wsPath("/issues?project_id="+projectID.String()), nil)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 
@@ -217,7 +217,7 @@ func Test_ListIssues_InvalidLimitParam_Returns400(t *testing.T) {
 	e := newIssueTestServer(t, service)
 	e.Use(injectUser(uuid.New()))
 
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/issues?project_id="+projectID.String()+"&limit=notanumber", nil)
+	req := httptest.NewRequest(http.MethodGet, wsPath("/issues?project_id="+projectID.String()+"&limit=notanumber"), nil)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 
@@ -251,7 +251,7 @@ func Test_CreateIssue_ValidBody_Returns201(t *testing.T) {
 	e.Use(injectUser(userID))
 
 	body := `{"projectId":"` + projectID.String() + `","title":"New feature","status":"todo","priority":"medium"}`
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/issues", strings.NewReader(body))
+	req := httptest.NewRequest(http.MethodPost, wsPath("/issues"), strings.NewReader(body))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
@@ -270,7 +270,7 @@ func Test_CreateIssue_MissingProjectID_Returns400(t *testing.T) {
 	e.Use(injectUser(uuid.New()))
 
 	body := `{"title":"New feature","status":"todo","priority":"medium"}`
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/issues", strings.NewReader(body))
+	req := httptest.NewRequest(http.MethodPost, wsPath("/issues"), strings.NewReader(body))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
@@ -287,7 +287,7 @@ func Test_CreateIssue_MissingTitle_Returns400(t *testing.T) {
 	e.Use(injectUser(uuid.New()))
 
 	body := `{"projectId":"` + projectID.String() + `","status":"backlog","priority":"none"}`
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/issues", strings.NewReader(body))
+	req := httptest.NewRequest(http.MethodPost, wsPath("/issues"), strings.NewReader(body))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
@@ -303,7 +303,7 @@ func Test_CreateIssue_NoUserID_Returns401(t *testing.T) {
 	e := newIssueTestServer(t, service) // no injectUser — userID absent from context
 
 	body := `{"projectId":"` + projectID.String() + `","title":"New feature","status":"todo","priority":"medium"}`
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/issues", strings.NewReader(body))
+	req := httptest.NewRequest(http.MethodPost, wsPath("/issues"), strings.NewReader(body))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
@@ -324,7 +324,7 @@ func Test_CreateIssue_InvalidProjectID_Returns422(t *testing.T) {
 	e.Use(injectUser(userID))
 
 	body := `{"projectId":"` + projectID.String() + `","title":"New feature","status":"todo","priority":"medium"}`
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/issues", strings.NewReader(body))
+	req := httptest.NewRequest(http.MethodPost, wsPath("/issues"), strings.NewReader(body))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
@@ -345,7 +345,7 @@ func Test_CreateIssue_UnprocessableInput_Returns422(t *testing.T) {
 	e.Use(injectUser(userID))
 
 	body := `{"projectId":"` + projectID.String() + `","title":"New feature","status":"todo","priority":"medium"}`
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/issues", strings.NewReader(body))
+	req := httptest.NewRequest(http.MethodPost, wsPath("/issues"), strings.NewReader(body))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
@@ -366,7 +366,7 @@ func Test_CreateIssue_ServiceError_Returns500(t *testing.T) {
 	e.Use(injectUser(userID))
 
 	body := `{"projectId":"` + projectID.String() + `","title":"New feature","status":"todo","priority":"medium"}`
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/issues", strings.NewReader(body))
+	req := httptest.NewRequest(http.MethodPost, wsPath("/issues"), strings.NewReader(body))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
@@ -384,7 +384,7 @@ func Test_SearchIssues_Returns501(t *testing.T) {
 	e.Use(injectUser(uuid.New()))
 
 	body := `{"query":"login bug"}`
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/issues/search", strings.NewReader(body))
+	req := httptest.NewRequest(http.MethodPost, wsPath("/issues/search"), strings.NewReader(body))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
@@ -403,7 +403,7 @@ func Test_SearchIssues_MissingBody_Returns400(t *testing.T) {
 	e := newIssueTestServer(t, service)
 	e.Use(injectUser(uuid.New()))
 
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/issues/search", nil)
+	req := httptest.NewRequest(http.MethodPost, wsPath("/issues/search"), nil)
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
@@ -419,7 +419,7 @@ func Test_SearchIssues_MissingQuery_Returns400(t *testing.T) {
 	e := newIssueTestServer(t, service)
 	e.Use(injectUser(uuid.New()))
 
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/issues/search", strings.NewReader(`{}`))
+	req := httptest.NewRequest(http.MethodPost, wsPath("/issues/search"), strings.NewReader(`{}`))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
@@ -435,7 +435,7 @@ func Test_SearchIssues_EmptyQuery_Returns400(t *testing.T) {
 	e := newIssueTestServer(t, service)
 	e.Use(injectUser(uuid.New()))
 
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/issues/search", strings.NewReader(`{"query":""}`))
+	req := httptest.NewRequest(http.MethodPost, wsPath("/issues/search"), strings.NewReader(`{"query":""}`))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
@@ -471,7 +471,7 @@ func Test_UpdateIssueStatus_ValidRequest_Returns200(t *testing.T) {
 	e.Use(injectUser(userID))
 
 	body := `{"status":"in_progress"}`
-	req := httptest.NewRequest(http.MethodPut, "/api/v1/issues/"+issueID.String()+"/status", strings.NewReader(body))
+	req := httptest.NewRequest(http.MethodPut, wsPath("/issues/"+issueID.String()+"/status"), strings.NewReader(body))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
@@ -490,7 +490,7 @@ func Test_UpdateIssueStatus_NoUserID_Returns401(t *testing.T) {
 	e := newIssueTestServer(t, service) // no injectUser — userID absent from context
 
 	body := `{"status":"in_progress"}`
-	req := httptest.NewRequest(http.MethodPut, "/api/v1/issues/"+issueID.String()+"/status", strings.NewReader(body))
+	req := httptest.NewRequest(http.MethodPut, wsPath("/issues/"+issueID.String()+"/status"), strings.NewReader(body))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
@@ -506,7 +506,7 @@ func Test_UpdateIssueStatus_MissingBody_Returns400(t *testing.T) {
 	e := newIssueTestServer(t, service)
 	e.Use(injectUser(uuid.New()))
 
-	req := httptest.NewRequest(http.MethodPut, "/api/v1/issues/"+issueID.String()+"/status", nil)
+	req := httptest.NewRequest(http.MethodPut, wsPath("/issues/"+issueID.String()+"/status"), nil)
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
@@ -523,7 +523,7 @@ func Test_UpdateIssueStatus_InvalidStatus_Returns400(t *testing.T) {
 	e.Use(injectUser(uuid.New()))
 
 	body := `{"status":"not_a_valid_status"}`
-	req := httptest.NewRequest(http.MethodPut, "/api/v1/issues/"+issueID.String()+"/status", strings.NewReader(body))
+	req := httptest.NewRequest(http.MethodPut, wsPath("/issues/"+issueID.String()+"/status"), strings.NewReader(body))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
@@ -539,7 +539,7 @@ func Test_UpdateIssueStatus_MalformedIssueID_Returns400(t *testing.T) {
 	e.Use(injectUser(uuid.New()))
 
 	body := `{"status":"in_progress"}`
-	req := httptest.NewRequest(http.MethodPut, "/api/v1/issues/not-a-uuid/status", strings.NewReader(body))
+	req := httptest.NewRequest(http.MethodPut, wsPath("/issues/not-a-uuid/status"), strings.NewReader(body))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
@@ -559,7 +559,7 @@ func Test_UpdateIssueStatus_IssueNotFound_Returns422(t *testing.T) {
 	e.Use(injectUser(uuid.New()))
 
 	body := `{"status":"in_progress"}`
-	req := httptest.NewRequest(http.MethodPut, "/api/v1/issues/"+issueID.String()+"/status", strings.NewReader(body))
+	req := httptest.NewRequest(http.MethodPut, wsPath("/issues/"+issueID.String()+"/status"), strings.NewReader(body))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
@@ -579,7 +579,7 @@ func Test_UpdateIssueStatus_ServiceError_Returns500(t *testing.T) {
 	e.Use(injectUser(uuid.New()))
 
 	body := `{"status":"in_progress"}`
-	req := httptest.NewRequest(http.MethodPut, "/api/v1/issues/"+issueID.String()+"/status", strings.NewReader(body))
+	req := httptest.NewRequest(http.MethodPut, wsPath("/issues/"+issueID.String()+"/status"), strings.NewReader(body))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
@@ -597,7 +597,7 @@ func Test_UpdateIssueDescription_NoUserID_Returns401(t *testing.T) {
 	e := newIssueTestServer(t, service) // no injectUser — userID absent from context
 
 	body := `{"description":"updated description"}`
-	req := httptest.NewRequest(http.MethodPut, "/api/v1/issues/"+issueID.String()+"/description", strings.NewReader(body))
+	req := httptest.NewRequest(http.MethodPut, wsPath("/issues/"+issueID.String()+"/description"), strings.NewReader(body))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
@@ -631,7 +631,7 @@ func Test_UpdateIssueDescription_ValidRequest_Returns200(t *testing.T) {
 	e.Use(injectUser(uuid.New()))
 
 	body := fmt.Sprintf(`{"description":"%s"}`, description)
-	req := httptest.NewRequest(http.MethodPut, "/api/v1/issues/"+issueID.String()+"/description", strings.NewReader(body))
+	req := httptest.NewRequest(http.MethodPut, wsPath("/issues/"+issueID.String()+"/description"), strings.NewReader(body))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
@@ -666,7 +666,7 @@ func Test_UpdateIssueDescription_NullDescription_Returns200(t *testing.T) {
 	e.Use(injectUser(uuid.New()))
 
 	body := `{"description":null}`
-	req := httptest.NewRequest(http.MethodPut, "/api/v1/issues/"+issueID.String()+"/description", strings.NewReader(body))
+	req := httptest.NewRequest(http.MethodPut, wsPath("/issues/"+issueID.String()+"/description"), strings.NewReader(body))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
@@ -686,7 +686,7 @@ func Test_UpdateIssueDescription_IssueNotFound_Returns422(t *testing.T) {
 	e.Use(injectUser(uuid.New()))
 
 	body := `{"description":"updated description"}`
-	req := httptest.NewRequest(http.MethodPut, "/api/v1/issues/"+issueID.String()+"/description", strings.NewReader(body))
+	req := httptest.NewRequest(http.MethodPut, wsPath("/issues/"+issueID.String()+"/description"), strings.NewReader(body))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
@@ -706,7 +706,7 @@ func Test_UpdateIssueDescription_ServiceError_Returns500(t *testing.T) {
 	e.Use(injectUser(uuid.New()))
 
 	body := `{"description":"updated description"}`
-	req := httptest.NewRequest(http.MethodPut, "/api/v1/issues/"+issueID.String()+"/description", strings.NewReader(body))
+	req := httptest.NewRequest(http.MethodPut, wsPath("/issues/"+issueID.String()+"/description"), strings.NewReader(body))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
@@ -722,7 +722,7 @@ func Test_UpdateIssueDescription_MissingBody_Returns400(t *testing.T) {
 	e := newIssueTestServer(t, service)
 	e.Use(injectUser(uuid.New()))
 
-	req := httptest.NewRequest(http.MethodPut, "/api/v1/issues/"+issueID.String()+"/description", strings.NewReader(`not valid json`))
+	req := httptest.NewRequest(http.MethodPut, wsPath("/issues/"+issueID.String()+"/description"), strings.NewReader(`not valid json`))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
@@ -754,7 +754,7 @@ func Test_UpdateIssuePriority_ValidRequest_Returns200(t *testing.T) {
 	e.Use(injectUser(uuid.New()))
 
 	body := `{"priority":"high"}`
-	req := httptest.NewRequest(http.MethodPut, "/api/v1/issues/"+issueID.String()+"/priority", strings.NewReader(body))
+	req := httptest.NewRequest(http.MethodPut, wsPath("/issues/"+issueID.String()+"/priority"), strings.NewReader(body))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
@@ -770,7 +770,7 @@ func Test_UpdateIssuePriority_NoUserID_Returns401(t *testing.T) {
 	e := newIssueTestServer(t, service) // no injectUser — userID absent from context
 
 	body := `{"priority":"high"}`
-	req := httptest.NewRequest(http.MethodPut, "/api/v1/issues/"+issueID.String()+"/priority", strings.NewReader(body))
+	req := httptest.NewRequest(http.MethodPut, wsPath("/issues/"+issueID.String()+"/priority"), strings.NewReader(body))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
@@ -787,7 +787,7 @@ func Test_UpdateIssuePriority_InvalidPriority_Returns400(t *testing.T) {
 	e.Use(injectUser(uuid.New()))
 
 	body := `{"priority":"not-a-priority"}`
-	req := httptest.NewRequest(http.MethodPut, "/api/v1/issues/"+issueID.String()+"/priority", strings.NewReader(body))
+	req := httptest.NewRequest(http.MethodPut, wsPath("/issues/"+issueID.String()+"/priority"), strings.NewReader(body))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
@@ -807,7 +807,7 @@ func Test_UpdateIssuePriority_IssueNotFound_Returns422(t *testing.T) {
 	e.Use(injectUser(uuid.New()))
 
 	body := `{"priority":"low"}`
-	req := httptest.NewRequest(http.MethodPut, "/api/v1/issues/"+issueID.String()+"/priority", strings.NewReader(body))
+	req := httptest.NewRequest(http.MethodPut, wsPath("/issues/"+issueID.String()+"/priority"), strings.NewReader(body))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
@@ -827,7 +827,7 @@ func Test_UpdateIssuePriority_ServiceError_Returns500(t *testing.T) {
 	e.Use(injectUser(uuid.New()))
 
 	body := `{"priority":"medium"}`
-	req := httptest.NewRequest(http.MethodPut, "/api/v1/issues/"+issueID.String()+"/priority", strings.NewReader(body))
+	req := httptest.NewRequest(http.MethodPut, wsPath("/issues/"+issueID.String()+"/priority"), strings.NewReader(body))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
@@ -844,7 +844,7 @@ func Test_GetIssue_NoUserID_Returns401(t *testing.T) {
 
 	e := newIssueTestServer(t, service) // no injectUser — userID absent from context
 
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/issues/"+issueID.String(), nil)
+	req := httptest.NewRequest(http.MethodGet, wsPath("/issues/"+issueID.String()), nil)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 
@@ -862,7 +862,7 @@ func Test_GetIssue_IssueNotFound_Returns404(t *testing.T) {
 	e := newIssueTestServer(t, service)
 	e.Use(injectUser(uuid.New()))
 
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/issues/"+issueID.String(), nil)
+	req := httptest.NewRequest(http.MethodGet, wsPath("/issues/"+issueID.String()), nil)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 
@@ -883,7 +883,7 @@ func Test_GetIssue_ServiceError_Returns500(t *testing.T) {
 	e := newIssueTestServer(t, service)
 	e.Use(injectUser(uuid.New()))
 
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/issues/"+issueID.String(), nil)
+	req := httptest.NewRequest(http.MethodGet, wsPath("/issues/"+issueID.String()), nil)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 
@@ -915,7 +915,7 @@ func Test_GetIssue_IssueExists_Returns200(t *testing.T) {
 	e := newIssueTestServer(t, service)
 	e.Use(injectUser(uuid.New()))
 
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/issues/"+issueID.String(), nil)
+	req := httptest.NewRequest(http.MethodGet, wsPath("/issues/"+issueID.String()), nil)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 
@@ -960,7 +960,7 @@ func Test_UpdateIssueAssignee_ValidAssignee_Returns200(t *testing.T) {
 	e.Use(injectUser(userID))
 
 	body := `{"assigneeId":"` + assigneeID.String() + `"}`
-	req := httptest.NewRequest(http.MethodPut, "/api/v1/issues/"+issueID.String()+"/assigneeId", strings.NewReader(body))
+	req := httptest.NewRequest(http.MethodPut, wsPath("/issues/"+issueID.String()+"/assigneeId"), strings.NewReader(body))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
@@ -997,7 +997,7 @@ func Test_UpdateIssueAssignee_NullAssignee_Returns200(t *testing.T) {
 	e.Use(injectUser(userID))
 
 	body := `{"assigneeId":null}`
-	req := httptest.NewRequest(http.MethodPut, "/api/v1/issues/"+issueID.String()+"/assigneeId", strings.NewReader(body))
+	req := httptest.NewRequest(http.MethodPut, wsPath("/issues/"+issueID.String()+"/assigneeId"), strings.NewReader(body))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
@@ -1017,7 +1017,7 @@ func Test_UpdateIssueAssignee_NoAuth_Returns401(t *testing.T) {
 	e := newIssueTestServer(t, service) // no injectUser — userID absent from context
 
 	body := `{"assigneeId":"` + assigneeID.String() + `"}`
-	req := httptest.NewRequest(http.MethodPut, "/api/v1/issues/"+issueID.String()+"/assigneeId", strings.NewReader(body))
+	req := httptest.NewRequest(http.MethodPut, wsPath("/issues/"+issueID.String()+"/assigneeId"), strings.NewReader(body))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
@@ -1038,7 +1038,7 @@ func Test_UpdateIssueAssignee_IssueNotFound_Returns422(t *testing.T) {
 	e.Use(injectUser(uuid.New()))
 
 	body := `{"assigneeId":"` + assigneeID.String() + `"}`
-	req := httptest.NewRequest(http.MethodPut, "/api/v1/issues/"+issueID.String()+"/assigneeId", strings.NewReader(body))
+	req := httptest.NewRequest(http.MethodPut, wsPath("/issues/"+issueID.String()+"/assigneeId"), strings.NewReader(body))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
@@ -1058,7 +1058,7 @@ func Test_UpdateIssueAssignee_InvalidAssigneeIDFormat_Returns400(t *testing.T) {
 	e.Use(injectUser(uuid.New()))
 
 	body := `{"assigneeId":"not-a-uuid"}`
-	req := httptest.NewRequest(http.MethodPut, "/api/v1/issues/"+issueID.String()+"/assigneeId", strings.NewReader(body))
+	req := httptest.NewRequest(http.MethodPut, wsPath("/issues/"+issueID.String()+"/assigneeId"), strings.NewReader(body))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
@@ -1076,7 +1076,7 @@ func Test_UpdateIssueAssignee_InvalidIssueIDFormat_Returns400(t *testing.T) {
 
 	assigneeID := uuid.New()
 	body := `{"assigneeId":"` + assigneeID.String() + `"}`
-	req := httptest.NewRequest(http.MethodPut, "/api/v1/issues/not-a-uuid/assigneeId", strings.NewReader(body))
+	req := httptest.NewRequest(http.MethodPut, wsPath("/issues/not-a-uuid/assigneeId"), strings.NewReader(body))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)

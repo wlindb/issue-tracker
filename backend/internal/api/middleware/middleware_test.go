@@ -220,21 +220,24 @@ func newWorkspaceMiddlewareServer(checker middleware.WorkspaceMemberChecker, use
 	e := echo.New()
 	e.Use(injectUserID(userID))
 	e.Use(middleware.WorkspaceMembershipMiddleware(checker))
-	e.GET("/test", func(c echo.Context) error {
+	e.GET("/workspaces/:workspaceId/test", func(c echo.Context) error {
+		return c.String(http.StatusOK, "ok")
+	})
+	e.GET("/workspaces", func(c echo.Context) error {
 		return c.String(http.StatusOK, "ok")
 	})
 	return e
 }
 
-func Test_WorkspaceMembershipMiddleware_MissingHeader_Returns400(t *testing.T) {
+func Test_WorkspaceMembershipMiddleware_NoPathParam_SkipsCheck(t *testing.T) {
 	checker := &mockWorkspaceMemberChecker{}
 	e := newWorkspaceMiddlewareServer(checker, uuid.New())
 
-	req := httptest.NewRequest(http.MethodGet, "/test", nil)
+	req := httptest.NewRequest(http.MethodGet, "/workspaces", nil)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 
-	require.Equal(t, http.StatusBadRequest, rec.Code)
+	require.Equal(t, http.StatusOK, rec.Code)
 	checker.AssertNotCalled(t, "IsMember")
 }
 
@@ -242,8 +245,7 @@ func Test_WorkspaceMembershipMiddleware_InvalidUUID_Returns400(t *testing.T) {
 	checker := &mockWorkspaceMemberChecker{}
 	e := newWorkspaceMiddlewareServer(checker, uuid.New())
 
-	req := httptest.NewRequest(http.MethodGet, "/test", nil)
-	req.Header.Set("X-Workspace-ID", "not-a-uuid")
+	req := httptest.NewRequest(http.MethodGet, "/workspaces/not-a-uuid/test", nil)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 
@@ -258,8 +260,7 @@ func Test_WorkspaceMembershipMiddleware_NonMember_Returns403(t *testing.T) {
 
 	e := newWorkspaceMiddlewareServer(checker, userID)
 
-	req := httptest.NewRequest(http.MethodGet, "/test", nil)
-	req.Header.Set("X-Workspace-ID", workspaceID.String())
+	req := httptest.NewRequest(http.MethodGet, "/workspaces/"+workspaceID.String()+"/test", nil)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 
@@ -274,8 +275,7 @@ func Test_WorkspaceMembershipMiddleware_IsMemberError_Returns500(t *testing.T) {
 
 	e := newWorkspaceMiddlewareServer(checker, userID)
 
-	req := httptest.NewRequest(http.MethodGet, "/test", nil)
-	req.Header.Set("X-Workspace-ID", workspaceID.String())
+	req := httptest.NewRequest(http.MethodGet, "/workspaces/"+workspaceID.String()+"/test", nil)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 
@@ -292,13 +292,12 @@ func Test_WorkspaceMembershipMiddleware_ValidMember_CallsNextAndSetsContext(t *t
 	e := echo.New()
 	e.Use(injectUserID(userID))
 	e.Use(middleware.WorkspaceMembershipMiddleware(checker))
-	e.GET("/test", func(c echo.Context) error {
+	e.GET("/workspaces/:workspaceId/test", func(c echo.Context) error {
 		contextWorkspaceID, _ = api.WorkspaceIDFromContext(c.Request().Context())
 		return c.String(http.StatusOK, "ok")
 	})
 
-	req := httptest.NewRequest(http.MethodGet, "/test", nil)
-	req.Header.Set("X-Workspace-ID", workspaceID.String())
+	req := httptest.NewRequest(http.MethodGet, "/workspaces/"+workspaceID.String()+"/test", nil)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 

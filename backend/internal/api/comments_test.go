@@ -82,7 +82,7 @@ func Test_ListComments_CommentsExist_Returns200(t *testing.T) {
 	e := newCommentTestServer(t, service)
 	e.Use(injectUser(authorID))
 
-	req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/api/v1/issues/%s/comments", issueID), nil)
+	req := httptest.NewRequest(http.MethodGet, wsPath(fmt.Sprintf("/issues/%s/comments", issueID)), nil)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 
@@ -106,7 +106,7 @@ func Test_ListComments_EmptyList_Returns200(t *testing.T) {
 	e := newCommentTestServer(t, service)
 	e.Use(injectUser(authorID))
 
-	req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/api/v1/issues/%s/comments", issueID), nil)
+	req := httptest.NewRequest(http.MethodGet, wsPath(fmt.Sprintf("/issues/%s/comments", issueID)), nil)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 
@@ -123,7 +123,7 @@ func Test_ListComments_NoUserID_Returns401(t *testing.T) {
 
 	e := newCommentTestServer(t, service) // no injectUser — userID absent from context
 
-	req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/api/v1/issues/%s/comments", issueID), nil)
+	req := httptest.NewRequest(http.MethodGet, wsPath(fmt.Sprintf("/issues/%s/comments", issueID)), nil)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 
@@ -142,7 +142,7 @@ func Test_ListComments_IssueNotFound_Returns404(t *testing.T) {
 	e := newCommentTestServer(t, service)
 	e.Use(injectUser(authorID))
 
-	req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/api/v1/issues/%s/comments", issueID), nil)
+	req := httptest.NewRequest(http.MethodGet, wsPath(fmt.Sprintf("/issues/%s/comments", issueID)), nil)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 
@@ -161,7 +161,7 @@ func Test_ListComments_ServiceError_Returns500(t *testing.T) {
 	e := newCommentTestServer(t, service)
 	e.Use(injectUser(authorID))
 
-	req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/api/v1/issues/%s/comments", issueID), nil)
+	req := httptest.NewRequest(http.MethodGet, wsPath(fmt.Sprintf("/issues/%s/comments", issueID)), nil)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 
@@ -190,7 +190,7 @@ func Test_CreateComment_ValidBody_Returns201(t *testing.T) {
 	e := newCommentTestServer(t, service)
 	e.Use(injectUser(authorID))
 
-	req := httptest.NewRequest(http.MethodPost, fmt.Sprintf("/api/v1/issues/%s/comments", issueID), strings.NewReader(`{"body":"Hello world"}`))
+	req := httptest.NewRequest(http.MethodPost, wsPath(fmt.Sprintf("/issues/%s/comments", issueID)), strings.NewReader(`{"body":"Hello world"}`))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
@@ -211,7 +211,7 @@ func Test_CreateComment_EmptyBody_Returns400(t *testing.T) {
 	e := newCommentTestServer(t, service)
 	e.Use(injectUser(uuid.New()))
 
-	req := httptest.NewRequest(http.MethodPost, fmt.Sprintf("/api/v1/issues/%s/comments", issueID), strings.NewReader(`{"body":""}`))
+	req := httptest.NewRequest(http.MethodPost, wsPath(fmt.Sprintf("/issues/%s/comments", issueID)), strings.NewReader(`{"body":""}`))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
@@ -226,7 +226,7 @@ func Test_CreateComment_NoUserID_Returns401(t *testing.T) {
 
 	e := newCommentTestServer(t, service) // no injectUser — userID absent from context
 
-	req := httptest.NewRequest(http.MethodPost, fmt.Sprintf("/api/v1/issues/%s/comments", issueID), strings.NewReader(`{"body":"Hello"}`))
+	req := httptest.NewRequest(http.MethodPost, wsPath(fmt.Sprintf("/issues/%s/comments", issueID)), strings.NewReader(`{"body":"Hello"}`))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
@@ -246,7 +246,7 @@ func Test_CreateComment_IssueNotFound_Returns404(t *testing.T) {
 	e := newCommentTestServer(t, service)
 	e.Use(injectUser(authorID))
 
-	req := httptest.NewRequest(http.MethodPost, fmt.Sprintf("/api/v1/issues/%s/comments", issueID), strings.NewReader(`{"body":"Hello"}`))
+	req := httptest.NewRequest(http.MethodPost, wsPath(fmt.Sprintf("/issues/%s/comments", issueID)), strings.NewReader(`{"body":"Hello"}`))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
@@ -266,7 +266,7 @@ func Test_CreateComment_ServiceError_Returns500(t *testing.T) {
 	e := newCommentTestServer(t, service)
 	e.Use(injectUser(authorID))
 
-	req := httptest.NewRequest(http.MethodPost, fmt.Sprintf("/api/v1/issues/%s/comments", issueID), strings.NewReader(`{"body":"Hello"}`))
+	req := httptest.NewRequest(http.MethodPost, wsPath(fmt.Sprintf("/issues/%s/comments", issueID)), strings.NewReader(`{"body":"Hello"}`))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)

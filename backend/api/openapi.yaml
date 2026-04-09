@@ -10,7 +10,6 @@ servers:
 
 security:
   - bearerAuth: []
-    workspaceId: []
 
 components:
   securitySchemes:
@@ -18,10 +17,6 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
-    workspaceId:
-      type: apiKey
-      in: header
-      name: X-Workspace-ID
 
   schemas:
     IssueStatus:
@@ -437,21 +432,10 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
         "500": { $ref: "#/components/responses/InternalServerError" }
 
-  /users/me:
-    get:
-      operationId: getMe
-      summary: Get the currently authenticated user.
-      tags: [users]
-      responses:
-        "200":
-          description: Current user profile.
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/User" }
-        "401": { $ref: "#/components/responses/Unauthorized" }
-        "500": { $ref: "#/components/responses/InternalServerError" }
+  /workspaces/{workspaceId}/projects:
+    parameters:
+      - { $ref: "#/components/parameters/WorkspaceIdParam" }
 
-  /projects:
     get:
       operationId: listProjects
       summary: List projects accessible to the authenticated user.
@@ -488,8 +472,9 @@ paths:
         "422": { $ref: "#/components/responses/UnprocessableEntity" }
         "500": { $ref: "#/components/responses/InternalServerError" }
 
-  /projects/{projectId}:
+  /workspaces/{workspaceId}/projects/{projectId}:
     parameters:
+      - { $ref: "#/components/parameters/WorkspaceIdParam" }
       - { $ref: "#/components/parameters/ProjectIdParam" }
 
     get:
@@ -539,7 +524,10 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
         "500": { $ref: "#/components/responses/InternalServerError" }
 
-  /issues:
+  /workspaces/{workspaceId}/issues:
+    parameters:
+      - { $ref: "#/components/parameters/WorkspaceIdParam" }
+
     get:
       operationId: listIssues
       summary: List issues with optional filters.
@@ -604,7 +592,10 @@ paths:
         "422": { $ref: "#/components/responses/UnprocessableEntity" }
         "500": { $ref: "#/components/responses/InternalServerError" }
 
-  /issues/search:
+  /workspaces/{workspaceId}/issues/search:
+    parameters:
+      - { $ref: "#/components/parameters/WorkspaceIdParam" }
+
     post:
       operationId: searchIssues
       summary: Search issues by a query string.
@@ -618,8 +609,9 @@ paths:
         "400": { $ref: "#/components/responses/BadRequest" }
         "501": { $ref: "#/components/responses/NotImplemented" }
 
-  /issues/{issueId}:
+  /workspaces/{workspaceId}/issues/{issueId}:
     parameters:
+      - { $ref: "#/components/parameters/WorkspaceIdParam" }
       - { $ref: "#/components/parameters/IssueIdParam" }
 
     get:
@@ -648,8 +640,9 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
         "500": { $ref: "#/components/responses/InternalServerError" }
 
-  /issues/{issueId}/title:
+  /workspaces/{workspaceId}/issues/{issueId}/title:
     parameters:
+      - { $ref: "#/components/parameters/WorkspaceIdParam" }
       - { $ref: "#/components/parameters/IssueIdParam" }
 
     put:
@@ -673,8 +666,9 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
         "500": { $ref: "#/components/responses/InternalServerError" }
 
-  /issues/{issueId}/description:
+  /workspaces/{workspaceId}/issues/{issueId}/description:
     parameters:
+      - { $ref: "#/components/parameters/WorkspaceIdParam" }
       - { $ref: "#/components/parameters/IssueIdParam" }
 
     put:
@@ -699,8 +693,9 @@ paths:
         "422": { $ref: "#/components/responses/UnprocessableEntity" }
         "500": { $ref: "#/components/responses/InternalServerError" }
 
-  /issues/{issueId}/status:
+  /workspaces/{workspaceId}/issues/{issueId}/status:
     parameters:
+      - { $ref: "#/components/parameters/WorkspaceIdParam" }
       - { $ref: "#/components/parameters/IssueIdParam" }
 
     put:
@@ -725,8 +720,9 @@ paths:
         "422": { $ref: "#/components/responses/UnprocessableEntity" }
         "500": { $ref: "#/components/responses/InternalServerError" }
 
-  /issues/{issueId}/priority:
+  /workspaces/{workspaceId}/issues/{issueId}/priority:
     parameters:
+      - { $ref: "#/components/parameters/WorkspaceIdParam" }
       - { $ref: "#/components/parameters/IssueIdParam" }
 
     put:
@@ -750,8 +746,9 @@ paths:
         "422": { $ref: "#/components/responses/UnprocessableEntity" }
         "500": { $ref: "#/components/responses/InternalServerError" }
 
-  /issues/{issueId}/assigneeId:
+  /workspaces/{workspaceId}/issues/{issueId}/assigneeId:
     parameters:
+      - { $ref: "#/components/parameters/WorkspaceIdParam" }
       - { $ref: "#/components/parameters/IssueIdParam" }
 
     put:
@@ -776,8 +773,9 @@ paths:
         "422": { $ref: "#/components/responses/UnprocessableEntity" }
         "500": { $ref: "#/components/responses/InternalServerError" }
 
-  /issues/{issueId}/comments:
+  /workspaces/{workspaceId}/issues/{issueId}/comments:
     parameters:
+      - { $ref: "#/components/parameters/WorkspaceIdParam" }
       - { $ref: "#/components/parameters/IssueIdParam" }
 
     get:
@@ -820,8 +818,9 @@ paths:
         "422": { $ref: "#/components/responses/UnprocessableEntity" }
         "500": { $ref: "#/components/responses/InternalServerError" }
 
-  /comments/{commentId}:
+  /workspaces/{workspaceId}/comments/{commentId}:
     parameters:
+      - { $ref: "#/components/parameters/WorkspaceIdParam" }
       - { $ref: "#/components/parameters/CommentIdParam" }
 
     delete:

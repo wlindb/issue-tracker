@@ -71,7 +71,7 @@ func Test_CreateProject_ValidBody_Returns201(t *testing.T) {
 	e := newTestServer(t, service)
 	e.Use(injectUser(ownerID))
 
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/projects", strings.NewReader(`{"name":"Acme"}`))
+	req := httptest.NewRequest(http.MethodPost, wsPath("/projects"), strings.NewReader(`{"name":"Acme"}`))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
@@ -89,7 +89,7 @@ func Test_CreateProject_EmptyName_BadRequest(t *testing.T) {
 	e := newTestServer(t, service)
 	e.Use(injectUser(uuid.New()))
 
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/projects", strings.NewReader(`{}`))
+	req := httptest.NewRequest(http.MethodPost, wsPath("/projects"), strings.NewReader(`{}`))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
@@ -108,7 +108,7 @@ func Test_CreateProject_ServiceError_InternalServerError(t *testing.T) {
 	e := newTestServer(t, service)
 	e.Use(injectUser(ownerID))
 
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/projects", strings.NewReader(`{"name":"Acme"}`))
+	req := httptest.NewRequest(http.MethodPost, wsPath("/projects"), strings.NewReader(`{"name":"Acme"}`))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
@@ -122,7 +122,7 @@ func Test_CreateProject_MissingUserID_InternalServerError(t *testing.T) {
 
 	e := newTestServer(t, service) // no injectUser — userID absent from context
 
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/projects", strings.NewReader(`{"name":"Acme"}`))
+	req := httptest.NewRequest(http.MethodPost, wsPath("/projects"), strings.NewReader(`{"name":"Acme"}`))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
@@ -152,7 +152,7 @@ func Test_ListProjects_ProjectsExist_Returns200(t *testing.T) {
 	e := newTestServer(t, service)
 	e.Use(injectUser(ownerID))
 
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/projects", nil)
+	req := httptest.NewRequest(http.MethodGet, wsPath("/projects"), nil)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 
@@ -175,7 +175,7 @@ func Test_ListProjects_EmptyList_Returns200(t *testing.T) {
 	e := newTestServer(t, service)
 	e.Use(injectUser(ownerID))
 
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/projects", nil)
+	req := httptest.NewRequest(http.MethodGet, wsPath("/projects"), nil)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 
@@ -191,7 +191,7 @@ func Test_ListProjects_NoUserID_Returns401(t *testing.T) {
 
 	e := newTestServer(t, service) // no injectUser — userID absent from context
 
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/projects", nil)
+	req := httptest.NewRequest(http.MethodGet, wsPath("/projects"), nil)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 
@@ -209,7 +209,7 @@ func Test_ListProjects_ServiceError_Returns500(t *testing.T) {
 	e := newTestServer(t, service)
 	e.Use(injectUser(ownerID))
 
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/projects", nil)
+	req := httptest.NewRequest(http.MethodGet, wsPath("/projects"), nil)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 
@@ -224,7 +224,7 @@ func Test_ListProjects_InvalidLimitParam_Returns400(t *testing.T) {
 	e := newTestServer(t, service)
 	e.Use(injectUser(ownerID))
 
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/projects?limit=notanumber", nil)
+	req := httptest.NewRequest(http.MethodGet, wsPath("/projects?limit=notanumber"), nil)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 
