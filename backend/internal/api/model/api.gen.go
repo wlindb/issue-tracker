@@ -118,6 +118,11 @@ type CreateProjectRequest struct {
 	Name        string  `json:"name"`
 }
 
+// CreateWorkspaceRequest defines model for CreateWorkspaceRequest.
+type CreateWorkspaceRequest struct {
+	Name string `json:"name"`
+}
+
 // Error defines model for Error.
 type Error struct {
 	Code    string `json:"code"`
@@ -206,13 +211,19 @@ type UpdateProjectRequest struct {
 	Name        string  `json:"name"`
 }
 
-// User defines model for User.
-type User struct {
+// Workspace defines model for Workspace.
+type Workspace struct {
 	CreatedAt time.Time `json:"createdAt"`
-	Email     string    `json:"email"`
 	Id        uuid.UUID `json:"id"`
 	Name      string    `json:"name"`
+	OwnerId   uuid.UUID `json:"ownerId"`
 	UpdatedAt time.Time `json:"updatedAt"`
+}
+
+// WorkspacePage defines model for WorkspacePage.
+type WorkspacePage struct {
+	Items      []Workspace `json:"items"`
+	NextCursor *string     `json:"nextCursor,omitempty"`
 }
 
 // CommentIdParam defines model for CommentIdParam.
@@ -229,6 +240,9 @@ type LimitParam = int
 
 // ProjectIdParam defines model for ProjectIdParam.
 type ProjectIdParam = uuid.UUID
+
+// WorkspaceIdParam defines model for WorkspaceIdParam.
+type WorkspaceIdParam = uuid.UUID
 
 // BadRequest defines model for BadRequest.
 type BadRequest = Error
@@ -273,6 +287,9 @@ type ListProjectsParams struct {
 	Limit  *LimitParam  `form:"limit,omitempty" json:"limit,omitempty"`
 }
 
+// CreateWorkspaceJSONRequestBody defines body for CreateWorkspace for application/json ContentType.
+type CreateWorkspaceJSONRequestBody = CreateWorkspaceRequest
+
 // CreateIssueJSONRequestBody defines body for CreateIssue for application/json ContentType.
 type CreateIssueJSONRequestBody = CreateIssueRequest
 
@@ -305,63 +322,69 @@ type UpdateProjectJSONRequestBody = UpdateProjectRequest
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
+	// List workspaces the authenticated user belongs to.
+	// (GET /workspaces)
+	ListWorkspaces(ctx echo.Context) error
+	// Create a new workspace.
+	// (POST /workspaces)
+	CreateWorkspace(ctx echo.Context) error
+	// Get a single workspace by ID.
+	// (GET /workspaces/{workspaceId})
+	GetWorkspace(ctx echo.Context, workspaceId WorkspaceIdParam) error
 	// Delete a comment.
-	// (DELETE /comments/{commentId})
-	DeleteComment(ctx echo.Context, commentId CommentIdParam) error
+	// (DELETE /workspaces/{workspaceId}/comments/{commentId})
+	DeleteComment(ctx echo.Context, workspaceId WorkspaceIdParam, commentId CommentIdParam) error
 	// List issues with optional filters.
-	// (GET /issues)
-	ListIssues(ctx echo.Context, params ListIssuesParams) error
+	// (GET /workspaces/{workspaceId}/issues)
+	ListIssues(ctx echo.Context, workspaceId WorkspaceIdParam, params ListIssuesParams) error
 	// Create a new issue.
-	// (POST /issues)
-	CreateIssue(ctx echo.Context) error
+	// (POST /workspaces/{workspaceId}/issues)
+	CreateIssue(ctx echo.Context, workspaceId WorkspaceIdParam) error
 	// Search issues by a query string.
-	// (POST /issues/search)
-	SearchIssues(ctx echo.Context) error
+	// (POST /workspaces/{workspaceId}/issues/search)
+	SearchIssues(ctx echo.Context, workspaceId WorkspaceIdParam) error
 	// Delete an issue and its comments.
-	// (DELETE /issues/{issueId})
-	DeleteIssue(ctx echo.Context, issueId IssueIdParam) error
+	// (DELETE /workspaces/{workspaceId}/issues/{issueId})
+	DeleteIssue(ctx echo.Context, workspaceId WorkspaceIdParam, issueId IssueIdParam) error
 	// Get a single issue by ID.
-	// (GET /issues/{issueId})
-	GetIssue(ctx echo.Context, issueId IssueIdParam) error
+	// (GET /workspaces/{workspaceId}/issues/{issueId})
+	GetIssue(ctx echo.Context, workspaceId WorkspaceIdParam, issueId IssueIdParam) error
 	// Update the assignee of an issue.
-	// (PUT /issues/{issueId}/assigneeId)
-	UpdateIssueAssignee(ctx echo.Context, issueId IssueIdParam) error
+	// (PUT /workspaces/{workspaceId}/issues/{issueId}/assigneeId)
+	UpdateIssueAssignee(ctx echo.Context, workspaceId WorkspaceIdParam, issueId IssueIdParam) error
 	// List comments on an issue.
-	// (GET /issues/{issueId}/comments)
-	ListComments(ctx echo.Context, issueId IssueIdParam, params ListCommentsParams) error
+	// (GET /workspaces/{workspaceId}/issues/{issueId}/comments)
+	ListComments(ctx echo.Context, workspaceId WorkspaceIdParam, issueId IssueIdParam, params ListCommentsParams) error
 	// Add a comment to an issue.
-	// (POST /issues/{issueId}/comments)
-	CreateComment(ctx echo.Context, issueId IssueIdParam) error
+	// (POST /workspaces/{workspaceId}/issues/{issueId}/comments)
+	CreateComment(ctx echo.Context, workspaceId WorkspaceIdParam, issueId IssueIdParam) error
 	// Update the description of an issue.
-	// (PUT /issues/{issueId}/description)
-	UpdateIssueDescription(ctx echo.Context, issueId IssueIdParam) error
+	// (PUT /workspaces/{workspaceId}/issues/{issueId}/description)
+	UpdateIssueDescription(ctx echo.Context, workspaceId WorkspaceIdParam, issueId IssueIdParam) error
 	// Update the priority of an issue.
-	// (PUT /issues/{issueId}/priority)
-	UpdateIssuePriority(ctx echo.Context, issueId IssueIdParam) error
+	// (PUT /workspaces/{workspaceId}/issues/{issueId}/priority)
+	UpdateIssuePriority(ctx echo.Context, workspaceId WorkspaceIdParam, issueId IssueIdParam) error
 	// Update the status of an issue.
-	// (PUT /issues/{issueId}/status)
-	UpdateIssueStatus(ctx echo.Context, issueId IssueIdParam) error
+	// (PUT /workspaces/{workspaceId}/issues/{issueId}/status)
+	UpdateIssueStatus(ctx echo.Context, workspaceId WorkspaceIdParam, issueId IssueIdParam) error
 	// Update the title of an issue.
-	// (PUT /issues/{issueId}/title)
-	UpdateIssueTitle(ctx echo.Context, issueId IssueIdParam) error
+	// (PUT /workspaces/{workspaceId}/issues/{issueId}/title)
+	UpdateIssueTitle(ctx echo.Context, workspaceId WorkspaceIdParam, issueId IssueIdParam) error
 	// List projects accessible to the authenticated user.
-	// (GET /projects)
-	ListProjects(ctx echo.Context, params ListProjectsParams) error
+	// (GET /workspaces/{workspaceId}/projects)
+	ListProjects(ctx echo.Context, workspaceId WorkspaceIdParam, params ListProjectsParams) error
 	// Create a new project.
-	// (POST /projects)
-	CreateProject(ctx echo.Context) error
+	// (POST /workspaces/{workspaceId}/projects)
+	CreateProject(ctx echo.Context, workspaceId WorkspaceIdParam) error
 	// Delete a project and all its issues.
-	// (DELETE /projects/{projectId})
-	DeleteProject(ctx echo.Context, projectId ProjectIdParam) error
+	// (DELETE /workspaces/{workspaceId}/projects/{projectId})
+	DeleteProject(ctx echo.Context, workspaceId WorkspaceIdParam, projectId ProjectIdParam) error
 	// Get a single project by ID.
-	// (GET /projects/{projectId})
-	GetProject(ctx echo.Context, projectId ProjectIdParam) error
+	// (GET /workspaces/{workspaceId}/projects/{projectId})
+	GetProject(ctx echo.Context, workspaceId WorkspaceIdParam, projectId ProjectIdParam) error
 	// Replace a project's mutable fields.
-	// (PUT /projects/{projectId})
-	UpdateProject(ctx echo.Context, projectId ProjectIdParam) error
-	// Get the currently authenticated user.
-	// (GET /users/me)
-	GetMe(ctx echo.Context) error
+	// (PUT /workspaces/{workspaceId}/projects/{projectId})
+	UpdateProject(ctx echo.Context, workspaceId WorkspaceIdParam, projectId ProjectIdParam) error
 }
 
 // ServerInterfaceWrapper converts echo contexts to parameters.
@@ -369,9 +392,57 @@ type ServerInterfaceWrapper struct {
 	Handler ServerInterface
 }
 
+// ListWorkspaces converts echo context to params.
+func (w *ServerInterfaceWrapper) ListWorkspaces(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(BearerAuthScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.ListWorkspaces(ctx)
+	return err
+}
+
+// CreateWorkspace converts echo context to params.
+func (w *ServerInterfaceWrapper) CreateWorkspace(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(BearerAuthScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.CreateWorkspace(ctx)
+	return err
+}
+
+// GetWorkspace converts echo context to params.
+func (w *ServerInterfaceWrapper) GetWorkspace(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", ctx.Param("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter workspaceId: %s", err))
+	}
+
+	ctx.Set(BearerAuthScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetWorkspace(ctx, workspaceId)
+	return err
+}
+
 // DeleteComment converts echo context to params.
 func (w *ServerInterfaceWrapper) DeleteComment(ctx echo.Context) error {
 	var err error
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", ctx.Param("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter workspaceId: %s", err))
+	}
+
 	// ------------- Path parameter "commentId" -------------
 	var commentId CommentIdParam
 
@@ -383,13 +454,20 @@ func (w *ServerInterfaceWrapper) DeleteComment(ctx echo.Context) error {
 	ctx.Set(BearerAuthScopes, []string{})
 
 	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.DeleteComment(ctx, commentId)
+	err = w.Handler.DeleteComment(ctx, workspaceId, commentId)
 	return err
 }
 
 // ListIssues converts echo context to params.
 func (w *ServerInterfaceWrapper) ListIssues(ctx echo.Context) error {
 	var err error
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", ctx.Param("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter workspaceId: %s", err))
+	}
 
 	ctx.Set(BearerAuthScopes, []string{})
 
@@ -438,35 +516,57 @@ func (w *ServerInterfaceWrapper) ListIssues(ctx echo.Context) error {
 	}
 
 	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.ListIssues(ctx, params)
+	err = w.Handler.ListIssues(ctx, workspaceId, params)
 	return err
 }
 
 // CreateIssue converts echo context to params.
 func (w *ServerInterfaceWrapper) CreateIssue(ctx echo.Context) error {
 	var err error
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", ctx.Param("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter workspaceId: %s", err))
+	}
 
 	ctx.Set(BearerAuthScopes, []string{})
 
 	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.CreateIssue(ctx)
+	err = w.Handler.CreateIssue(ctx, workspaceId)
 	return err
 }
 
 // SearchIssues converts echo context to params.
 func (w *ServerInterfaceWrapper) SearchIssues(ctx echo.Context) error {
 	var err error
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", ctx.Param("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter workspaceId: %s", err))
+	}
 
 	ctx.Set(BearerAuthScopes, []string{})
 
 	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.SearchIssues(ctx)
+	err = w.Handler.SearchIssues(ctx, workspaceId)
 	return err
 }
 
 // DeleteIssue converts echo context to params.
 func (w *ServerInterfaceWrapper) DeleteIssue(ctx echo.Context) error {
 	var err error
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", ctx.Param("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter workspaceId: %s", err))
+	}
+
 	// ------------- Path parameter "issueId" -------------
 	var issueId IssueIdParam
 
@@ -478,13 +578,21 @@ func (w *ServerInterfaceWrapper) DeleteIssue(ctx echo.Context) error {
 	ctx.Set(BearerAuthScopes, []string{})
 
 	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.DeleteIssue(ctx, issueId)
+	err = w.Handler.DeleteIssue(ctx, workspaceId, issueId)
 	return err
 }
 
 // GetIssue converts echo context to params.
 func (w *ServerInterfaceWrapper) GetIssue(ctx echo.Context) error {
 	var err error
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", ctx.Param("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter workspaceId: %s", err))
+	}
+
 	// ------------- Path parameter "issueId" -------------
 	var issueId IssueIdParam
 
@@ -496,13 +604,21 @@ func (w *ServerInterfaceWrapper) GetIssue(ctx echo.Context) error {
 	ctx.Set(BearerAuthScopes, []string{})
 
 	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.GetIssue(ctx, issueId)
+	err = w.Handler.GetIssue(ctx, workspaceId, issueId)
 	return err
 }
 
 // UpdateIssueAssignee converts echo context to params.
 func (w *ServerInterfaceWrapper) UpdateIssueAssignee(ctx echo.Context) error {
 	var err error
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", ctx.Param("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter workspaceId: %s", err))
+	}
+
 	// ------------- Path parameter "issueId" -------------
 	var issueId IssueIdParam
 
@@ -514,13 +630,21 @@ func (w *ServerInterfaceWrapper) UpdateIssueAssignee(ctx echo.Context) error {
 	ctx.Set(BearerAuthScopes, []string{})
 
 	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.UpdateIssueAssignee(ctx, issueId)
+	err = w.Handler.UpdateIssueAssignee(ctx, workspaceId, issueId)
 	return err
 }
 
 // ListComments converts echo context to params.
 func (w *ServerInterfaceWrapper) ListComments(ctx echo.Context) error {
 	var err error
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", ctx.Param("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter workspaceId: %s", err))
+	}
+
 	// ------------- Path parameter "issueId" -------------
 	var issueId IssueIdParam
 
@@ -548,13 +672,21 @@ func (w *ServerInterfaceWrapper) ListComments(ctx echo.Context) error {
 	}
 
 	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.ListComments(ctx, issueId, params)
+	err = w.Handler.ListComments(ctx, workspaceId, issueId, params)
 	return err
 }
 
 // CreateComment converts echo context to params.
 func (w *ServerInterfaceWrapper) CreateComment(ctx echo.Context) error {
 	var err error
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", ctx.Param("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter workspaceId: %s", err))
+	}
+
 	// ------------- Path parameter "issueId" -------------
 	var issueId IssueIdParam
 
@@ -566,13 +698,21 @@ func (w *ServerInterfaceWrapper) CreateComment(ctx echo.Context) error {
 	ctx.Set(BearerAuthScopes, []string{})
 
 	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.CreateComment(ctx, issueId)
+	err = w.Handler.CreateComment(ctx, workspaceId, issueId)
 	return err
 }
 
 // UpdateIssueDescription converts echo context to params.
 func (w *ServerInterfaceWrapper) UpdateIssueDescription(ctx echo.Context) error {
 	var err error
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", ctx.Param("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter workspaceId: %s", err))
+	}
+
 	// ------------- Path parameter "issueId" -------------
 	var issueId IssueIdParam
 
@@ -584,13 +724,21 @@ func (w *ServerInterfaceWrapper) UpdateIssueDescription(ctx echo.Context) error 
 	ctx.Set(BearerAuthScopes, []string{})
 
 	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.UpdateIssueDescription(ctx, issueId)
+	err = w.Handler.UpdateIssueDescription(ctx, workspaceId, issueId)
 	return err
 }
 
 // UpdateIssuePriority converts echo context to params.
 func (w *ServerInterfaceWrapper) UpdateIssuePriority(ctx echo.Context) error {
 	var err error
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", ctx.Param("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter workspaceId: %s", err))
+	}
+
 	// ------------- Path parameter "issueId" -------------
 	var issueId IssueIdParam
 
@@ -602,13 +750,21 @@ func (w *ServerInterfaceWrapper) UpdateIssuePriority(ctx echo.Context) error {
 	ctx.Set(BearerAuthScopes, []string{})
 
 	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.UpdateIssuePriority(ctx, issueId)
+	err = w.Handler.UpdateIssuePriority(ctx, workspaceId, issueId)
 	return err
 }
 
 // UpdateIssueStatus converts echo context to params.
 func (w *ServerInterfaceWrapper) UpdateIssueStatus(ctx echo.Context) error {
 	var err error
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", ctx.Param("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter workspaceId: %s", err))
+	}
+
 	// ------------- Path parameter "issueId" -------------
 	var issueId IssueIdParam
 
@@ -620,13 +776,21 @@ func (w *ServerInterfaceWrapper) UpdateIssueStatus(ctx echo.Context) error {
 	ctx.Set(BearerAuthScopes, []string{})
 
 	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.UpdateIssueStatus(ctx, issueId)
+	err = w.Handler.UpdateIssueStatus(ctx, workspaceId, issueId)
 	return err
 }
 
 // UpdateIssueTitle converts echo context to params.
 func (w *ServerInterfaceWrapper) UpdateIssueTitle(ctx echo.Context) error {
 	var err error
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", ctx.Param("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter workspaceId: %s", err))
+	}
+
 	// ------------- Path parameter "issueId" -------------
 	var issueId IssueIdParam
 
@@ -638,13 +802,20 @@ func (w *ServerInterfaceWrapper) UpdateIssueTitle(ctx echo.Context) error {
 	ctx.Set(BearerAuthScopes, []string{})
 
 	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.UpdateIssueTitle(ctx, issueId)
+	err = w.Handler.UpdateIssueTitle(ctx, workspaceId, issueId)
 	return err
 }
 
 // ListProjects converts echo context to params.
 func (w *ServerInterfaceWrapper) ListProjects(ctx echo.Context) error {
 	var err error
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", ctx.Param("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter workspaceId: %s", err))
+	}
 
 	ctx.Set(BearerAuthScopes, []string{})
 
@@ -665,24 +836,39 @@ func (w *ServerInterfaceWrapper) ListProjects(ctx echo.Context) error {
 	}
 
 	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.ListProjects(ctx, params)
+	err = w.Handler.ListProjects(ctx, workspaceId, params)
 	return err
 }
 
 // CreateProject converts echo context to params.
 func (w *ServerInterfaceWrapper) CreateProject(ctx echo.Context) error {
 	var err error
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", ctx.Param("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter workspaceId: %s", err))
+	}
 
 	ctx.Set(BearerAuthScopes, []string{})
 
 	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.CreateProject(ctx)
+	err = w.Handler.CreateProject(ctx, workspaceId)
 	return err
 }
 
 // DeleteProject converts echo context to params.
 func (w *ServerInterfaceWrapper) DeleteProject(ctx echo.Context) error {
 	var err error
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", ctx.Param("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter workspaceId: %s", err))
+	}
+
 	// ------------- Path parameter "projectId" -------------
 	var projectId ProjectIdParam
 
@@ -694,13 +880,21 @@ func (w *ServerInterfaceWrapper) DeleteProject(ctx echo.Context) error {
 	ctx.Set(BearerAuthScopes, []string{})
 
 	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.DeleteProject(ctx, projectId)
+	err = w.Handler.DeleteProject(ctx, workspaceId, projectId)
 	return err
 }
 
 // GetProject converts echo context to params.
 func (w *ServerInterfaceWrapper) GetProject(ctx echo.Context) error {
 	var err error
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", ctx.Param("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter workspaceId: %s", err))
+	}
+
 	// ------------- Path parameter "projectId" -------------
 	var projectId ProjectIdParam
 
@@ -712,13 +906,21 @@ func (w *ServerInterfaceWrapper) GetProject(ctx echo.Context) error {
 	ctx.Set(BearerAuthScopes, []string{})
 
 	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.GetProject(ctx, projectId)
+	err = w.Handler.GetProject(ctx, workspaceId, projectId)
 	return err
 }
 
 // UpdateProject converts echo context to params.
 func (w *ServerInterfaceWrapper) UpdateProject(ctx echo.Context) error {
 	var err error
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", ctx.Param("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter workspaceId: %s", err))
+	}
+
 	// ------------- Path parameter "projectId" -------------
 	var projectId ProjectIdParam
 
@@ -730,18 +932,7 @@ func (w *ServerInterfaceWrapper) UpdateProject(ctx echo.Context) error {
 	ctx.Set(BearerAuthScopes, []string{})
 
 	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.UpdateProject(ctx, projectId)
-	return err
-}
-
-// GetMe converts echo context to params.
-func (w *ServerInterfaceWrapper) GetMe(ctx echo.Context) error {
-	var err error
-
-	ctx.Set(BearerAuthScopes, []string{})
-
-	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.GetMe(ctx)
+	err = w.Handler.UpdateProject(ctx, workspaceId, projectId)
 	return err
 }
 
@@ -773,25 +964,27 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 		Handler: si,
 	}
 
-	router.DELETE(baseURL+"/comments/:commentId", wrapper.DeleteComment)
-	router.GET(baseURL+"/issues", wrapper.ListIssues)
-	router.POST(baseURL+"/issues", wrapper.CreateIssue)
-	router.POST(baseURL+"/issues/search", wrapper.SearchIssues)
-	router.DELETE(baseURL+"/issues/:issueId", wrapper.DeleteIssue)
-	router.GET(baseURL+"/issues/:issueId", wrapper.GetIssue)
-	router.PUT(baseURL+"/issues/:issueId/assigneeId", wrapper.UpdateIssueAssignee)
-	router.GET(baseURL+"/issues/:issueId/comments", wrapper.ListComments)
-	router.POST(baseURL+"/issues/:issueId/comments", wrapper.CreateComment)
-	router.PUT(baseURL+"/issues/:issueId/description", wrapper.UpdateIssueDescription)
-	router.PUT(baseURL+"/issues/:issueId/priority", wrapper.UpdateIssuePriority)
-	router.PUT(baseURL+"/issues/:issueId/status", wrapper.UpdateIssueStatus)
-	router.PUT(baseURL+"/issues/:issueId/title", wrapper.UpdateIssueTitle)
-	router.GET(baseURL+"/projects", wrapper.ListProjects)
-	router.POST(baseURL+"/projects", wrapper.CreateProject)
-	router.DELETE(baseURL+"/projects/:projectId", wrapper.DeleteProject)
-	router.GET(baseURL+"/projects/:projectId", wrapper.GetProject)
-	router.PUT(baseURL+"/projects/:projectId", wrapper.UpdateProject)
-	router.GET(baseURL+"/users/me", wrapper.GetMe)
+	router.GET(baseURL+"/workspaces", wrapper.ListWorkspaces)
+	router.POST(baseURL+"/workspaces", wrapper.CreateWorkspace)
+	router.GET(baseURL+"/workspaces/:workspaceId", wrapper.GetWorkspace)
+	router.DELETE(baseURL+"/workspaces/:workspaceId/comments/:commentId", wrapper.DeleteComment)
+	router.GET(baseURL+"/workspaces/:workspaceId/issues", wrapper.ListIssues)
+	router.POST(baseURL+"/workspaces/:workspaceId/issues", wrapper.CreateIssue)
+	router.POST(baseURL+"/workspaces/:workspaceId/issues/search", wrapper.SearchIssues)
+	router.DELETE(baseURL+"/workspaces/:workspaceId/issues/:issueId", wrapper.DeleteIssue)
+	router.GET(baseURL+"/workspaces/:workspaceId/issues/:issueId", wrapper.GetIssue)
+	router.PUT(baseURL+"/workspaces/:workspaceId/issues/:issueId/assigneeId", wrapper.UpdateIssueAssignee)
+	router.GET(baseURL+"/workspaces/:workspaceId/issues/:issueId/comments", wrapper.ListComments)
+	router.POST(baseURL+"/workspaces/:workspaceId/issues/:issueId/comments", wrapper.CreateComment)
+	router.PUT(baseURL+"/workspaces/:workspaceId/issues/:issueId/description", wrapper.UpdateIssueDescription)
+	router.PUT(baseURL+"/workspaces/:workspaceId/issues/:issueId/priority", wrapper.UpdateIssuePriority)
+	router.PUT(baseURL+"/workspaces/:workspaceId/issues/:issueId/status", wrapper.UpdateIssueStatus)
+	router.PUT(baseURL+"/workspaces/:workspaceId/issues/:issueId/title", wrapper.UpdateIssueTitle)
+	router.GET(baseURL+"/workspaces/:workspaceId/projects", wrapper.ListProjects)
+	router.POST(baseURL+"/workspaces/:workspaceId/projects", wrapper.CreateProject)
+	router.DELETE(baseURL+"/workspaces/:workspaceId/projects/:projectId", wrapper.DeleteProject)
+	router.GET(baseURL+"/workspaces/:workspaceId/projects/:projectId", wrapper.GetProject)
+	router.PUT(baseURL+"/workspaces/:workspaceId/projects/:projectId", wrapper.UpdateProject)
 
 }
 
@@ -809,8 +1002,137 @@ type UnauthorizedJSONResponse Error
 
 type UnprocessableEntityJSONResponse Error
 
+type ListWorkspacesRequestObject struct {
+}
+
+type ListWorkspacesResponseObject interface {
+	VisitListWorkspacesResponse(w http.ResponseWriter) error
+}
+
+type ListWorkspaces200JSONResponse WorkspacePage
+
+func (response ListWorkspaces200JSONResponse) VisitListWorkspacesResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListWorkspaces401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response ListWorkspaces401JSONResponse) VisitListWorkspacesResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListWorkspaces500JSONResponse struct {
+	InternalServerErrorJSONResponse
+}
+
+func (response ListWorkspaces500JSONResponse) VisitListWorkspacesResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateWorkspaceRequestObject struct {
+	Body *CreateWorkspaceJSONRequestBody
+}
+
+type CreateWorkspaceResponseObject interface {
+	VisitCreateWorkspaceResponse(w http.ResponseWriter) error
+}
+
+type CreateWorkspace201JSONResponse Workspace
+
+func (response CreateWorkspace201JSONResponse) VisitCreateWorkspaceResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(201)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateWorkspace400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response CreateWorkspace400JSONResponse) VisitCreateWorkspaceResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateWorkspace401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response CreateWorkspace401JSONResponse) VisitCreateWorkspaceResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateWorkspace500JSONResponse struct {
+	InternalServerErrorJSONResponse
+}
+
+func (response CreateWorkspace500JSONResponse) VisitCreateWorkspaceResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetWorkspaceRequestObject struct {
+	WorkspaceId WorkspaceIdParam `json:"workspaceId"`
+}
+
+type GetWorkspaceResponseObject interface {
+	VisitGetWorkspaceResponse(w http.ResponseWriter) error
+}
+
+type GetWorkspace200JSONResponse Workspace
+
+func (response GetWorkspace200JSONResponse) VisitGetWorkspaceResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetWorkspace401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response GetWorkspace401JSONResponse) VisitGetWorkspaceResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetWorkspace404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response GetWorkspace404JSONResponse) VisitGetWorkspaceResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetWorkspace500JSONResponse struct {
+	InternalServerErrorJSONResponse
+}
+
+func (response GetWorkspace500JSONResponse) VisitGetWorkspaceResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
 type DeleteCommentRequestObject struct {
-	CommentId CommentIdParam `json:"commentId"`
+	WorkspaceId WorkspaceIdParam `json:"workspaceId"`
+	CommentId   CommentIdParam   `json:"commentId"`
 }
 
 type DeleteCommentResponseObject interface {
@@ -864,7 +1186,8 @@ func (response DeleteComment500JSONResponse) VisitDeleteCommentResponse(w http.R
 }
 
 type ListIssuesRequestObject struct {
-	Params ListIssuesParams
+	WorkspaceId WorkspaceIdParam `json:"workspaceId"`
+	Params      ListIssuesParams
 }
 
 type ListIssuesResponseObject interface {
@@ -910,7 +1233,8 @@ func (response ListIssues500JSONResponse) VisitListIssuesResponse(w http.Respons
 }
 
 type CreateIssueRequestObject struct {
-	Body *CreateIssueJSONRequestBody
+	WorkspaceId WorkspaceIdParam `json:"workspaceId"`
+	Body        *CreateIssueJSONRequestBody
 }
 
 type CreateIssueResponseObject interface {
@@ -976,7 +1300,8 @@ func (response CreateIssue500JSONResponse) VisitCreateIssueResponse(w http.Respo
 }
 
 type SearchIssuesRequestObject struct {
-	Body *SearchIssuesJSONRequestBody
+	WorkspaceId WorkspaceIdParam `json:"workspaceId"`
+	Body        *SearchIssuesJSONRequestBody
 }
 
 type SearchIssuesResponseObject interface {
@@ -1002,7 +1327,8 @@ func (response SearchIssues501JSONResponse) VisitSearchIssuesResponse(w http.Res
 }
 
 type DeleteIssueRequestObject struct {
-	IssueId IssueIdParam `json:"issueId"`
+	WorkspaceId WorkspaceIdParam `json:"workspaceId"`
+	IssueId     IssueIdParam     `json:"issueId"`
 }
 
 type DeleteIssueResponseObject interface {
@@ -1056,7 +1382,8 @@ func (response DeleteIssue500JSONResponse) VisitDeleteIssueResponse(w http.Respo
 }
 
 type GetIssueRequestObject struct {
-	IssueId IssueIdParam `json:"issueId"`
+	WorkspaceId WorkspaceIdParam `json:"workspaceId"`
+	IssueId     IssueIdParam     `json:"issueId"`
 }
 
 type GetIssueResponseObject interface {
@@ -1111,8 +1438,9 @@ func (response GetIssue500JSONResponse) VisitGetIssueResponse(w http.ResponseWri
 }
 
 type UpdateIssueAssigneeRequestObject struct {
-	IssueId IssueIdParam `json:"issueId"`
-	Body    *UpdateIssueAssigneeJSONRequestBody
+	WorkspaceId WorkspaceIdParam `json:"workspaceId"`
+	IssueId     IssueIdParam     `json:"issueId"`
+	Body        *UpdateIssueAssigneeJSONRequestBody
 }
 
 type UpdateIssueAssigneeResponseObject interface {
@@ -1187,8 +1515,9 @@ func (response UpdateIssueAssignee500JSONResponse) VisitUpdateIssueAssigneeRespo
 }
 
 type ListCommentsRequestObject struct {
-	IssueId IssueIdParam `json:"issueId"`
-	Params  ListCommentsParams
+	WorkspaceId WorkspaceIdParam `json:"workspaceId"`
+	IssueId     IssueIdParam     `json:"issueId"`
+	Params      ListCommentsParams
 }
 
 type ListCommentsResponseObject interface {
@@ -1243,8 +1572,9 @@ func (response ListComments500JSONResponse) VisitListCommentsResponse(w http.Res
 }
 
 type CreateCommentRequestObject struct {
-	IssueId IssueIdParam `json:"issueId"`
-	Body    *CreateCommentJSONRequestBody
+	WorkspaceId WorkspaceIdParam `json:"workspaceId"`
+	IssueId     IssueIdParam     `json:"issueId"`
+	Body        *CreateCommentJSONRequestBody
 }
 
 type CreateCommentResponseObject interface {
@@ -1319,8 +1649,9 @@ func (response CreateComment500JSONResponse) VisitCreateCommentResponse(w http.R
 }
 
 type UpdateIssueDescriptionRequestObject struct {
-	IssueId IssueIdParam `json:"issueId"`
-	Body    *UpdateIssueDescriptionJSONRequestBody
+	WorkspaceId WorkspaceIdParam `json:"workspaceId"`
+	IssueId     IssueIdParam     `json:"issueId"`
+	Body        *UpdateIssueDescriptionJSONRequestBody
 }
 
 type UpdateIssueDescriptionResponseObject interface {
@@ -1395,8 +1726,9 @@ func (response UpdateIssueDescription500JSONResponse) VisitUpdateIssueDescriptio
 }
 
 type UpdateIssuePriorityRequestObject struct {
-	IssueId IssueIdParam `json:"issueId"`
-	Body    *UpdateIssuePriorityJSONRequestBody
+	WorkspaceId WorkspaceIdParam `json:"workspaceId"`
+	IssueId     IssueIdParam     `json:"issueId"`
+	Body        *UpdateIssuePriorityJSONRequestBody
 }
 
 type UpdateIssuePriorityResponseObject interface {
@@ -1462,8 +1794,9 @@ func (response UpdateIssuePriority500JSONResponse) VisitUpdateIssuePriorityRespo
 }
 
 type UpdateIssueStatusRequestObject struct {
-	IssueId IssueIdParam `json:"issueId"`
-	Body    *UpdateIssueStatusJSONRequestBody
+	WorkspaceId WorkspaceIdParam `json:"workspaceId"`
+	IssueId     IssueIdParam     `json:"issueId"`
+	Body        *UpdateIssueStatusJSONRequestBody
 }
 
 type UpdateIssueStatusResponseObject interface {
@@ -1538,8 +1871,9 @@ func (response UpdateIssueStatus500JSONResponse) VisitUpdateIssueStatusResponse(
 }
 
 type UpdateIssueTitleRequestObject struct {
-	IssueId IssueIdParam `json:"issueId"`
-	Body    *UpdateIssueTitleJSONRequestBody
+	WorkspaceId WorkspaceIdParam `json:"workspaceId"`
+	IssueId     IssueIdParam     `json:"issueId"`
+	Body        *UpdateIssueTitleJSONRequestBody
 }
 
 type UpdateIssueTitleResponseObject interface {
@@ -1603,7 +1937,8 @@ func (response UpdateIssueTitle500JSONResponse) VisitUpdateIssueTitleResponse(w 
 }
 
 type ListProjectsRequestObject struct {
-	Params ListProjectsParams
+	WorkspaceId WorkspaceIdParam `json:"workspaceId"`
+	Params      ListProjectsParams
 }
 
 type ListProjectsResponseObject interface {
@@ -1640,7 +1975,8 @@ func (response ListProjects500JSONResponse) VisitListProjectsResponse(w http.Res
 }
 
 type CreateProjectRequestObject struct {
-	Body *CreateProjectJSONRequestBody
+	WorkspaceId WorkspaceIdParam `json:"workspaceId"`
+	Body        *CreateProjectJSONRequestBody
 }
 
 type CreateProjectResponseObject interface {
@@ -1697,7 +2033,8 @@ func (response CreateProject500JSONResponse) VisitCreateProjectResponse(w http.R
 }
 
 type DeleteProjectRequestObject struct {
-	ProjectId ProjectIdParam `json:"projectId"`
+	WorkspaceId WorkspaceIdParam `json:"workspaceId"`
+	ProjectId   ProjectIdParam   `json:"projectId"`
 }
 
 type DeleteProjectResponseObject interface {
@@ -1751,7 +2088,8 @@ func (response DeleteProject500JSONResponse) VisitDeleteProjectResponse(w http.R
 }
 
 type GetProjectRequestObject struct {
-	ProjectId ProjectIdParam `json:"projectId"`
+	WorkspaceId WorkspaceIdParam `json:"workspaceId"`
+	ProjectId   ProjectIdParam   `json:"projectId"`
 }
 
 type GetProjectResponseObject interface {
@@ -1806,8 +2144,9 @@ func (response GetProject500JSONResponse) VisitGetProjectResponse(w http.Respons
 }
 
 type UpdateProjectRequestObject struct {
-	ProjectId ProjectIdParam `json:"projectId"`
-	Body      *UpdateProjectJSONRequestBody
+	WorkspaceId WorkspaceIdParam `json:"workspaceId"`
+	ProjectId   ProjectIdParam   `json:"projectId"`
+	Body        *UpdateProjectJSONRequestBody
 }
 
 type UpdateProjectResponseObject interface {
@@ -1870,101 +2209,71 @@ func (response UpdateProject500JSONResponse) VisitUpdateProjectResponse(w http.R
 	return json.NewEncoder(w).Encode(response)
 }
 
-type GetMeRequestObject struct {
-}
-
-type GetMeResponseObject interface {
-	VisitGetMeResponse(w http.ResponseWriter) error
-}
-
-type GetMe200JSONResponse User
-
-func (response GetMe200JSONResponse) VisitGetMeResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
-type GetMe401JSONResponse struct{ UnauthorizedJSONResponse }
-
-func (response GetMe401JSONResponse) VisitGetMeResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(401)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
-type GetMe500JSONResponse struct {
-	InternalServerErrorJSONResponse
-}
-
-func (response GetMe500JSONResponse) VisitGetMeResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(500)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
+	// List workspaces the authenticated user belongs to.
+	// (GET /workspaces)
+	ListWorkspaces(ctx context.Context, request ListWorkspacesRequestObject) (ListWorkspacesResponseObject, error)
+	// Create a new workspace.
+	// (POST /workspaces)
+	CreateWorkspace(ctx context.Context, request CreateWorkspaceRequestObject) (CreateWorkspaceResponseObject, error)
+	// Get a single workspace by ID.
+	// (GET /workspaces/{workspaceId})
+	GetWorkspace(ctx context.Context, request GetWorkspaceRequestObject) (GetWorkspaceResponseObject, error)
 	// Delete a comment.
-	// (DELETE /comments/{commentId})
+	// (DELETE /workspaces/{workspaceId}/comments/{commentId})
 	DeleteComment(ctx context.Context, request DeleteCommentRequestObject) (DeleteCommentResponseObject, error)
 	// List issues with optional filters.
-	// (GET /issues)
+	// (GET /workspaces/{workspaceId}/issues)
 	ListIssues(ctx context.Context, request ListIssuesRequestObject) (ListIssuesResponseObject, error)
 	// Create a new issue.
-	// (POST /issues)
+	// (POST /workspaces/{workspaceId}/issues)
 	CreateIssue(ctx context.Context, request CreateIssueRequestObject) (CreateIssueResponseObject, error)
 	// Search issues by a query string.
-	// (POST /issues/search)
+	// (POST /workspaces/{workspaceId}/issues/search)
 	SearchIssues(ctx context.Context, request SearchIssuesRequestObject) (SearchIssuesResponseObject, error)
 	// Delete an issue and its comments.
-	// (DELETE /issues/{issueId})
+	// (DELETE /workspaces/{workspaceId}/issues/{issueId})
 	DeleteIssue(ctx context.Context, request DeleteIssueRequestObject) (DeleteIssueResponseObject, error)
 	// Get a single issue by ID.
-	// (GET /issues/{issueId})
+	// (GET /workspaces/{workspaceId}/issues/{issueId})
 	GetIssue(ctx context.Context, request GetIssueRequestObject) (GetIssueResponseObject, error)
 	// Update the assignee of an issue.
-	// (PUT /issues/{issueId}/assigneeId)
+	// (PUT /workspaces/{workspaceId}/issues/{issueId}/assigneeId)
 	UpdateIssueAssignee(ctx context.Context, request UpdateIssueAssigneeRequestObject) (UpdateIssueAssigneeResponseObject, error)
 	// List comments on an issue.
-	// (GET /issues/{issueId}/comments)
+	// (GET /workspaces/{workspaceId}/issues/{issueId}/comments)
 	ListComments(ctx context.Context, request ListCommentsRequestObject) (ListCommentsResponseObject, error)
 	// Add a comment to an issue.
-	// (POST /issues/{issueId}/comments)
+	// (POST /workspaces/{workspaceId}/issues/{issueId}/comments)
 	CreateComment(ctx context.Context, request CreateCommentRequestObject) (CreateCommentResponseObject, error)
 	// Update the description of an issue.
-	// (PUT /issues/{issueId}/description)
+	// (PUT /workspaces/{workspaceId}/issues/{issueId}/description)
 	UpdateIssueDescription(ctx context.Context, request UpdateIssueDescriptionRequestObject) (UpdateIssueDescriptionResponseObject, error)
 	// Update the priority of an issue.
-	// (PUT /issues/{issueId}/priority)
+	// (PUT /workspaces/{workspaceId}/issues/{issueId}/priority)
 	UpdateIssuePriority(ctx context.Context, request UpdateIssuePriorityRequestObject) (UpdateIssuePriorityResponseObject, error)
 	// Update the status of an issue.
-	// (PUT /issues/{issueId}/status)
+	// (PUT /workspaces/{workspaceId}/issues/{issueId}/status)
 	UpdateIssueStatus(ctx context.Context, request UpdateIssueStatusRequestObject) (UpdateIssueStatusResponseObject, error)
 	// Update the title of an issue.
-	// (PUT /issues/{issueId}/title)
+	// (PUT /workspaces/{workspaceId}/issues/{issueId}/title)
 	UpdateIssueTitle(ctx context.Context, request UpdateIssueTitleRequestObject) (UpdateIssueTitleResponseObject, error)
 	// List projects accessible to the authenticated user.
-	// (GET /projects)
+	// (GET /workspaces/{workspaceId}/projects)
 	ListProjects(ctx context.Context, request ListProjectsRequestObject) (ListProjectsResponseObject, error)
 	// Create a new project.
-	// (POST /projects)
+	// (POST /workspaces/{workspaceId}/projects)
 	CreateProject(ctx context.Context, request CreateProjectRequestObject) (CreateProjectResponseObject, error)
 	// Delete a project and all its issues.
-	// (DELETE /projects/{projectId})
+	// (DELETE /workspaces/{workspaceId}/projects/{projectId})
 	DeleteProject(ctx context.Context, request DeleteProjectRequestObject) (DeleteProjectResponseObject, error)
 	// Get a single project by ID.
-	// (GET /projects/{projectId})
+	// (GET /workspaces/{workspaceId}/projects/{projectId})
 	GetProject(ctx context.Context, request GetProjectRequestObject) (GetProjectResponseObject, error)
 	// Replace a project's mutable fields.
-	// (PUT /projects/{projectId})
+	// (PUT /workspaces/{workspaceId}/projects/{projectId})
 	UpdateProject(ctx context.Context, request UpdateProjectRequestObject) (UpdateProjectResponseObject, error)
-	// Get the currently authenticated user.
-	// (GET /users/me)
-	GetMe(ctx context.Context, request GetMeRequestObject) (GetMeResponseObject, error)
 }
 
 type StrictHandlerFunc = strictecho.StrictEchoHandlerFunc
@@ -1979,10 +2288,88 @@ type strictHandler struct {
 	middlewares []StrictMiddlewareFunc
 }
 
+// ListWorkspaces operation middleware
+func (sh *strictHandler) ListWorkspaces(ctx echo.Context) error {
+	var request ListWorkspacesRequestObject
+
+	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.ListWorkspaces(ctx.Request().Context(), request.(ListWorkspacesRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListWorkspaces")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(ListWorkspacesResponseObject); ok {
+		return validResponse.VisitListWorkspacesResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
+}
+
+// CreateWorkspace operation middleware
+func (sh *strictHandler) CreateWorkspace(ctx echo.Context) error {
+	var request CreateWorkspaceRequestObject
+
+	var body CreateWorkspaceJSONRequestBody
+	if err := ctx.Bind(&body); err != nil {
+		return err
+	}
+	request.Body = &body
+
+	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.CreateWorkspace(ctx.Request().Context(), request.(CreateWorkspaceRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CreateWorkspace")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(CreateWorkspaceResponseObject); ok {
+		return validResponse.VisitCreateWorkspaceResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
+}
+
+// GetWorkspace operation middleware
+func (sh *strictHandler) GetWorkspace(ctx echo.Context, workspaceId WorkspaceIdParam) error {
+	var request GetWorkspaceRequestObject
+
+	request.WorkspaceId = workspaceId
+
+	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.GetWorkspace(ctx.Request().Context(), request.(GetWorkspaceRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetWorkspace")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(GetWorkspaceResponseObject); ok {
+		return validResponse.VisitGetWorkspaceResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
+}
+
 // DeleteComment operation middleware
-func (sh *strictHandler) DeleteComment(ctx echo.Context, commentId CommentIdParam) error {
+func (sh *strictHandler) DeleteComment(ctx echo.Context, workspaceId WorkspaceIdParam, commentId CommentIdParam) error {
 	var request DeleteCommentRequestObject
 
+	request.WorkspaceId = workspaceId
 	request.CommentId = commentId
 
 	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
@@ -2005,9 +2392,10 @@ func (sh *strictHandler) DeleteComment(ctx echo.Context, commentId CommentIdPara
 }
 
 // ListIssues operation middleware
-func (sh *strictHandler) ListIssues(ctx echo.Context, params ListIssuesParams) error {
+func (sh *strictHandler) ListIssues(ctx echo.Context, workspaceId WorkspaceIdParam, params ListIssuesParams) error {
 	var request ListIssuesRequestObject
 
+	request.WorkspaceId = workspaceId
 	request.Params = params
 
 	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
@@ -2030,8 +2418,10 @@ func (sh *strictHandler) ListIssues(ctx echo.Context, params ListIssuesParams) e
 }
 
 // CreateIssue operation middleware
-func (sh *strictHandler) CreateIssue(ctx echo.Context) error {
+func (sh *strictHandler) CreateIssue(ctx echo.Context, workspaceId WorkspaceIdParam) error {
 	var request CreateIssueRequestObject
+
+	request.WorkspaceId = workspaceId
 
 	var body CreateIssueJSONRequestBody
 	if err := ctx.Bind(&body); err != nil {
@@ -2059,8 +2449,10 @@ func (sh *strictHandler) CreateIssue(ctx echo.Context) error {
 }
 
 // SearchIssues operation middleware
-func (sh *strictHandler) SearchIssues(ctx echo.Context) error {
+func (sh *strictHandler) SearchIssues(ctx echo.Context, workspaceId WorkspaceIdParam) error {
 	var request SearchIssuesRequestObject
+
+	request.WorkspaceId = workspaceId
 
 	var body SearchIssuesJSONRequestBody
 	if err := ctx.Bind(&body); err != nil {
@@ -2088,9 +2480,10 @@ func (sh *strictHandler) SearchIssues(ctx echo.Context) error {
 }
 
 // DeleteIssue operation middleware
-func (sh *strictHandler) DeleteIssue(ctx echo.Context, issueId IssueIdParam) error {
+func (sh *strictHandler) DeleteIssue(ctx echo.Context, workspaceId WorkspaceIdParam, issueId IssueIdParam) error {
 	var request DeleteIssueRequestObject
 
+	request.WorkspaceId = workspaceId
 	request.IssueId = issueId
 
 	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
@@ -2113,9 +2506,10 @@ func (sh *strictHandler) DeleteIssue(ctx echo.Context, issueId IssueIdParam) err
 }
 
 // GetIssue operation middleware
-func (sh *strictHandler) GetIssue(ctx echo.Context, issueId IssueIdParam) error {
+func (sh *strictHandler) GetIssue(ctx echo.Context, workspaceId WorkspaceIdParam, issueId IssueIdParam) error {
 	var request GetIssueRequestObject
 
+	request.WorkspaceId = workspaceId
 	request.IssueId = issueId
 
 	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
@@ -2138,9 +2532,10 @@ func (sh *strictHandler) GetIssue(ctx echo.Context, issueId IssueIdParam) error 
 }
 
 // UpdateIssueAssignee operation middleware
-func (sh *strictHandler) UpdateIssueAssignee(ctx echo.Context, issueId IssueIdParam) error {
+func (sh *strictHandler) UpdateIssueAssignee(ctx echo.Context, workspaceId WorkspaceIdParam, issueId IssueIdParam) error {
 	var request UpdateIssueAssigneeRequestObject
 
+	request.WorkspaceId = workspaceId
 	request.IssueId = issueId
 
 	var body UpdateIssueAssigneeJSONRequestBody
@@ -2169,9 +2564,10 @@ func (sh *strictHandler) UpdateIssueAssignee(ctx echo.Context, issueId IssueIdPa
 }
 
 // ListComments operation middleware
-func (sh *strictHandler) ListComments(ctx echo.Context, issueId IssueIdParam, params ListCommentsParams) error {
+func (sh *strictHandler) ListComments(ctx echo.Context, workspaceId WorkspaceIdParam, issueId IssueIdParam, params ListCommentsParams) error {
 	var request ListCommentsRequestObject
 
+	request.WorkspaceId = workspaceId
 	request.IssueId = issueId
 	request.Params = params
 
@@ -2195,9 +2591,10 @@ func (sh *strictHandler) ListComments(ctx echo.Context, issueId IssueIdParam, pa
 }
 
 // CreateComment operation middleware
-func (sh *strictHandler) CreateComment(ctx echo.Context, issueId IssueIdParam) error {
+func (sh *strictHandler) CreateComment(ctx echo.Context, workspaceId WorkspaceIdParam, issueId IssueIdParam) error {
 	var request CreateCommentRequestObject
 
+	request.WorkspaceId = workspaceId
 	request.IssueId = issueId
 
 	var body CreateCommentJSONRequestBody
@@ -2226,9 +2623,10 @@ func (sh *strictHandler) CreateComment(ctx echo.Context, issueId IssueIdParam) e
 }
 
 // UpdateIssueDescription operation middleware
-func (sh *strictHandler) UpdateIssueDescription(ctx echo.Context, issueId IssueIdParam) error {
+func (sh *strictHandler) UpdateIssueDescription(ctx echo.Context, workspaceId WorkspaceIdParam, issueId IssueIdParam) error {
 	var request UpdateIssueDescriptionRequestObject
 
+	request.WorkspaceId = workspaceId
 	request.IssueId = issueId
 
 	var body UpdateIssueDescriptionJSONRequestBody
@@ -2257,9 +2655,10 @@ func (sh *strictHandler) UpdateIssueDescription(ctx echo.Context, issueId IssueI
 }
 
 // UpdateIssuePriority operation middleware
-func (sh *strictHandler) UpdateIssuePriority(ctx echo.Context, issueId IssueIdParam) error {
+func (sh *strictHandler) UpdateIssuePriority(ctx echo.Context, workspaceId WorkspaceIdParam, issueId IssueIdParam) error {
 	var request UpdateIssuePriorityRequestObject
 
+	request.WorkspaceId = workspaceId
 	request.IssueId = issueId
 
 	var body UpdateIssuePriorityJSONRequestBody
@@ -2288,9 +2687,10 @@ func (sh *strictHandler) UpdateIssuePriority(ctx echo.Context, issueId IssueIdPa
 }
 
 // UpdateIssueStatus operation middleware
-func (sh *strictHandler) UpdateIssueStatus(ctx echo.Context, issueId IssueIdParam) error {
+func (sh *strictHandler) UpdateIssueStatus(ctx echo.Context, workspaceId WorkspaceIdParam, issueId IssueIdParam) error {
 	var request UpdateIssueStatusRequestObject
 
+	request.WorkspaceId = workspaceId
 	request.IssueId = issueId
 
 	var body UpdateIssueStatusJSONRequestBody
@@ -2319,9 +2719,10 @@ func (sh *strictHandler) UpdateIssueStatus(ctx echo.Context, issueId IssueIdPara
 }
 
 // UpdateIssueTitle operation middleware
-func (sh *strictHandler) UpdateIssueTitle(ctx echo.Context, issueId IssueIdParam) error {
+func (sh *strictHandler) UpdateIssueTitle(ctx echo.Context, workspaceId WorkspaceIdParam, issueId IssueIdParam) error {
 	var request UpdateIssueTitleRequestObject
 
+	request.WorkspaceId = workspaceId
 	request.IssueId = issueId
 
 	var body UpdateIssueTitleJSONRequestBody
@@ -2350,9 +2751,10 @@ func (sh *strictHandler) UpdateIssueTitle(ctx echo.Context, issueId IssueIdParam
 }
 
 // ListProjects operation middleware
-func (sh *strictHandler) ListProjects(ctx echo.Context, params ListProjectsParams) error {
+func (sh *strictHandler) ListProjects(ctx echo.Context, workspaceId WorkspaceIdParam, params ListProjectsParams) error {
 	var request ListProjectsRequestObject
 
+	request.WorkspaceId = workspaceId
 	request.Params = params
 
 	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
@@ -2375,8 +2777,10 @@ func (sh *strictHandler) ListProjects(ctx echo.Context, params ListProjectsParam
 }
 
 // CreateProject operation middleware
-func (sh *strictHandler) CreateProject(ctx echo.Context) error {
+func (sh *strictHandler) CreateProject(ctx echo.Context, workspaceId WorkspaceIdParam) error {
 	var request CreateProjectRequestObject
+
+	request.WorkspaceId = workspaceId
 
 	var body CreateProjectJSONRequestBody
 	if err := ctx.Bind(&body); err != nil {
@@ -2404,9 +2808,10 @@ func (sh *strictHandler) CreateProject(ctx echo.Context) error {
 }
 
 // DeleteProject operation middleware
-func (sh *strictHandler) DeleteProject(ctx echo.Context, projectId ProjectIdParam) error {
+func (sh *strictHandler) DeleteProject(ctx echo.Context, workspaceId WorkspaceIdParam, projectId ProjectIdParam) error {
 	var request DeleteProjectRequestObject
 
+	request.WorkspaceId = workspaceId
 	request.ProjectId = projectId
 
 	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
@@ -2429,9 +2834,10 @@ func (sh *strictHandler) DeleteProject(ctx echo.Context, projectId ProjectIdPara
 }
 
 // GetProject operation middleware
-func (sh *strictHandler) GetProject(ctx echo.Context, projectId ProjectIdParam) error {
+func (sh *strictHandler) GetProject(ctx echo.Context, workspaceId WorkspaceIdParam, projectId ProjectIdParam) error {
 	var request GetProjectRequestObject
 
+	request.WorkspaceId = workspaceId
 	request.ProjectId = projectId
 
 	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
@@ -2454,9 +2860,10 @@ func (sh *strictHandler) GetProject(ctx echo.Context, projectId ProjectIdParam) 
 }
 
 // UpdateProject operation middleware
-func (sh *strictHandler) UpdateProject(ctx echo.Context, projectId ProjectIdParam) error {
+func (sh *strictHandler) UpdateProject(ctx echo.Context, workspaceId WorkspaceIdParam, projectId ProjectIdParam) error {
 	var request UpdateProjectRequestObject
 
+	request.WorkspaceId = workspaceId
 	request.ProjectId = projectId
 
 	var body UpdateProjectJSONRequestBody
@@ -2484,69 +2891,48 @@ func (sh *strictHandler) UpdateProject(ctx echo.Context, projectId ProjectIdPara
 	return nil
 }
 
-// GetMe operation middleware
-func (sh *strictHandler) GetMe(ctx echo.Context) error {
-	var request GetMeRequestObject
-
-	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
-		return sh.ssi.GetMe(ctx.Request().Context(), request.(GetMeRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "GetMe")
-	}
-
-	response, err := handler(ctx, request)
-
-	if err != nil {
-		return err
-	} else if validResponse, ok := response.(GetMeResponseObject); ok {
-		return validResponse.VisitGetMeResponse(ctx.Response())
-	} else if response != nil {
-		return fmt.Errorf("unexpected response type: %T", response)
-	}
-	return nil
-}
-
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
+	"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",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

@@ -10,9 +10,13 @@ import (
 type contextKey string
 
 const userIDKey contextKey = "userID"
+const workspaceIDKey contextKey = "workspaceID"
 
 // errMissingUserID is returned when no user ID is present in the context.
 var errMissingUserID = errors.New("missing user ID in context")
+
+// errMissingWorkspaceID is returned when no workspace ID is present in the context.
+var errMissingWorkspaceID = errors.New("missing workspace ID in context")
 
 func userIDFromContext(ctx context.Context) (uuid.UUID, error) {
 	id, ok := ctx.Value(userIDKey).(uuid.UUID)
@@ -34,4 +38,19 @@ func WithUserID(ctx context.Context, id uuid.UUID) context.Context {
 // UserIDFromContext is the exported form for use in tests.
 func UserIDFromContext(ctx context.Context) (uuid.UUID, error) {
 	return userIDFromContext(ctx)
+}
+
+// WithWorkspaceID stores a workspace ID in the context for use by the pgx pool hooks.
+func WithWorkspaceID(ctx context.Context, id uuid.UUID) context.Context {
+	return context.WithValue(ctx, workspaceIDKey, id)
+}
+
+// WorkspaceIDFromContext retrieves the workspace ID stored by WithWorkspaceID.
+// Returns errMissingWorkspaceID if not set or uuid.Nil.
+func WorkspaceIDFromContext(ctx context.Context) (uuid.UUID, error) {
+	id, ok := ctx.Value(workspaceIDKey).(uuid.UUID)
+	if !ok || id == uuid.Nil {
+		return uuid.Nil, errMissingWorkspaceID
+	}
+	return id, nil
 }

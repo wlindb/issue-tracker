@@ -132,7 +132,34 @@ components:
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
 
+    Workspace:
+      type: object
+      required: [id, name, ownerId, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+          x-go-type: uuid.UUID
+          x-go-type-import:
+            path: github.com/google/uuid
+        name: { type: string }
+        ownerId:
+          type: string
+          format: uuid
+          x-go-type: uuid.UUID
+          x-go-type-import:
+            path: github.com/google/uuid
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
     # Pagination — oapi-codegen has no generics support; spell out each page type
+    WorkspacePage:
+      type: object
+      required: [items]
+      properties:
+        items:      { type: array, items: { $ref: "#/components/schemas/Workspace" } }
+        nextCursor: { type: string, nullable: true }
+
     ProjectPage:
       type: object
       required: [items]
@@ -162,6 +189,12 @@ components:
         message: { type: string }
 
     # ── Request bodies ──────────────────────────────────────────────────────
+    CreateWorkspaceRequest:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string }
+
     CreateProjectRequest:
       type: object
       required: [name]
@@ -247,6 +280,17 @@ components:
         body: { type: string, minLength: 1 }
 
   parameters:
+    WorkspaceIdParam:
+      name: workspaceId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+        x-go-type: uuid.UUID
+        x-go-type-import:
+          path: github.com/google/uuid
+
     ProjectIdParam:
       name: projectId
       in: path
@@ -331,21 +375,67 @@ components:
 
 paths:
 
-  /users/me:
+  /workspaces:
     get:
-      operationId: getMe
-      summary: Get the currently authenticated user.
-      tags: [users]
+      operationId: listWorkspaces
+      summary: List workspaces the authenticated user belongs to.
+      tags: [workspaces]
+      security:
+        - bearerAuth: []
       responses:
         "200":
-          description: Current user profile.
+          description: List of workspaces.
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/User" }
+              schema: { $ref: "#/components/schemas/WorkspacePage" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "500": { $ref: "#/components/responses/InternalServerError" }
 
-  /projects:
+    post:
+      operationId: createWorkspace
+      summary: Create a new workspace.
+      tags: [workspaces]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateWorkspaceRequest" }
+      responses:
+        "201":
+          description: Workspace created.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Workspace" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "500": { $ref: "#/components/responses/InternalServerError" }
+
+  /workspaces/{workspaceId}:
+    parameters:
+      - { $ref: "#/components/parameters/WorkspaceIdParam" }
+
+    get:
+      operationId: getWorkspace
+      summary: Get a single workspace by ID.
+      tags: [workspaces]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Workspace details.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Workspace" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "500": { $ref: "#/components/responses/InternalServerError" }
+
+  /workspaces/{workspaceId}/projects:
+    parameters:
+      - { $ref: "#/components/parameters/WorkspaceIdParam" }
+
     get:
       operationId: listProjects
       summary: List projects accessible to the authenticated user.
@@ -382,8 +472,9 @@ paths:
         "422": { $ref: "#/components/responses/UnprocessableEntity" }
         "500": { $ref: "#/components/responses/InternalServerError" }
 
-  /projects/{projectId}:
+  /workspaces/{workspaceId}/projects/{projectId}:
     parameters:
+      - { $ref: "#/components/parameters/WorkspaceIdParam" }
       - { $ref: "#/components/parameters/ProjectIdParam" }
 
     get:
@@ -433,7 +524,10 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
         "500": { $ref: "#/components/responses/InternalServerError" }
 
-  /issues:
+  /workspaces/{workspaceId}/issues:
+    parameters:
+      - { $ref: "#/components/parameters/WorkspaceIdParam" }
+
     get:
       operationId: listIssues
       summary: List issues with optional filters.
@@ -498,7 +592,10 @@ paths:
         "422": { $ref: "#/components/responses/UnprocessableEntity" }
         "500": { $ref: "#/components/responses/InternalServerError" }
 
-  /issues/search:
+  /workspaces/{workspaceId}/issues/search:
+    parameters:
+      - { $ref: "#/components/parameters/WorkspaceIdParam" }
+
     post:
       operationId: searchIssues
       summary: Search issues by a query string.
@@ -512,8 +609,9 @@ paths:
         "400": { $ref: "#/components/responses/BadRequest" }
         "501": { $ref: "#/components/responses/NotImplemented" }
 
-  /issues/{issueId}:
+  /workspaces/{workspaceId}/issues/{issueId}:
     parameters:
+      - { $ref: "#/components/parameters/WorkspaceIdParam" }
       - { $ref: "#/components/parameters/IssueIdParam" }
 
     get:
@@ -542,8 +640,9 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
         "500": { $ref: "#/components/responses/InternalServerError" }
 
-  /issues/{issueId}/title:
+  /workspaces/{workspaceId}/issues/{issueId}/title:
     parameters:
+      - { $ref: "#/components/parameters/WorkspaceIdParam" }
       - { $ref: "#/components/parameters/IssueIdParam" }
 
     put:
@@ -567,8 +666,9 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
         "500": { $ref: "#/components/responses/InternalServerError" }
 
-  /issues/{issueId}/description:
+  /workspaces/{workspaceId}/issues/{issueId}/description:
     parameters:
+      - { $ref: "#/components/parameters/WorkspaceIdParam" }
       - { $ref: "#/components/parameters/IssueIdParam" }
 
     put:
@@ -593,8 +693,9 @@ paths:
         "422": { $ref: "#/components/responses/UnprocessableEntity" }
         "500": { $ref: "#/components/responses/InternalServerError" }
 
-  /issues/{issueId}/status:
+  /workspaces/{workspaceId}/issues/{issueId}/status:
     parameters:
+      - { $ref: "#/components/parameters/WorkspaceIdParam" }
       - { $ref: "#/components/parameters/IssueIdParam" }
 
     put:
@@ -619,8 +720,9 @@ paths:
         "422": { $ref: "#/components/responses/UnprocessableEntity" }
         "500": { $ref: "#/components/responses/InternalServerError" }
 
-  /issues/{issueId}/priority:
+  /workspaces/{workspaceId}/issues/{issueId}/priority:
     parameters:
+      - { $ref: "#/components/parameters/WorkspaceIdParam" }
       - { $ref: "#/components/parameters/IssueIdParam" }
 
     put:
@@ -644,8 +746,9 @@ paths:
         "422": { $ref: "#/components/responses/UnprocessableEntity" }
         "500": { $ref: "#/components/responses/InternalServerError" }
 
-  /issues/{issueId}/assigneeId:
+  /workspaces/{workspaceId}/issues/{issueId}/assigneeId:
     parameters:
+      - { $ref: "#/components/parameters/WorkspaceIdParam" }
       - { $ref: "#/components/parameters/IssueIdParam" }
 
     put:
@@ -670,8 +773,9 @@ paths:
         "422": { $ref: "#/components/responses/UnprocessableEntity" }
         "500": { $ref: "#/components/responses/InternalServerError" }
 
-  /issues/{issueId}/comments:
+  /workspaces/{workspaceId}/issues/{issueId}/comments:
     parameters:
+      - { $ref: "#/components/parameters/WorkspaceIdParam" }
       - { $ref: "#/components/parameters/IssueIdParam" }
 
     get:
@@ -714,8 +818,9 @@ paths:
         "422": { $ref: "#/components/responses/UnprocessableEntity" }
         "500": { $ref: "#/components/responses/InternalServerError" }
 
-  /comments/{commentId}:
+  /workspaces/{workspaceId}/comments/{commentId}:
     parameters:
+      - { $ref: "#/components/parameters/WorkspaceIdParam" }
       - { $ref: "#/components/parameters/CommentIdParam" }
 
     delete:
