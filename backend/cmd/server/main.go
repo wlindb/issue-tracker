@@ -56,20 +56,31 @@ func run() error {
 	}()
 	log.Println("telemetry initialised")
 
-	pool, err := db.New(ctx, cfg.DatabaseURL, db.WithAppSessionVars(
-		api.WorkspaceIDFromContext,
-		api.UserIDFromContext,
-	))
+	// Run migrations as the superuser before creating the restricted app pool.
+	// Migrations may create roles (e.g. appuser) that the app pool depends on.
+	migrationPool, err := db.New(ctx, cfg.DatabaseURL)
+	if err != nil {
+		return fmt.Errorf("database (migration pool): %w", err)
+	}
+	if err := trackerinfra.Migrate(ctx, migrationPool); err != nil {
+		migrationPool.Close()
+		return fmt.Errorf("tracker migrate: %w", err)
+	}
+	migrationPool.Close()
+	log.Println("tracker migrations applied")
+
+	pool, err := db.New(ctx, cfg.DatabaseURL,
+		db.WithAppSessionVars(
+			api.WorkspaceIDFromContext,
+			api.UserIDFromContext,
+		),
+		db.WithAppRole("appuser"),
+	)
 	if err != nil {
 		return fmt.Errorf("database: %w", err)
 	}
 	defer pool.Close()
 	log.Println("database connected")
-
-	if err := trackerinfra.Migrate(ctx, pool); err != nil {
-		return fmt.Errorf("tracker migrate: %w", err)
-	}
-	log.Println("tracker migrations applied")
 
 	tracer := otel.Tracer(cfg.OTELServiceName)
 

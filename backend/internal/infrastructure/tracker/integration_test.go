@@ -41,24 +41,56 @@ var testPool *pgxpool.Pool
 
 func TestMain(m *testing.M) {
 	ctx := context.Background()
-	pool, terminate, err := startPostgres(ctx)
+	dsn, terminate, err := startPostgres(ctx)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "start postgres: %v\n", err)
 		os.Exit(1)
 	}
 
-	if err := tracker.Migrate(ctx, pool); err != nil {
+	// Run migrations as the superuser (plain pool, no role switching).
+	migrationPool, err := infradb.New(ctx, dsn)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "start postgres: connect migration pool: %v\n", err)
+		os.Exit(1)
+	}
+	if err := tracker.Migrate(ctx, migrationPool); err != nil {
 		fmt.Fprintf(os.Stderr, "migrate: %v\n", err)
 		os.Exit(1)
 	}
+	migrationPool.Close()
 
-	testPool = pool
+	// Open the application pool after migrations: appuser role now exists.
+	testPool, err = infradb.New(ctx, dsn,
+		infradb.WithAppSessionVars(
+			func(ctx context.Context) (uuid.UUID, error) {
+				id, ok := ctx.Value(testWorkspaceIDKey).(uuid.UUID)
+				if !ok || id == uuid.Nil {
+					return uuid.Nil, errors.New("missing workspace ID")
+				}
+				return id, nil
+			},
+			func(ctx context.Context) (uuid.UUID, error) {
+				id, ok := ctx.Value(testUserIDKey).(uuid.UUID)
+				if !ok || id == uuid.Nil {
+					return uuid.Nil, errors.New("missing user ID")
+				}
+				return id, nil
+			},
+		),
+		infradb.WithAppRole("appuser"),
+	)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "start postgres: connect app pool: %v\n", err)
+		os.Exit(1)
+	}
+
 	code := m.Run()
+	testPool.Close()
 	terminate()
 	os.Exit(code)
 }
 
-func startPostgres(ctx context.Context) (*pgxpool.Pool, func(), error) {
+func startPostgres(ctx context.Context) (string, func(), error) {
 	req := testcontainers.ContainerRequest{
 		Image: "postgres:17-alpine",
 		Env: map[string]string{
@@ -73,38 +105,18 @@ func startPostgres(ctx context.Context) (*pgxpool.Pool, func(), error) {
 		ContainerRequest: req, Started: true,
 	})
 	if err != nil {
-		return nil, nil, fmt.Errorf("start container: %w", err)
+		return "", nil, fmt.Errorf("start container: %w", err)
 	}
 	port, err := c.MappedPort(ctx, "5432")
 	if err != nil {
-		return nil, nil, errors.Join(fmt.Errorf("mapped port: %w", err), c.Terminate(ctx))
+		return "", nil, errors.Join(fmt.Errorf("mapped port: %w", err), c.Terminate(ctx))
 	}
 	host, err := c.Host(ctx)
 	if err != nil {
-		return nil, nil, errors.Join(fmt.Errorf("host: %w", err), c.Terminate(ctx))
+		return "", nil, errors.Join(fmt.Errorf("host: %w", err), c.Terminate(ctx))
 	}
 	dsn := fmt.Sprintf("postgres://test:test@%s:%s/test", host, port.Port())
-	pool, err := infradb.New(ctx, dsn, infradb.WithAppSessionVars(
-		func(ctx context.Context) (uuid.UUID, error) {
-			id, ok := ctx.Value(testWorkspaceIDKey).(uuid.UUID)
-			if !ok || id == uuid.Nil {
-				return uuid.Nil, errors.New("missing workspace ID")
-			}
-			return id, nil
-		},
-		func(ctx context.Context) (uuid.UUID, error) {
-			id, ok := ctx.Value(testUserIDKey).(uuid.UUID)
-			if !ok || id == uuid.Nil {
-				return uuid.Nil, errors.New("missing user ID")
-			}
-			return id, nil
-		},
-	))
-	if err != nil {
-		return nil, nil, errors.Join(fmt.Errorf("connect: %w", err), c.Terminate(ctx))
-	}
-	return pool, func() {
-		pool.Close()
+	return dsn, func() {
 		if err := c.Terminate(ctx); err != nil {
 			fmt.Fprintf(os.Stderr, "terminate container: %v\n", err)
 		}
