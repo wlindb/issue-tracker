@@ -4,15 +4,13 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/google/uuid"
-
 	"github.com/wlindb/issue-tracker/internal/api/model"
 	trackerdomain "github.com/wlindb/issue-tracker/internal/domain/tracker/project"
 )
 
 // ProjectService is what the handler needs from the domain.
 type ProjectService interface {
-	Create(ctx context.Context, id uuid.UUID, ownerID uuid.UUID, name string, description *string) (*trackerdomain.Project, error)
+	Create(ctx context.Context, command trackerdomain.CreateProjectCommand) (trackerdomain.Project, error)
 	List(ctx context.Context, query trackerdomain.ListProjectQuery) (trackerdomain.Projects, error)
 }
 
@@ -41,21 +39,25 @@ func (h *ProjectHandler) ListProjects(ctx context.Context, req model.ListProject
 }
 
 func (h *ProjectHandler) CreateProject(ctx context.Context, req model.CreateProjectRequestObject) (model.CreateProjectResponseObject, error) {
+	userID, err := userIDFromContext(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("create project: %w", err)
+	}
 	if req.Body.Name == "" {
 		return model.CreateProject400JSONResponse{
 			BadRequestJSONResponse: newBadRequest("invalid_input", "name is required"),
 		}, nil
 	}
-	userID, err := userIDFromContext(ctx)
+	command := trackerdomain.CreateProjectCommand{
+		Name:        req.Body.Name,
+		Description: req.Body.Description,
+		OwnerID:     userID,
+	}
+	result, err := h.service.Create(ctx, command)
 	if err != nil {
 		return nil, fmt.Errorf("create project: %w", err)
 	}
-	id := uuid.New()
-	project, err := h.service.Create(ctx, id, userID, req.Body.Name, req.Body.Description)
-	if err != nil {
-		return nil, fmt.Errorf("create project: %w", err)
-	}
-	return model.CreateProject201JSONResponse(projectFromDomain(*project)), nil
+	return model.CreateProject201JSONResponse(projectFromDomain(result)), nil
 }
 
 func (h *Handler) GetProject(_ context.Context, _ model.GetProjectRequestObject) (model.GetProjectResponseObject, error) {

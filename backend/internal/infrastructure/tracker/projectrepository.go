@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	projectdomain "github.com/wlindb/issue-tracker/internal/domain/tracker/project"
@@ -27,19 +25,10 @@ func NewProjectRepository(pool *pgxpool.Pool) *ProjectRepository {
 }
 
 // Create inserts a new project row and returns the domain model.
-func (r *ProjectRepository) Create(ctx context.Context, id, ownerID uuid.UUID, name string, description *string) (*projectdomain.Project, error) {
-	var pgDescription pgtype.Text
-	if description != nil {
-		pgDescription = pgtype.Text{String: *description, Valid: true}
-	}
-	row, err := r.queries.CreateProject(ctx, trackerdb.CreateProjectParams{
-		ID:          id,
-		OwnerID:     ownerID,
-		Name:        name,
-		Description: pgDescription,
-	})
+func (r *ProjectRepository) Create(ctx context.Context, project projectdomain.Project) (projectdomain.Project, error) {
+	row, err := r.queries.CreateProject(ctx, createProjectParamsFromDomain(project))
 	if err != nil {
-		return nil, fmt.Errorf("create project: %w", err)
+		return projectdomain.Project{}, fmt.Errorf("create project: %w", err)
 	}
 	return projectToDomain(row), nil
 }

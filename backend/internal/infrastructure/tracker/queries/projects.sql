@@ -1,6 +1,6 @@
 -- name: CreateProject :one
-INSERT INTO projects (id, owner_id, name, description, workspace_id, created_at, updated_at)
-VALUES (@id, @owner_id, @name, @description, current_setting('app.workspace_id')::uuid, NOW(), NOW())
+INSERT INTO projects (id, identifier, owner_id, name, description, workspace_id, created_at, updated_at)
+VALUES (@id, @identifier, @owner_id, @name, @description, current_setting('app.workspace_id')::uuid, NOW(), NOW())
 RETURNING *;
 
 -- name: ListProjects :many

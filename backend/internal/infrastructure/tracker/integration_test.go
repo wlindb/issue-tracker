@@ -137,7 +137,12 @@ func createTestProject(t *testing.T, ctx context.Context) uuid.UUID {
 	t.Helper()
 	repository := tracker.NewProjectRepository(testPool)
 	id := uuid.New()
-	_, err := repository.Create(ctx, id, uuid.New(), "TestProject-"+id.String()[:8], nil)
+	_, err := repository.Create(ctx, projectdomain.Project{
+		ID:         id,
+		Identifier: "test-" + id.String()[:8],
+		OwnerID:    uuid.New(),
+		Name:       "TestProject-" + id.String()[:8],
+	})
 	require.NoError(t, err)
 	return id
 }
@@ -147,10 +152,14 @@ func Test_Create_NoDescription_SuccessfulProjectCreation(t *testing.T) {
 	_, ctx := createTestWorkspace(t)
 	id, ownerID := uuid.New(), uuid.New()
 
-	actual, err := repository.Create(ctx, id, ownerID, "Acme", nil)
+	actual, err := repository.Create(ctx, projectdomain.Project{
+		ID:         id,
+		Identifier: "acme-" + id.String()[:8],
+		OwnerID:    ownerID,
+		Name:       "Acme",
+	})
 
 	require.NoError(t, err)
-	require.NotNil(t, actual)
 	assert.Equal(t, id, actual.ID)
 	assert.Equal(t, ownerID, actual.OwnerID)
 	assert.Equal(t, "Acme", actual.Name)
@@ -162,9 +171,16 @@ func Test_Create_NoDescription_SuccessfulProjectCreation(t *testing.T) {
 func Test_Create_WithDescription_SuccessfulProjectCreation(t *testing.T) {
 	repository := tracker.NewProjectRepository(testPool)
 	_, ctx := createTestWorkspace(t)
+	id := uuid.New()
 	description := "My description"
 
-	actual, err := repository.Create(ctx, uuid.New(), uuid.New(), "Described", &description)
+	actual, err := repository.Create(ctx, projectdomain.Project{
+		ID:          id,
+		Identifier:  "described-" + id.String()[:8],
+		OwnerID:     uuid.New(),
+		Name:        "Described",
+		Description: &description,
+	})
 
 	require.NoError(t, err)
 	require.NotNil(t, actual.Description)
@@ -176,10 +192,20 @@ func Test_Create_DuplicateID_ReturnsError(t *testing.T) {
 	_, ctx := createTestWorkspace(t)
 	id := uuid.New()
 
-	_, err := repository.Create(ctx, id, uuid.New(), "First", nil)
+	_, err := repository.Create(ctx, projectdomain.Project{
+		ID:         id,
+		Identifier: "first-" + id.String()[:8],
+		OwnerID:    uuid.New(),
+		Name:       "First",
+	})
 	require.NoError(t, err)
 
-	_, err = repository.Create(ctx, id, uuid.New(), "Second", nil)
+	_, err = repository.Create(ctx, projectdomain.Project{
+		ID:         id,
+		Identifier: "second-" + id.String()[:8],
+		OwnerID:    uuid.New(),
+		Name:       "Second",
+	})
 	require.Error(t, err) // PK violation
 }
 
@@ -188,7 +214,13 @@ func Test_List_WithLimit_ReturnsLimitedProjects(t *testing.T) {
 	_, ctx := createTestWorkspace(t)
 
 	for i := 0; i < 3; i++ {
-		_, err := repository.Create(ctx, uuid.New(), uuid.New(), "LimitTest", nil)
+		id := uuid.New()
+		_, err := repository.Create(ctx, projectdomain.Project{
+			ID:         id,
+			Identifier: fmt.Sprintf("limit-%d-%s", i, id.String()[:8]),
+			OwnerID:    uuid.New(),
+			Name:       "LimitTest",
+		})
 		require.NoError(t, err)
 	}
 
@@ -205,9 +237,19 @@ func Test_List_LimitExceedsTotal_ReturnsAllProjects(t *testing.T) {
 	_, ctx := createTestWorkspace(t)
 
 	id1, id2 := uuid.New(), uuid.New()
-	_, err := repository.Create(ctx, id1, uuid.New(), "ExceedA", nil)
+	_, err := repository.Create(ctx, projectdomain.Project{
+		ID:         id1,
+		Identifier: "exceed-a-" + id1.String()[:8],
+		OwnerID:    uuid.New(),
+		Name:       "ExceedA",
+	})
 	require.NoError(t, err)
-	_, err = repository.Create(ctx, id2, uuid.New(), "ExceedB", nil)
+	_, err = repository.Create(ctx, projectdomain.Project{
+		ID:         id2,
+		Identifier: "exceed-b-" + id2.String()[:8],
+		OwnerID:    uuid.New(),
+		Name:       "ExceedB",
+	})
 	require.NoError(t, err)
 
 	limit := 100

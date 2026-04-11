@@ -3,13 +3,21 @@ package project
 import (
 	"context"
 	"errors"
+	"regexp"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
 )
 
+var (
+	nonSlugCharPattern    = regexp.MustCompile(`[^a-z0-9-]`)
+	multipleDashesPattern = regexp.MustCompile(`-{2,}`)
+)
+
 type Project struct {
 	ID          uuid.UUID
+	Identifier  string
 	Name        string
 	Description *string
 	OwnerID     uuid.UUID
@@ -28,6 +36,31 @@ type Projects struct {
 	Items []Project
 }
 
+// CreateProjectCommand holds all inputs needed to create a new project.
+type CreateProjectCommand struct {
+	Name        string
+	Description *string
+	OwnerID     uuid.UUID
+}
+
+// Slugify converts s into a URL-friendly slug.
+func (c CreateProjectCommand) Slugify(s string) string {
+	s = strings.ToLower(s)
+	s = strings.ReplaceAll(s, " ", "-")
+	s = nonSlugCharPattern.ReplaceAllString(s, "")
+	s = multipleDashesPattern.ReplaceAllString(s, "-")
+	return strings.Trim(s, "-")
+}
+
+// Slugifier is a function that converts a string to a slug.
+type Slugifier func(s string) string
+
+// ToProject builds a Project from the command using the given id and slugifier.
+// Returns ErrInvalidProject if the command contains invalid data.
+func (c CreateProjectCommand) ToProject(id uuid.UUID, slugifier Slugifier) (Project, error) {
+	return New(id, slugifier(c.Name), c.Name, c.Description, c.OwnerID)
+}
+
 const defaultLimit = 20
 
 func NewListProjectQuery(cursor *string, limit *int) ListProjectQuery {
@@ -38,8 +71,33 @@ func NewListProjectQuery(cursor *string, limit *int) ListProjectQuery {
 	return ListProjectQuery{Cursor: cursor, Limit: limit}
 }
 
+func New(id uuid.UUID, identifier string, name string, description *string, ownerID uuid.UUID) (Project, error) {
+	if id == uuid.Nil {
+		return Project{}, ErrInvalidProject
+	}
+	if identifier == "" {
+		return Project{}, ErrInvalidProject
+	}
+	if name == "" {
+		return Project{}, ErrInvalidProject
+	}
+	if ownerID == uuid.Nil {
+		return Project{}, ErrInvalidProject
+	}
+	now := time.Now()
+	return Project{
+		ID:          id,
+		Identifier:  identifier,
+		Name:        name,
+		Description: description,
+		OwnerID:     ownerID,
+		CreatedAt:   now,
+		UpdatedAt:   now,
+	}, nil
+}
+
 type ProjectRepository interface {
-	Create(ctx context.Context, id uuid.UUID, ownerID uuid.UUID, name string, description *string) (*Project, error)
+	Create(ctx context.Context, project Project) (Project, error)
 	List(ctx context.Context, query ListProjectQuery) (Projects, error)
 }
 
