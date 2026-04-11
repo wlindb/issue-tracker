@@ -1,6 +1,6 @@
-import type { Issue, Status } from '@/data/mock'
+import type { Issue, IssueStatus } from '@/api/generated/issueTrackerAPI'
 
-const STATUS_ORDER: Status[] = [
+const STATUS_ORDER: IssueStatus[] = [
   'in_progress',
   'todo',
   'backlog',
@@ -9,12 +9,12 @@ const STATUS_ORDER: Status[] = [
 ]
 
 export interface IssueGroup {
-  status: Status
+  status: IssueStatus
   issues: Issue[]
 }
 
 export function groupIssuesByStatus(issues: Issue[]): IssueGroup[] {
-  const map = new Map<Status, Issue[]>()
+  const map = new Map<IssueStatus, Issue[]>()
 
   for (const issue of issues) {
     const group = map.get(issue.status) ?? []

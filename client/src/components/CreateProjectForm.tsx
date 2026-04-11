@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
-import { type Project } from '@/data/mock'
+import { type Project } from '@/api/generated/issueTrackerAPI'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { createProject } from '@/api/generated/issueTrackerAPI'

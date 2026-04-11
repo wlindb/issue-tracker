@@ -1,63 +1,120 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { Separator } from '@/components/ui/separator'
 import {
-  comments as allComments,
-  issues,
-  projects,
-  users,
+  getIssue,
+  getProject,
+  listComments,
+  createComment,
+  updateIssueTitle,
+  updateIssueDescription,
+  updateIssueStatus,
+  updateIssuePriority,
+  updateIssueAssignee,
+  type Issue,
+  type Project,
   type Comment,
-  type Priority,
-  type Status,
-} from '@/data/mock'
+  type IssueStatus,
+  type IssuePriority,
+} from '@/api/generated/issueTrackerAPI'
+import { useWorkspace } from '@/context/WorkspaceContext'
 import { EditableText } from '@/components/issue-detail/EditableText'
 import { IssueBreadcrumbs } from '@/components/issue-detail/IssueBreadcrumbs'
 import { IssueMetaSidebar } from '@/components/issue-detail/IssueMetaSidebar'
 import { CommentSection } from '@/components/issue-detail/CommentSection'
 
 export function IssueDetailPage() {
-  const { identifier } = useParams<{ identifier: string }>()
+  const { issueId } = useParams<{ issueId: string }>()
+  const { activeWorkspace } = useWorkspace()
 
-  const baseIssue = issues.find((i) => i.identifier === identifier)
-  const project = baseIssue ? projects.find((p) => p.id === baseIssue.projectId) : undefined
+  const [issue, setIssue] = useState<Issue | null>(null)
+  const [project, setProject] = useState<Project | null>(null)
+  const [comments, setComments] = useState<Comment[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)
 
-  const [title, setTitle] = useState(baseIssue?.title ?? '')
-  const [description, setDescription] = useState(baseIssue?.description ?? '')
-  const [status, setStatus] = useState<Status>(baseIssue?.status ?? 'backlog')
-  const [priority, setPriority] = useState<Priority>(baseIssue?.priority ?? 'none')
-  const [assigneeId, setAssigneeId] = useState(baseIssue?.assigneeId ?? null)
-  const [labels, setLabels] = useState(baseIssue?.labels ?? [])
-  const [issueComments, setIssueComments] = useState<Comment[]>(
-    allComments.filter((c) => c.issueId === baseIssue?.id),
-  )
+  useEffect(() => {
+    if (!activeWorkspace || !issueId) return
+    const workspaceId = activeWorkspace.id
+    setLoading(true)
+    setError(false)
+    async function load() {
+      try {
+        const fetchedIssue = await getIssue(workspaceId, issueId!)
+        const [fetchedProject, commentsPage] = await Promise.all([
+          getProject(workspaceId, fetchedIssue.projectId),
+          listComments(workspaceId, issueId!),
+        ])
+        setIssue(fetchedIssue)
+        setProject(fetchedProject)
+        setComments(commentsPage.items)
+      } catch {
+        setError(true)
+      } finally {
+        setLoading(false)
+      }
+    }
+    load()
+  }, [activeWorkspace, issueId])
 
-  if (!baseIssue || !project) {
+  async function handleTitleSave(title: string) {
+    if (!activeWorkspace || !issue) return
+    const updated = await updateIssueTitle(activeWorkspace.id, issue.id, { title })
+    setIssue(updated)
+  }
+
+  async function handleDescriptionSave(description: string) {
+    if (!activeWorkspace || !issue) return
+    const updated = await updateIssueDescription(activeWorkspace.id, issue.id, {
+      description: description || null,
+    })
+    setIssue(updated)
+  }
+
+  async function handleStatusChange(status: IssueStatus) {
+    if (!activeWorkspace || !issue) return
+    const updated = await updateIssueStatus(activeWorkspace.id, issue.id, { status })
+    setIssue(updated)
+  }
+
+  async function handlePriorityChange(priority: IssuePriority) {
+    if (!activeWorkspace || !issue) return
+    const updated = await updateIssuePriority(activeWorkspace.id, issue.id, { priority })
+    setIssue(updated)
+  }
+
+  async function handleAssigneeChange(assigneeId: string | null) {
+    if (!activeWorkspace || !issue) return
+    const updated = await updateIssueAssignee(activeWorkspace.id, issue.id, { assigneeId })
+    setIssue(updated)
+  }
+
+  function handleLabelsChange(labels: string[]) {
+    if (!issue) return
+    setIssue({ ...issue, labels })
+  }
+
+  async function handleAddComment(body: string) {
+    if (!activeWorkspace || !issue) return
+    const comment = await createComment(activeWorkspace.id, issue.id, { body })
+    setComments((prev) => [...prev, comment])
+  }
+
+  if (loading) {
+    return (
+      <div className="flex h-full items-center justify-center text-muted-foreground">
+        Loading…
+      </div>
+    )
+  }
+
+  if (error || !issue || !project) {
     return (
       <div className="flex h-full items-center justify-center text-muted-foreground">
         Issue not found.
       </div>
     )
   }
-
-  function handleAddComment(body: string) {
-    setIssueComments((prev) => [
-      ...prev,
-      {
-        id: `comment-${Date.now()}`,
-        issueId: baseIssue!.id,
-        authorId: 'user-1',
-        authorName: 'Alice',
-        body,
-        createdAt: new Date().toISOString(),
-      },
-    ])
-  }
-
-  function handleAssigneeChange(newId: string | null) {
-    setAssigneeId(newId)
-  }
-
-  const issue = { ...baseIssue, title, description, status, priority, assigneeId, labels }
 
   return (
     <div className="flex flex-col">
@@ -68,8 +125,8 @@ export function IssueDetailPage() {
           {/* Main content */}
           <div className="min-w-0 flex-1 flex flex-col gap-6">
             <EditableText
-              value={title}
-              onSave={setTitle}
+              value={issue.title}
+              onSave={handleTitleSave}
               placeholder="Issue title..."
               className="text-xl font-semibold"
               inputClassName="text-xl font-semibold"
@@ -80,8 +137,8 @@ export function IssueDetailPage() {
                 Description
               </span>
               <EditableText
-                value={description ?? ''}
-                onSave={setDescription}
+                value={issue.description ?? ''}
+                onSave={handleDescriptionSave}
                 placeholder="Add a description..."
                 multiline
                 className="min-h-[80px] leading-relaxed"
@@ -90,18 +147,18 @@ export function IssueDetailPage() {
 
             <Separator />
 
-            <CommentSection comments={issueComments} onAddComment={handleAddComment} />
+            <CommentSection comments={comments} onAddComment={handleAddComment} />
           </div>
 
           {/* Meta sidebar */}
           <aside className="w-52 shrink-0">
             <IssueMetaSidebar
               issue={issue}
-              users={users}
-              onStatusChange={setStatus}
-              onPriorityChange={setPriority}
+              users={[]}
+              onStatusChange={handleStatusChange}
+              onPriorityChange={handlePriorityChange}
               onAssigneeChange={handleAssigneeChange}
-              onLabelsChange={setLabels}
+              onLabelsChange={handleLabelsChange}
             />
           </aside>
         </div>

@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { type Issue } from '@/data/mock'
+import { type Issue } from '@/api/generated/issueTrackerAPI'
 import { useDebounce } from './useDebounce'
 
 const DEBOUNCE_MS = 300

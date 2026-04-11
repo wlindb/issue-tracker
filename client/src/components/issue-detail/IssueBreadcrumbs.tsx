@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { ChevronRightIcon } from 'lucide-react'
-import type { Issue, Project } from '@/data/mock'
+import type { Issue, Project } from '@/api/generated/issueTrackerAPI'
 
 interface IssueBreadcrumbsProps {
   project: Project
@@ -15,7 +15,7 @@ export function IssueBreadcrumbs({ project, issue }: IssueBreadcrumbsProps) {
       </Link>
       <ChevronRightIcon className="size-3.5 shrink-0" />
       <Link
-        to={`/projects/${project.identifier}`}
+        to={`/projects/${project.id}`}
         className="hover:text-foreground transition-colors"
       >
         {project.name}
