@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import type { Issue } from '@/data/mock'
+import type { Issue } from '@/api/generated/issueTrackerAPI'
 import { PriorityIcon } from './PriorityIcon'
 import { StatusBadge } from './StatusBadge'
 
@@ -10,7 +10,7 @@ interface IssueRowProps {
 export function IssueRow({ issue }: IssueRowProps) {
   return (
     <Link
-      to={`/issues/${issue.identifier}`}
+      to={`/issues/${issue.id}`}
       className="flex h-9 items-center gap-3 border-b border-border/50 px-4 hover:bg-muted/40 transition-colors"
     >
       <PriorityIcon priority={issue.priority} />

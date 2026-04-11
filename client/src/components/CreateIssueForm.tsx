@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
-import { type Issue, type Project } from '@/data/mock'
+import { type Issue, type Project, createIssue } from '@/api/generated/issueTrackerAPI'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { createIssue } from '@/api/generated/issueTrackerAPI'
 import { useWorkspace } from '@/context/WorkspaceContext'
 
 interface CreateIssueFormProps {

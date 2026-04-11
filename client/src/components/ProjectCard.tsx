@@ -7,7 +7,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
-import type { Project } from '@/data/mock'
+import type { Project } from '@/api/generated/issueTrackerAPI'
 
 interface ProjectCardProps {
   project: Project
@@ -15,7 +15,7 @@ interface ProjectCardProps {
 
 export function ProjectCard({ project }: ProjectCardProps) {
   return (
-    <Link to={`/projects/${project.identifier}`} className="block">
+    <Link to={`/projects/${project.id}`} className="block">
       <Card className="flex h-full flex-col transition-colors hover:bg-muted/40">
         <CardHeader className="pb-2">
           <div className="flex items-center gap-2">

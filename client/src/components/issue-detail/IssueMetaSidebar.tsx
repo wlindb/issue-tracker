@@ -2,12 +2,12 @@ import { useState } from 'react'
 import { XIcon } from 'lucide-react'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
-import type { Issue, Priority, Status, User } from '@/data/mock'
+import type { Issue, IssuePriority, IssueStatus, User } from '@/api/generated/issueTrackerAPI'
 import { PriorityIcon } from '@/components/PriorityIcon'
 import { StatusIcon, STATUS_LABEL } from '@/components/StatusIcon'
 import { cn } from '@/lib/utils'
 
-const PRIORITY_LABEL: Record<Priority, string> = {
+const PRIORITY_LABEL: Record<IssuePriority, string> = {
   urgent: 'Urgent',
   high: 'High',
   medium: 'Medium',
@@ -15,8 +15,8 @@ const PRIORITY_LABEL: Record<Priority, string> = {
   none: 'No priority',
 }
 
-const ALL_STATUSES: Status[] = ['backlog', 'todo', 'in_progress', 'done', 'cancelled']
-const ALL_PRIORITIES: Priority[] = ['none', 'urgent', 'high', 'medium', 'low']
+const ALL_STATUSES: IssueStatus[] = ['backlog', 'todo', 'in_progress', 'done', 'cancelled']
+const ALL_PRIORITIES: IssuePriority[] = ['none', 'urgent', 'high', 'medium', 'low']
 
 function getInitials(name: string): string {
   return name
@@ -35,8 +35,8 @@ const selectClass = cn(
 interface IssueMetaSidebarProps {
   issue: Issue
   users: User[]
-  onStatusChange: (status: Status) => void
-  onPriorityChange: (priority: Priority) => void
+  onStatusChange: (status: IssueStatus) => void
+  onPriorityChange: (priority: IssuePriority) => void
   onAssigneeChange: (assigneeId: string | null) => void
   onLabelsChange: (labels: string[]) => void
 }
@@ -70,7 +70,7 @@ export function IssueMetaSidebar({
         <div className="relative">
           <select
             value={issue.status}
-            onChange={(e) => onStatusChange(e.target.value as Status)}
+            onChange={(e) => onStatusChange(e.target.value as IssueStatus)}
             className={selectClass}
           >
             {ALL_STATUSES.map((s) => (
@@ -90,7 +90,7 @@ export function IssueMetaSidebar({
       <MetaRow label="Priority">
         <select
           value={issue.priority}
-          onChange={(e) => onPriorityChange(e.target.value as Priority)}
+          onChange={(e) => onPriorityChange(e.target.value as IssuePriority)}
           className={selectClass}
         >
           {ALL_PRIORITIES.map((p) => (
