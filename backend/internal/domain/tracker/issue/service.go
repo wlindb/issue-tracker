@@ -58,8 +58,7 @@ func (s *IssueService) UpdateIssueAssignee(ctx context.Context, issueID uuid.UUI
 			return Issue{}, fmt.Errorf("update issue assignee: %w", err)
 		}
 	} else {
-		updated = current
-		updated.AssigneeID = nil
+		updated = current.Unassign()
 	}
 	result, err := s.repository.Update(ctx, updated)
 	if err != nil {

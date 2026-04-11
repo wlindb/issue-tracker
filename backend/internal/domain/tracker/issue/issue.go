@@ -166,3 +166,9 @@ func (i Issue) UpdateAssignee(assigneeID uuid.UUID) (Issue, error) {
 	i.AssigneeID = &assigneeID
 	return i, nil
 }
+
+// Unassign returns a copy of the issue with the assignee cleared.
+func (i Issue) Unassign() Issue {
+	i.AssigneeID = nil
+	return i
+}
