@@ -69,13 +69,17 @@ export function CommentSection({ comments, onAddComment }: CommentSectionProps) 
 }
 
 function CommentItem({ comment }: { comment: Comment }) {
+  const shortId = comment.authorId.slice(-4)
   return (
     <div className="flex gap-3">
-      <Avatar size="sm" className="mt-0.5 shrink-0">
-        <AvatarFallback>{comment.authorId.slice(0, 2).toUpperCase()}</AvatarFallback>
+      <Avatar size="sm" className="mt-0.5 shrink-0" title={comment.authorId}>
+        <AvatarFallback>U</AvatarFallback>
       </Avatar>
       <div className="flex flex-col gap-1">
         <div className="flex items-baseline gap-2">
+          <span className="text-sm font-medium" title={comment.authorId}>
+            User {shortId}
+          </span>
           <span className="text-xs text-muted-foreground">{formatDate(comment.createdAt)}</span>
         </div>
         <p className="text-sm leading-relaxed text-foreground">{comment.body}</p>
