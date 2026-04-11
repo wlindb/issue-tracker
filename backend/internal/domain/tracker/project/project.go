@@ -3,9 +3,16 @@ package project
 import (
 	"context"
 	"errors"
+	"regexp"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
+)
+
+var (
+	nonSlugCharPattern    = regexp.MustCompile(`[^a-z0-9-]`)
+	multipleDashesPattern = regexp.MustCompile(`-{2,}`)
 )
 
 type Project struct {
@@ -27,6 +34,39 @@ type ListProjectQuery struct {
 // Projects is the paginated result of a List operation.
 type Projects struct {
 	Items []Project
+}
+
+// CreateProjectCommand holds all inputs needed to create a new project.
+type CreateProjectCommand struct {
+	Name        string
+	Description *string
+	OwnerID     uuid.UUID
+}
+
+// Slugify converts s into a URL-friendly slug.
+func (c CreateProjectCommand) Slugify(s string) string {
+	s = strings.ToLower(s)
+	s = strings.ReplaceAll(s, " ", "-")
+	s = nonSlugCharPattern.ReplaceAllString(s, "")
+	s = multipleDashesPattern.ReplaceAllString(s, "-")
+	return strings.Trim(s, "-")
+}
+
+// Slugifier is a function that converts a string to a slug.
+type Slugifier func(s string) string
+
+// ToProject builds a Project from the command using the given id and slugifier.
+func (c CreateProjectCommand) ToProject(id uuid.UUID, slugifier Slugifier) Project {
+	now := time.Now()
+	return Project{
+		ID:          id,
+		Identifier:  slugifier(c.Name),
+		Name:        c.Name,
+		Description: c.Description,
+		OwnerID:     c.OwnerID,
+		CreatedAt:   now,
+		UpdatedAt:   now,
+	}
 }
 
 const defaultLimit = 20

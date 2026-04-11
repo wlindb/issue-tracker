@@ -34,14 +34,15 @@ func Test_Create_ValidProject_ReturnsProject(t *testing.T) {
 	repository := &mockProjectRepository{}
 	service := project.NewProjectService(repository)
 
-	id := uuid.New()
 	ownerID := uuid.New()
-	input := project.Project{ID: id, Identifier: "my-project", OwnerID: ownerID, Name: "My Project"}
-	expected := project.Project{ID: id, Identifier: "my-project", OwnerID: ownerID, Name: "My Project"}
+	command := project.CreateProjectCommand{Name: "My Project", OwnerID: ownerID}
+	expected := project.Project{ID: uuid.New(), Identifier: "my-project", OwnerID: ownerID, Name: "My Project"}
 
-	repository.On("Create", mock.Anything, input).Return(expected, nil)
+	repository.On("Create", mock.Anything, mock.MatchedBy(func(p project.Project) bool {
+		return p.Name == command.Name && p.OwnerID == command.OwnerID && p.Identifier != ""
+	})).Return(expected, nil)
 
-	actual, err := service.Create(context.Background(), input)
+	actual, err := service.Create(context.Background(), command)
 	require.NoError(t, err)
 	assert.Equal(t, expected, actual)
 	repository.AssertExpectations(t)
@@ -51,15 +52,16 @@ func Test_Create_WithDescription_ReturnsProject(t *testing.T) {
 	repository := &mockProjectRepository{}
 	service := project.NewProjectService(repository)
 
-	id := uuid.New()
 	ownerID := uuid.New()
 	description := "A description"
-	input := project.Project{ID: id, Identifier: "my-project", OwnerID: ownerID, Name: "My Project", Description: &description}
-	expected := project.Project{ID: id, Identifier: "my-project", OwnerID: ownerID, Name: "My Project", Description: &description}
+	command := project.CreateProjectCommand{Name: "My Project", Description: &description, OwnerID: ownerID}
+	expected := project.Project{ID: uuid.New(), Identifier: "my-project", OwnerID: ownerID, Name: "My Project", Description: &description}
 
-	repository.On("Create", mock.Anything, input).Return(expected, nil)
+	repository.On("Create", mock.Anything, mock.MatchedBy(func(p project.Project) bool {
+		return p.Name == command.Name && p.OwnerID == command.OwnerID
+	})).Return(expected, nil)
 
-	actual, err := service.Create(context.Background(), input)
+	actual, err := service.Create(context.Background(), command)
 	require.NoError(t, err)
 	assert.Equal(t, expected, actual)
 	repository.AssertExpectations(t)
@@ -69,12 +71,14 @@ func Test_Create_RepositoryError_ReturnsError(t *testing.T) {
 	repository := &mockProjectRepository{}
 	service := project.NewProjectService(repository)
 
-	input := project.Project{ID: uuid.New(), Identifier: "my-project", OwnerID: uuid.New(), Name: "My Project"}
+	command := project.CreateProjectCommand{Name: "My Project", OwnerID: uuid.New()}
 	repoErr := errors.New("db error")
 
-	repository.On("Create", mock.Anything, input).Return(project.Project{}, repoErr)
+	repository.On("Create", mock.Anything, mock.MatchedBy(func(p project.Project) bool {
+		return p.Name == command.Name
+	})).Return(project.Project{}, repoErr)
 
-	_, err := service.Create(context.Background(), input)
+	_, err := service.Create(context.Background(), command)
 	require.Error(t, err)
 	assert.ErrorIs(t, err, repoErr)
 	repository.AssertExpectations(t)

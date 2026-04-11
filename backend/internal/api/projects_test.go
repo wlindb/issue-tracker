@@ -28,8 +28,8 @@ type mockProjectService struct {
 	mock.Mock
 }
 
-func (m *mockProjectService) Create(ctx context.Context, project trackerdomain.Project) (trackerdomain.Project, error) {
-	args := m.Called(ctx, project)
+func (m *mockProjectService) Create(ctx context.Context, command trackerdomain.CreateProjectCommand) (trackerdomain.Project, error) {
+	args := m.Called(ctx, command)
 	return args.Get(0).(trackerdomain.Project), args.Error(1)
 }
 
@@ -56,8 +56,8 @@ func Test_CreateProject_ValidBody_Returns201(t *testing.T) {
 	now := time.Now().UTC()
 	ownerID := uuid.New()
 
-	service.On("Create", mock.Anything, mock.MatchedBy(func(p trackerdomain.Project) bool {
-		return p.Name == "Acme" && p.OwnerID == ownerID
+	service.On("Create", mock.Anything, mock.MatchedBy(func(c trackerdomain.CreateProjectCommand) bool {
+		return c.Name == "Acme" && c.OwnerID == ownerID
 	})).Return(trackerdomain.Project{
 		ID:        uuid.New(),
 		Name:      "Acme",
@@ -100,8 +100,8 @@ func Test_CreateProject_ServiceError_InternalServerError(t *testing.T) {
 	service := &mockProjectService{}
 	ownerID := uuid.New()
 
-	service.On("Create", mock.Anything, mock.MatchedBy(func(p trackerdomain.Project) bool {
-		return p.Name == "Acme" && p.OwnerID == ownerID
+	service.On("Create", mock.Anything, mock.MatchedBy(func(c trackerdomain.CreateProjectCommand) bool {
+		return c.Name == "Acme" && c.OwnerID == ownerID
 	})).Return(trackerdomain.Project{}, errors.New("db down"))
 
 	e := newTestServer(t, service)

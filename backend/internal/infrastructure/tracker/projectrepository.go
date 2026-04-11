@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	projectdomain "github.com/wlindb/issue-tracker/internal/domain/tracker/project"
@@ -27,21 +26,11 @@ func NewProjectRepository(pool *pgxpool.Pool) *ProjectRepository {
 
 // Create inserts a new project row and returns the domain model.
 func (r *ProjectRepository) Create(ctx context.Context, project projectdomain.Project) (projectdomain.Project, error) {
-	var pgDescription pgtype.Text
-	if project.Description != nil {
-		pgDescription = pgtype.Text{String: *project.Description, Valid: true}
-	}
-	row, err := r.queries.CreateProject(ctx, trackerdb.CreateProjectParams{
-		ID:          project.ID,
-		Identifier:  project.Identifier,
-		OwnerID:     project.OwnerID,
-		Name:        project.Name,
-		Description: pgDescription,
-	})
+	row, err := r.queries.CreateProject(ctx, createProjectParamsFromDomain(project))
 	if err != nil {
 		return projectdomain.Project{}, fmt.Errorf("create project: %w", err)
 	}
-	return *projectToDomain(row), nil
+	return projectToDomain(row), nil
 }
 
 // List returns up to query.Limit projects ordered by created_at descending.

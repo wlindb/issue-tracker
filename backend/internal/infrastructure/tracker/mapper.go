@@ -10,8 +10,8 @@ import (
 	trackerdb "github.com/wlindb/issue-tracker/internal/infrastructure/tracker/generated"
 )
 
-func projectToDomain(row trackerdb.Project) *projectdomain.Project {
-	p := &projectdomain.Project{
+func projectToDomain(row trackerdb.Project) projectdomain.Project {
+	p := projectdomain.Project{
 		ID:         row.ID,
 		Identifier: row.Identifier,
 		OwnerID:    row.OwnerID,
@@ -29,9 +29,23 @@ func projectToDomain(row trackerdb.Project) *projectdomain.Project {
 func projectsToDomain(rows []trackerdb.Project) []projectdomain.Project {
 	projects := make([]projectdomain.Project, len(rows))
 	for i, row := range rows {
-		projects[i] = *projectToDomain(row)
+		projects[i] = projectToDomain(row)
 	}
 	return projects
+}
+
+func createProjectParamsFromDomain(project projectdomain.Project) trackerdb.CreateProjectParams {
+	var description pgtype.Text
+	if project.Description != nil {
+		description = pgtype.Text{String: *project.Description, Valid: true}
+	}
+	return trackerdb.CreateProjectParams{
+		ID:          project.ID,
+		Identifier:  project.Identifier,
+		OwnerID:     project.OwnerID,
+		Name:        project.Name,
+		Description: description,
+	}
 }
 
 func createIssueParamsFromDomain(issue issuedomain.Issue) trackerdb.CreateIssueParams {

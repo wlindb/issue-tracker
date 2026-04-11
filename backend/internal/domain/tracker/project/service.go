@@ -3,6 +3,8 @@ package project
 import (
 	"context"
 	"fmt"
+
+	"github.com/google/uuid"
 )
 
 type ProjectService struct {
@@ -13,7 +15,8 @@ func NewProjectService(repository ProjectRepository) *ProjectService {
 	return &ProjectService{repository: repository}
 }
 
-func (s *ProjectService) Create(ctx context.Context, project Project) (Project, error) {
+func (s *ProjectService) Create(ctx context.Context, command CreateProjectCommand) (Project, error) {
+	project := command.ToProject(uuid.New(), command.Slugify)
 	result, err := s.repository.Create(ctx, project)
 	if err != nil {
 		return Project{}, fmt.Errorf("create project: %w", err)

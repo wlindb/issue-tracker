@@ -13,7 +13,7 @@ import (
 // projectServicer mirrors api.ProjectService without importing the api package,
 // avoiding a layering violation (infrastructure must not depend on api).
 type projectServicer interface {
-	Create(ctx context.Context, project projectdomain.Project) (projectdomain.Project, error)
+	Create(ctx context.Context, command projectdomain.CreateProjectCommand) (projectdomain.Project, error)
 	List(ctx context.Context, query projectdomain.ListProjectQuery) (projectdomain.Projects, error)
 }
 
@@ -28,11 +28,11 @@ func NewTracingProjectService(inner projectServicer, tracer trace.Tracer) *Traci
 	return &TracingProjectService{inner: inner, tracer: tracer}
 }
 
-func (s *TracingProjectService) Create(ctx context.Context, project projectdomain.Project) (projectdomain.Project, error) {
+func (s *TracingProjectService) Create(ctx context.Context, command projectdomain.CreateProjectCommand) (projectdomain.Project, error) {
 	ctx, span := s.tracer.Start(ctx, "tracker.ProjectService.Create")
 	defer span.End()
 
-	result, err := s.inner.Create(ctx, project)
+	result, err := s.inner.Create(ctx, command)
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())

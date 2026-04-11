@@ -30,7 +30,7 @@ func Test_ProjectToDomain_NilDescription_SetsDescriptionNil(t *testing.T) {
 
 	actual := projectToDomain(row)
 
-	require.NotNil(t, actual)
+	require.NotZero(t, actual)
 	assert.Equal(t, id, actual.ID)
 	assert.Equal(t, "test-project", actual.Identifier)
 	assert.Equal(t, ownerID, actual.OwnerID)
