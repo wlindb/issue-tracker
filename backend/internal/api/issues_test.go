@@ -37,53 +37,53 @@ func (m *mockIssueService) ListIssues(ctx context.Context, projectID uuid.UUID, 
 	return issuedomain.IssuePage{}, args.Error(1)
 }
 
-func (m *mockIssueService) CreateIssue(ctx context.Context, command issuedomain.CreateIssueCommand) (*issuedomain.Issue, error) {
+func (m *mockIssueService) CreateIssue(ctx context.Context, command issuedomain.CreateIssueCommand) (issuedomain.Issue, error) {
 	args := m.Called(ctx, command)
-	if issue, ok := args.Get(0).(*issuedomain.Issue); ok {
+	if issue, ok := args.Get(0).(issuedomain.Issue); ok {
 		return issue, args.Error(1)
 	}
-	return nil, args.Error(1)
+	return issuedomain.Issue{}, args.Error(1)
 }
 
-func (m *mockIssueService) UpdateIssueDescription(ctx context.Context, issueID uuid.UUID, description *string) (*issuedomain.Issue, error) {
+func (m *mockIssueService) UpdateIssueDescription(ctx context.Context, issueID uuid.UUID, description *string) (issuedomain.Issue, error) {
 	args := m.Called(ctx, issueID, description)
-	if issue, ok := args.Get(0).(*issuedomain.Issue); ok {
+	if issue, ok := args.Get(0).(issuedomain.Issue); ok {
 		return issue, args.Error(1)
 	}
-	return nil, args.Error(1)
+	return issuedomain.Issue{}, args.Error(1)
 }
 
-func (m *mockIssueService) GetIssue(ctx context.Context, issueID uuid.UUID) (*issuedomain.Issue, error) {
+func (m *mockIssueService) GetIssue(ctx context.Context, issueID uuid.UUID) (issuedomain.Issue, error) {
 	args := m.Called(ctx, issueID)
-	if issue, ok := args.Get(0).(*issuedomain.Issue); ok {
+	if issue, ok := args.Get(0).(issuedomain.Issue); ok {
 		return issue, args.Error(1)
 	}
-	return nil, args.Error(1)
+	return issuedomain.Issue{}, args.Error(1)
 }
 
-func (m *mockIssueService) UpdateIssuePriority(ctx context.Context, issueID uuid.UUID, priority issuedomain.Priority) (*issuedomain.Issue, error) {
+func (m *mockIssueService) UpdateIssuePriority(ctx context.Context, issueID uuid.UUID, priority issuedomain.Priority) (issuedomain.Issue, error) {
 	args := m.Called(ctx, issueID, priority)
-	if issue, ok := args.Get(0).(*issuedomain.Issue); ok {
+	if issue, ok := args.Get(0).(issuedomain.Issue); ok {
 		return issue, args.Error(1)
 	}
-	return nil, args.Error(1)
+	return issuedomain.Issue{}, args.Error(1)
 }
 
-func (m *mockIssueService) UpdateIssueAssignee(ctx context.Context, issueID uuid.UUID, assigneeID *uuid.UUID) (*issuedomain.Issue, error) {
+func (m *mockIssueService) UpdateIssueAssignee(ctx context.Context, issueID uuid.UUID, assigneeID *uuid.UUID) (issuedomain.Issue, error) {
 	args := m.Called(ctx, issueID, assigneeID)
-	if issue, ok := args.Get(0).(*issuedomain.Issue); ok {
+	if issue, ok := args.Get(0).(issuedomain.Issue); ok {
 		return issue, args.Error(1)
 	}
-	return nil, args.Error(1)
+	return issuedomain.Issue{}, args.Error(1)
 }
 
 // newIssueTestServer builds a minimal Echo server wired to the given issue service.
-func (m *mockIssueService) UpdateIssueStatus(ctx context.Context, issueID uuid.UUID, status issuedomain.Status) (*issuedomain.Issue, error) {
+func (m *mockIssueService) UpdateIssueStatus(ctx context.Context, issueID uuid.UUID, status issuedomain.Status) (issuedomain.Issue, error) {
 	args := m.Called(ctx, issueID, status)
-	if issue, ok := args.Get(0).(*issuedomain.Issue); ok {
+	if issue, ok := args.Get(0).(issuedomain.Issue); ok {
 		return issue, args.Error(1)
 	}
-	return nil, args.Error(1)
+	return issuedomain.Issue{}, args.Error(1)
 }
 
 func newIssueTestServer(t *testing.T, service api.IssueService) *echo.Echo {
@@ -234,7 +234,7 @@ func Test_CreateIssue_ValidBody_Returns201(t *testing.T) {
 	now := time.Now().UTC()
 
 	service.On("CreateIssue", mock.Anything, mock.Anything).
-		Return(&issuedomain.Issue{
+		Return(issuedomain.Issue{
 			ID:         uuid.New(),
 			Identifier: "PROJ-1",
 			Title:      "New feature",
@@ -454,7 +454,7 @@ func Test_UpdateIssueStatus_ValidRequest_Returns200(t *testing.T) {
 	now := time.Now().UTC()
 
 	service.On("UpdateIssueStatus", mock.Anything, issueID, issuedomain.StatusInProgress).
-		Return(&issuedomain.Issue{
+		Return(issuedomain.Issue{
 			ID:         issueID,
 			Identifier: "PROJ-1",
 			Title:      "Fix login bug",
@@ -613,7 +613,7 @@ func Test_UpdateIssueDescription_ValidRequest_Returns200(t *testing.T) {
 	now := time.Now().UTC()
 
 	service.On("UpdateIssueDescription", mock.Anything, issueID, &description).
-		Return(&issuedomain.Issue{
+		Return(issuedomain.Issue{
 			ID:          issueID,
 			Identifier:  "PROJ-1",
 			Title:       "Some issue",
@@ -649,7 +649,7 @@ func Test_UpdateIssueDescription_NullDescription_Returns200(t *testing.T) {
 	now := time.Now().UTC()
 
 	service.On("UpdateIssueDescription", mock.Anything, issueID, (*string)(nil)).
-		Return(&issuedomain.Issue{
+		Return(issuedomain.Issue{
 			ID:         issueID,
 			Identifier: "PROJ-1",
 			Title:      "Some issue",
@@ -736,7 +736,7 @@ func Test_UpdateIssueDescription_MissingBody_Returns400(t *testing.T) {
 func Test_UpdateIssuePriority_ValidRequest_Returns200(t *testing.T) {
 	service := &mockIssueService{}
 	issueID := uuid.New()
-	updatedIssue := &issuedomain.Issue{
+	updatedIssue := issuedomain.Issue{
 		ID:         issueID,
 		Identifier: "ISS-1",
 		Title:      "Test issue",
@@ -801,7 +801,7 @@ func Test_UpdateIssuePriority_IssueNotFound_Returns422(t *testing.T) {
 	issueID := uuid.New()
 
 	service.On("UpdateIssuePriority", mock.Anything, issueID, issuedomain.PriorityLow).
-		Return((*issuedomain.Issue)(nil), api.ErrIssueNotFound)
+		Return(issuedomain.Issue{}, api.ErrIssueNotFound)
 
 	e := newIssueTestServer(t, service)
 	e.Use(injectUser(uuid.New()))
@@ -821,7 +821,7 @@ func Test_UpdateIssuePriority_ServiceError_Returns500(t *testing.T) {
 	issueID := uuid.New()
 
 	service.On("UpdateIssuePriority", mock.Anything, issueID, issuedomain.PriorityMedium).
-		Return((*issuedomain.Issue)(nil), errors.New("db down"))
+		Return(issuedomain.Issue{}, errors.New("db down"))
 
 	e := newIssueTestServer(t, service)
 	e.Use(injectUser(uuid.New()))
@@ -899,7 +899,7 @@ func Test_GetIssue_IssueExists_Returns200(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Second)
 
 	service.On("GetIssue", mock.Anything, issueID).
-		Return(&issuedomain.Issue{
+		Return(issuedomain.Issue{
 			ID:         issueID,
 			Identifier: "PROJ-1",
 			Title:      "Fix login bug",
@@ -941,7 +941,7 @@ func Test_UpdateIssueAssignee_ValidAssignee_Returns200(t *testing.T) {
 	userID := uuid.New()
 	now := time.Now().UTC()
 
-	updatedIssue := &issuedomain.Issue{
+	updatedIssue := issuedomain.Issue{
 		ID:         issueID,
 		Identifier: "PROJ-1",
 		Title:      "Fix login bug",
@@ -978,7 +978,7 @@ func Test_UpdateIssueAssignee_NullAssignee_Returns200(t *testing.T) {
 	userID := uuid.New()
 	now := time.Now().UTC()
 
-	updatedIssue := &issuedomain.Issue{
+	updatedIssue := issuedomain.Issue{
 		ID:         issueID,
 		Identifier: "PROJ-1",
 		Title:      "Fix login bug",

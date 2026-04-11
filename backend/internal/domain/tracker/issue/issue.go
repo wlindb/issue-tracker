@@ -27,6 +27,15 @@ const (
 	StatusCancelled  Status = "cancelled"
 )
 
+// Valid reports whether s is a known Status value.
+func (s Status) Valid() bool {
+	switch s {
+	case StatusBacklog, StatusTodo, StatusInProgress, StatusDone, StatusCancelled:
+		return true
+	}
+	return false
+}
+
 // Priority represents the importance level of an issue.
 type Priority string
 
@@ -37,6 +46,15 @@ const (
 	PriorityHigh   Priority = "high"
 	PriorityUrgent Priority = "urgent"
 )
+
+// Valid reports whether p is a known Priority value.
+func (p Priority) Valid() bool {
+	switch p {
+	case PriorityNone, PriorityLow, PriorityMedium, PriorityHigh, PriorityUrgent:
+		return true
+	}
+	return false
+}
 
 // Issue is the domain representation of a tracked issue.
 type Issue struct {
@@ -106,10 +124,43 @@ func (c CreateIssueCommand) ToIssue(id uuid.UUID, slugifier Slugifier) Issue {
 
 type IssueRepository interface {
 	ListIssues(ctx context.Context, projectID uuid.UUID, query ListIssueQuery) (IssuePage, error)
-	CreateIssue(ctx context.Context, issue Issue) (*Issue, error)
+	CreateIssue(ctx context.Context, issue Issue) (Issue, error)
+	Update(ctx context.Context, issue Issue) (Issue, error)
 }
 
 var (
 	ErrIssueNotFound = errors.New("issue not found")
 	ErrInvalidIssue  = errors.New("invalid issue")
 )
+
+// UpdateDescription returns a copy of the issue with the description set to the given value.
+func (i Issue) UpdateDescription(description *string) (Issue, error) {
+	i.Description = description
+	return i, nil
+}
+
+// UpdatePriority returns a copy of the issue with the priority set to the given value.
+// Returns ErrInvalidIssue if priority is not a known value.
+func (i Issue) UpdatePriority(priority Priority) (Issue, error) {
+	if !priority.Valid() {
+		return Issue{}, fmt.Errorf("%w: invalid priority %q", ErrInvalidIssue, priority)
+	}
+	i.Priority = priority
+	return i, nil
+}
+
+// UpdateStatus returns a copy of the issue with the status set to the given value.
+// Returns ErrInvalidIssue if status is not a known value.
+func (i Issue) UpdateStatus(status Status) (Issue, error) {
+	if !status.Valid() {
+		return Issue{}, fmt.Errorf("%w: invalid status %q", ErrInvalidIssue, status)
+	}
+	i.Status = status
+	return i, nil
+}
+
+// UpdateAssignee returns a copy of the issue with the assignee set to the given ID.
+func (i Issue) UpdateAssignee(assigneeID uuid.UUID) (Issue, error) {
+	i.AssigneeID = &assigneeID
+	return i, nil
+}

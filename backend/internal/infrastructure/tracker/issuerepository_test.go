@@ -35,6 +35,11 @@ func (m *mockIssueQuerier) ListIssues(ctx context.Context, arg trackerdb.ListIss
 	return nil, args.Error(1)
 }
 
+func (m *mockIssueQuerier) UpdateIssue(ctx context.Context, arg trackerdb.UpdateIssueParams) (trackerdb.Issue, error) {
+	args := m.Called(ctx, arg)
+	return args.Get(0).(trackerdb.Issue), args.Error(1)
+}
+
 // — CreateIssue unit tests —
 
 func Test_CreateIssue_Success_ReturnsDomainIssue(t *testing.T) {
@@ -74,7 +79,6 @@ func Test_CreateIssue_Success_ReturnsDomainIssue(t *testing.T) {
 	actual, err := repository.CreateIssue(context.Background(), domainIssue)
 
 	require.NoError(t, err)
-	require.NotNil(t, actual)
 	assert.Equal(t, domainIssue.ID, actual.ID)
 	assert.Equal(t, domainIssue.Title, actual.Title)
 	assert.Equal(t, issuedomain.StatusTodo, actual.Status)
@@ -196,5 +200,75 @@ func Test_ListIssues_WithFilters_PassesCorrectParams(t *testing.T) {
 	_, err := repository.ListIssues(context.Background(), projectID, query)
 
 	require.NoError(t, err)
+	querier.AssertExpectations(t)
+}
+
+// — Update unit tests —
+
+func Test_Update_Success_ReturnsDomainIssue(t *testing.T) {
+	querier := &mockIssueQuerier{}
+	repository := &IssueRepository{queries: querier}
+
+	projectID := uuid.New()
+	reporterID := uuid.New()
+	description := "updated desc"
+	now := time.Now().UTC()
+
+	domainIssue := issuedomain.Issue{
+		ID:          uuid.New(),
+		Identifier:  "test-issue-abc",
+		Title:       "Test issue",
+		Description: &description,
+		Status:      issuedomain.StatusInProgress,
+		Priority:    issuedomain.PriorityHigh,
+		Labels:      []string{},
+		ProjectID:   projectID,
+		ReporterID:  reporterID,
+	}
+
+	returnedRow := trackerdb.Issue{
+		ID:          domainIssue.ID,
+		Identifier:  domainIssue.Identifier,
+		Title:       domainIssue.Title,
+		Description: pgtype.Text{String: description, Valid: true},
+		Status:      "in_progress",
+		Priority:    "high",
+		Labels:      []string{},
+		ProjectID:   projectID,
+		ReporterID:  reporterID,
+		CreatedAt:   pgtype.Timestamptz{Time: now, Valid: true},
+		UpdatedAt:   pgtype.Timestamptz{Time: now, Valid: true},
+	}
+
+	querier.On("UpdateIssue", mock.Anything, mock.Anything).Return(returnedRow, nil)
+
+	actual, err := repository.Update(context.Background(), domainIssue)
+
+	require.NoError(t, err)
+	assert.Equal(t, domainIssue.ID, actual.ID)
+	assert.Equal(t, issuedomain.StatusInProgress, actual.Status)
+	assert.Equal(t, issuedomain.PriorityHigh, actual.Priority)
+	require.NotNil(t, actual.Description)
+	assert.Equal(t, description, *actual.Description)
+	querier.AssertExpectations(t)
+}
+
+func Test_Update_QueryError_ReturnsWrappedError(t *testing.T) {
+	querier := &mockIssueQuerier{}
+	repository := &IssueRepository{queries: querier}
+
+	dbErr := errors.New("update conflict")
+	querier.On("UpdateIssue", mock.Anything, mock.Anything).Return(trackerdb.Issue{}, dbErr)
+
+	_, err := repository.Update(context.Background(), issuedomain.Issue{
+		ID:       uuid.New(),
+		Status:   issuedomain.StatusDone,
+		Priority: issuedomain.PriorityNone,
+		Labels:   []string{},
+	})
+
+	require.Error(t, err)
+	assert.ErrorIs(t, err, dbErr)
+	assert.Contains(t, err.Error(), "update issue")
 	querier.AssertExpectations(t)
 }

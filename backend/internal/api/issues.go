@@ -21,12 +21,12 @@ var (
 // IssueService is what the handler needs from the domain.
 type IssueService interface {
 	ListIssues(ctx context.Context, projectID uuid.UUID, query issuedomain.ListIssueQuery) (issuedomain.IssuePage, error)
-	CreateIssue(ctx context.Context, command issuedomain.CreateIssueCommand) (*issuedomain.Issue, error)
-	GetIssue(ctx context.Context, issueID uuid.UUID) (*issuedomain.Issue, error)
-	UpdateIssueStatus(ctx context.Context, issueID uuid.UUID, status issuedomain.Status) (*issuedomain.Issue, error)
-	UpdateIssueDescription(ctx context.Context, issueID uuid.UUID, description *string) (*issuedomain.Issue, error)
-	UpdateIssuePriority(ctx context.Context, issueID uuid.UUID, priority issuedomain.Priority) (*issuedomain.Issue, error)
-	UpdateIssueAssignee(ctx context.Context, issueID uuid.UUID, assigneeID *uuid.UUID) (*issuedomain.Issue, error)
+	CreateIssue(ctx context.Context, command issuedomain.CreateIssueCommand) (issuedomain.Issue, error)
+	GetIssue(ctx context.Context, issueID uuid.UUID) (issuedomain.Issue, error)
+	UpdateIssueStatus(ctx context.Context, issueID uuid.UUID, status issuedomain.Status) (issuedomain.Issue, error)
+	UpdateIssueDescription(ctx context.Context, issueID uuid.UUID, description *string) (issuedomain.Issue, error)
+	UpdateIssuePriority(ctx context.Context, issueID uuid.UUID, priority issuedomain.Priority) (issuedomain.Issue, error)
+	UpdateIssueAssignee(ctx context.Context, issueID uuid.UUID, assigneeID *uuid.UUID) (issuedomain.Issue, error)
 }
 
 // IssueHandler holds the issue service dependency.
@@ -87,7 +87,7 @@ func (h *Handler) CreateIssue(ctx context.Context, req model.CreateIssueRequestO
 	if err != nil {
 		return nil, fmt.Errorf("create issue: %w", err)
 	}
-	return model.CreateIssue201JSONResponse(issueFromDomain(*issue)), nil
+	return model.CreateIssue201JSONResponse(issueFromDomain(issue)), nil
 }
 
 func (h *Handler) SearchIssues(_ context.Context, req model.SearchIssuesRequestObject) (model.SearchIssuesResponseObject, error) {
@@ -114,7 +114,7 @@ func (h *Handler) GetIssue(ctx context.Context, req model.GetIssueRequestObject)
 	if err != nil {
 		return nil, fmt.Errorf("get issue: %w", err)
 	}
-	return model.GetIssue200JSONResponse(issueFromDomain(*issue)), nil
+	return model.GetIssue200JSONResponse(issueFromDomain(issue)), nil
 }
 
 func (h *Handler) UpdateIssueTitle(_ context.Context, _ model.UpdateIssueTitleRequestObject) (model.UpdateIssueTitleResponseObject, error) {
@@ -136,7 +136,7 @@ func (h *Handler) UpdateIssueDescription(ctx context.Context, req model.UpdateIs
 	if err != nil {
 		return nil, fmt.Errorf("update issue description: %w", err)
 	}
-	return model.UpdateIssueDescription200JSONResponse(issueFromDomain(*issue)), nil
+	return model.UpdateIssueDescription200JSONResponse(issueFromDomain(issue)), nil
 }
 
 func (h *Handler) UpdateIssueStatus(ctx context.Context, req model.UpdateIssueStatusRequestObject) (model.UpdateIssueStatusResponseObject, error) {
@@ -159,7 +159,7 @@ func (h *Handler) UpdateIssueStatus(ctx context.Context, req model.UpdateIssueSt
 	if err != nil {
 		return nil, fmt.Errorf("update issue status: %w", err)
 	}
-	return model.UpdateIssueStatus200JSONResponse(issueFromDomain(*issue)), nil
+	return model.UpdateIssueStatus200JSONResponse(issueFromDomain(issue)), nil
 }
 
 func (h *Handler) UpdateIssuePriority(ctx context.Context, req model.UpdateIssuePriorityRequestObject) (model.UpdateIssuePriorityResponseObject, error) {
@@ -182,7 +182,7 @@ func (h *Handler) UpdateIssuePriority(ctx context.Context, req model.UpdateIssue
 	if err != nil {
 		return nil, fmt.Errorf("update issue priority: %w", err)
 	}
-	return model.UpdateIssuePriority200JSONResponse(issueFromDomain(*issue)), nil
+	return model.UpdateIssuePriority200JSONResponse(issueFromDomain(issue)), nil
 }
 
 func (h *Handler) UpdateIssueAssignee(ctx context.Context, req model.UpdateIssueAssigneeRequestObject) (model.UpdateIssueAssigneeResponseObject, error) {
@@ -200,7 +200,7 @@ func (h *Handler) UpdateIssueAssignee(ctx context.Context, req model.UpdateIssue
 	if err != nil {
 		return nil, fmt.Errorf("update issue assignee: %w", err)
 	}
-	return model.UpdateIssueAssignee200JSONResponse(issueFromDomain(*issue)), nil
+	return model.UpdateIssueAssignee200JSONResponse(issueFromDomain(issue)), nil
 }
 
 func (h *Handler) DeleteIssue(_ context.Context, _ model.DeleteIssueRequestObject) (model.DeleteIssueResponseObject, error) {
