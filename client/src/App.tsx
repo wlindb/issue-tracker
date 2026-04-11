@@ -20,8 +20,8 @@ function App() {
             <Route path="/my-issues" element={<MyIssuesPage />} />
             <Route path="/all-issues" element={<AllIssuesPage />} />
             <Route path="/projects" element={<ProjectsPage />} />
-            <Route path="/projects/:projectId" element={<ProjectDetailPage />} />
-            <Route path="/issues/:issueId" element={<IssueDetailPage />} />
+            <Route path="/projects/:identifier" element={<ProjectDetailPage />} />
+            <Route path="/issues/:identifier" element={<IssueDetailPage />} />
           </Route>
         </Route>
       </Routes>

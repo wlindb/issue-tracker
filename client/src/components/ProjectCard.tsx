@@ -15,7 +15,7 @@ interface ProjectCardProps {
 
 export function ProjectCard({ project }: ProjectCardProps) {
   return (
-    <Link to={`/projects/${project.id}`} className="block">
+    <Link to={`/projects/${project.identifier}`} className="block">
       <Card className="flex h-full flex-col transition-colors hover:bg-muted/40">
         <CardHeader className="pb-2">
           <div className="flex items-center gap-2">

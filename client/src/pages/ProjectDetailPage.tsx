@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { IssueGroupSection } from '@/components/IssueGroupSection'
 import { CreateIssueForm } from '@/components/CreateIssueForm'
 import {
-  getProject,
+  listProjects,
   listIssues,
   type Issue,
   type Project,
@@ -16,7 +16,7 @@ import { groupIssuesByStatus } from '@/lib/groupIssuesByStatus'
 import { cn } from '@/lib/utils'
 
 export function ProjectDetailPage() {
-  const { projectId } = useParams<{ projectId: string }>()
+  const { identifier } = useParams<{ identifier: string }>()
   const { activeWorkspace } = useWorkspace()
 
   const [project, setProject] = useState<Project | null>(null)
@@ -25,19 +25,22 @@ export function ProjectDetailPage() {
   const [creating, setCreating] = useState(false)
 
   useEffect(() => {
-    if (!activeWorkspace || !projectId) return
+    if (!activeWorkspace || !identifier) return
     const workspaceId = activeWorkspace.id
     async function load() {
-      const [fetchedProject, issuePage] = await Promise.all([
-        getProject(workspaceId, projectId!),
-        listIssues(workspaceId, { project_id: projectId! }),
-      ])
-      setProject(fetchedProject)
+      const projectPage = await listProjects(workspaceId)
+      const found = projectPage.items.find((p) => p.identifier === identifier)
+      if (!found) {
+        setLoading(false)
+        return
+      }
+      const issuePage = await listIssues(workspaceId, { project_id: found.id })
+      setProject(found)
       setIssues(issuePage.items)
       setLoading(false)
     }
     load()
-  }, [activeWorkspace, projectId])
+  }, [activeWorkspace, identifier])
 
   function handleSave(issue: Issue) {
     setIssues([issue, ...issues])

@@ -10,7 +10,7 @@ interface IssueRowProps {
 export function IssueRow({ issue }: IssueRowProps) {
   return (
     <Link
-      to={`/issues/${issue.id}`}
+      to={`/issues/${issue.identifier}`}
       className="flex h-9 items-center gap-3 border-b border-border/50 px-4 hover:bg-muted/40 transition-colors"
     >
       <PriorityIcon priority={issue.priority} />
