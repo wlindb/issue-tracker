@@ -123,14 +123,16 @@ func (c CreateIssueCommand) ToIssue(id uuid.UUID, slugifier Slugifier) Issue {
 }
 
 type IssueRepository interface {
+	GetIssue(ctx context.Context, id uuid.UUID) (Issue, error)
 	ListIssues(ctx context.Context, projectID uuid.UUID, query ListIssueQuery) (IssuePage, error)
 	CreateIssue(ctx context.Context, issue Issue) (Issue, error)
 	Update(ctx context.Context, issue Issue) (Issue, error)
 }
 
 var (
-	ErrIssueNotFound = errors.New("issue not found")
-	ErrInvalidIssue  = errors.New("invalid issue")
+	ErrIssueNotFound  = errors.New("issue not found")
+	ErrInvalidIssue   = errors.New("invalid issue")
+	ErrUpdateConflict = errors.New("update conflict")
 )
 
 // UpdateDescription returns a copy of the issue with the description set to the given value.

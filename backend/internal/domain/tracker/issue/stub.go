@@ -11,6 +11,10 @@ import (
 // implementation is wired in main.go.
 type StubRepository struct{}
 
+func (StubRepository) GetIssue(_ context.Context, _ uuid.UUID) (Issue, error) {
+	return Issue{}, errors.New("not implemented")
+}
+
 func (StubRepository) ListIssues(_ context.Context, _ uuid.UUID, _ ListIssueQuery) (IssuePage, error) {
 	return IssuePage{}, errors.New("not implemented")
 }

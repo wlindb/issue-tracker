@@ -22,6 +22,11 @@ type mockIssueQuerier struct {
 	mock.Mock
 }
 
+func (m *mockIssueQuerier) GetIssue(ctx context.Context, id uuid.UUID) (trackerdb.Issue, error) {
+	args := m.Called(ctx, id)
+	return args.Get(0).(trackerdb.Issue), args.Error(1)
+}
+
 func (m *mockIssueQuerier) CreateIssue(ctx context.Context, arg trackerdb.CreateIssueParams) (trackerdb.Issue, error) {
 	args := m.Called(ctx, arg)
 	return args.Get(0).(trackerdb.Issue), args.Error(1)

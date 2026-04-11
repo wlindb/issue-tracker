@@ -99,6 +99,7 @@ func updateIssueParamsFromDomain(issue issuedomain.Issue) trackerdb.UpdateIssueP
 		Status:      string(issue.Status),
 		Priority:    string(issue.Priority),
 		AssigneeID:  assigneeID,
+		UpdatedAt:   pgtype.Timestamptz{Time: issue.UpdatedAt, Valid: true},
 	}
 }
 

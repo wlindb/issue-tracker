@@ -2,7 +2,6 @@ package issue
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/google/uuid"
@@ -27,9 +26,13 @@ func (s *IssueService) ListIssues(ctx context.Context, projectID uuid.UUID, quer
 	return page, nil
 }
 
-// UpdateIssueAssignee updates the assignee of an issue.
-func (s *IssueService) UpdateIssueAssignee(_ context.Context, _ uuid.UUID, _ *uuid.UUID) (Issue, error) {
-	return Issue{}, errors.New("not implemented")
+// GetIssue retrieves a single issue by its ID.
+func (s *IssueService) GetIssue(ctx context.Context, issueID uuid.UUID) (Issue, error) {
+	issue, err := s.repository.GetIssue(ctx, issueID)
+	if err != nil {
+		return Issue{}, fmt.Errorf("get issue: %w", err)
+	}
+	return issue, nil
 }
 
 // CreateIssue creates a new issue from the given command.
@@ -42,21 +45,76 @@ func (s *IssueService) CreateIssue(ctx context.Context, command CreateIssueComma
 	return result, nil
 }
 
-// UpdateIssueDescription is not yet implemented.
-func (s *IssueService) UpdateIssueDescription(_ context.Context, _ uuid.UUID, _ *string) (Issue, error) {
-	return Issue{}, errors.New("not implemented")
+// UpdateIssueAssignee updates the assignee of an issue.
+func (s *IssueService) UpdateIssueAssignee(ctx context.Context, issueID uuid.UUID, assigneeID *uuid.UUID) (Issue, error) {
+	current, err := s.repository.GetIssue(ctx, issueID)
+	if err != nil {
+		return Issue{}, fmt.Errorf("update issue assignee: %w", err)
+	}
+	var updated Issue
+	if assigneeID != nil {
+		updated, err = current.UpdateAssignee(*assigneeID)
+		if err != nil {
+			return Issue{}, fmt.Errorf("update issue assignee: %w", err)
+		}
+	} else {
+		updated = current
+		updated.AssigneeID = nil
+	}
+	result, err := s.repository.Update(ctx, updated)
+	if err != nil {
+		return Issue{}, fmt.Errorf("update issue assignee: %w", err)
+	}
+	return result, nil
 }
 
-func (s *IssueService) UpdateIssuePriority(_ context.Context, _ uuid.UUID, _ Priority) (Issue, error) {
-	return Issue{}, errors.New("UpdateIssuePriority: not implemented")
+// UpdateIssueDescription updates the description of an issue.
+func (s *IssueService) UpdateIssueDescription(ctx context.Context, issueID uuid.UUID, description *string) (Issue, error) {
+	current, err := s.repository.GetIssue(ctx, issueID)
+	if err != nil {
+		return Issue{}, fmt.Errorf("update issue description: %w", err)
+	}
+	updated, err := current.UpdateDescription(description)
+	if err != nil {
+		return Issue{}, fmt.Errorf("update issue description: %w", err)
+	}
+	result, err := s.repository.Update(ctx, updated)
+	if err != nil {
+		return Issue{}, fmt.Errorf("update issue description: %w", err)
+	}
+	return result, nil
 }
 
-// GetIssue retrieves a single issue by its ID.
-func (s *IssueService) GetIssue(_ context.Context, _ uuid.UUID) (Issue, error) {
-	return Issue{}, fmt.Errorf("get issue: not implemented")
+// UpdateIssuePriority updates the priority of an issue.
+func (s *IssueService) UpdateIssuePriority(ctx context.Context, issueID uuid.UUID, priority Priority) (Issue, error) {
+	current, err := s.repository.GetIssue(ctx, issueID)
+	if err != nil {
+		return Issue{}, fmt.Errorf("update issue priority: %w", err)
+	}
+	updated, err := current.UpdatePriority(priority)
+	if err != nil {
+		return Issue{}, fmt.Errorf("update issue priority: %w", err)
+	}
+	result, err := s.repository.Update(ctx, updated)
+	if err != nil {
+		return Issue{}, fmt.Errorf("update issue priority: %w", err)
+	}
+	return result, nil
 }
 
 // UpdateIssueStatus updates the status of the issue with the given ID.
-func (s *IssueService) UpdateIssueStatus(_ context.Context, _ uuid.UUID, _ Status) (Issue, error) {
-	return Issue{}, errors.New("not implemented")
+func (s *IssueService) UpdateIssueStatus(ctx context.Context, issueID uuid.UUID, status Status) (Issue, error) {
+	current, err := s.repository.GetIssue(ctx, issueID)
+	if err != nil {
+		return Issue{}, fmt.Errorf("update issue status: %w", err)
+	}
+	updated, err := current.UpdateStatus(status)
+	if err != nil {
+		return Issue{}, fmt.Errorf("update issue status: %w", err)
+	}
+	result, err := s.repository.Update(ctx, updated)
+	if err != nil {
+		return Issue{}, fmt.Errorf("update issue status: %w", err)
+	}
+	return result, nil
 }

@@ -63,6 +63,33 @@ func (q *Queries) CreateIssue(ctx context.Context, arg CreateIssueParams) (Issue
 	return i, err
 }
 
+const getIssue = `-- name: GetIssue :one
+SELECT id, identifier, title, description, status, priority, labels, assignee_id, project_id, reporter_id, created_at, updated_at, workspace_id FROM issues
+WHERE id = $1
+  AND workspace_id = current_setting('app.workspace_id')::uuid
+`
+
+func (q *Queries) GetIssue(ctx context.Context, id uuid.UUID) (Issue, error) {
+	row := q.db.QueryRow(ctx, getIssue, id)
+	var i Issue
+	err := row.Scan(
+		&i.ID,
+		&i.Identifier,
+		&i.Title,
+		&i.Description,
+		&i.Status,
+		&i.Priority,
+		&i.Labels,
+		&i.AssigneeID,
+		&i.ProjectID,
+		&i.ReporterID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.WorkspaceID,
+	)
+	return i, err
+}
+
 const listIssues = `-- name: ListIssues :many
 SELECT id, identifier, title, description, status, priority, labels, assignee_id, project_id, reporter_id, created_at, updated_at, workspace_id FROM issues
 WHERE project_id = $1
@@ -79,51 +106,6 @@ type ListIssuesParams struct {
 	Status     pgtype.Text
 	Priority   pgtype.Text
 	AssigneeID pgtype.UUID
-}
-
-const updateIssue = `-- name: UpdateIssue :one
-UPDATE issues
-SET description = $2,
-    status      = $3,
-    priority    = $4,
-    assignee_id = $5,
-    updated_at  = NOW()
-WHERE id = $1
-RETURNING id, identifier, title, description, status, priority, labels, assignee_id, project_id, reporter_id, created_at, updated_at
-`
-
-type UpdateIssueParams struct {
-	ID          uuid.UUID
-	Description pgtype.Text
-	Status      string
-	Priority    string
-	AssigneeID  pgtype.UUID
-}
-
-func (q *Queries) UpdateIssue(ctx context.Context, arg UpdateIssueParams) (Issue, error) {
-	row := q.db.QueryRow(ctx, updateIssue,
-		arg.ID,
-		arg.Description,
-		arg.Status,
-		arg.Priority,
-		arg.AssigneeID,
-	)
-	var i Issue
-	err := row.Scan(
-		&i.ID,
-		&i.Identifier,
-		&i.Title,
-		&i.Description,
-		&i.Status,
-		&i.Priority,
-		&i.Labels,
-		&i.AssigneeID,
-		&i.ProjectID,
-		&i.ReporterID,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-	)
-	return i, err
 }
 
 func (q *Queries) ListIssues(ctx context.Context, arg ListIssuesParams) ([]Issue, error) {
@@ -163,4 +145,53 @@ func (q *Queries) ListIssues(ctx context.Context, arg ListIssuesParams) ([]Issue
 		return nil, err
 	}
 	return items, nil
+}
+
+const updateIssue = `-- name: UpdateIssue :one
+UPDATE issues
+SET description = $1,
+    status      = $2,
+    priority    = $3,
+    assignee_id = $4,
+    updated_at  = NOW()
+WHERE id = $5
+  AND updated_at = $6
+RETURNING id, identifier, title, description, status, priority, labels, assignee_id, project_id, reporter_id, created_at, updated_at, workspace_id
+`
+
+type UpdateIssueParams struct {
+	Description pgtype.Text
+	Status      string
+	Priority    string
+	AssigneeID  pgtype.UUID
+	ID          uuid.UUID
+	UpdatedAt   pgtype.Timestamptz
+}
+
+func (q *Queries) UpdateIssue(ctx context.Context, arg UpdateIssueParams) (Issue, error) {
+	row := q.db.QueryRow(ctx, updateIssue,
+		arg.Description,
+		arg.Status,
+		arg.Priority,
+		arg.AssigneeID,
+		arg.ID,
+		arg.UpdatedAt,
+	)
+	var i Issue
+	err := row.Scan(
+		&i.ID,
+		&i.Identifier,
+		&i.Title,
+		&i.Description,
+		&i.Status,
+		&i.Priority,
+		&i.Labels,
+		&i.AssigneeID,
+		&i.ProjectID,
+		&i.ReporterID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.WorkspaceID,
+	)
+	return i, err
 }
