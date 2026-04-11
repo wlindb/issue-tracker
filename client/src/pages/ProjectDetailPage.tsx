@@ -23,13 +23,14 @@ export function ProjectDetailPage() {
   useEffect(() => {
     if (!activeWorkspace || !projectId) return
     const workspaceId = activeWorkspace.id
+    const resolvedProjectId = projectId
     setLoading(true)
     setError(false)
     async function load() {
       try {
         const [fetchedProject, issuePage] = await Promise.all([
-          getProject(workspaceId, projectId!),
-          listIssues(workspaceId, { project_id: projectId! }),
+          getProject(workspaceId, resolvedProjectId),
+          listIssues(workspaceId, { project_id: resolvedProjectId }),
         ])
         setProject(fetchedProject)
         setIssues(issuePage.items)

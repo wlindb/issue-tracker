@@ -69,14 +69,16 @@ export function CommentSection({ comments, onAddComment }: CommentSectionProps) 
 }
 
 function CommentItem({ comment }: { comment: Comment }) {
+  const shortId = comment.authorId.slice(0, 8)
+  const initials = comment.authorId.slice(0, 2).toUpperCase()
   return (
     <div className="flex gap-3">
       <Avatar size="sm" className="mt-0.5 shrink-0">
-        <AvatarFallback>U</AvatarFallback>
+        <AvatarFallback>{initials}</AvatarFallback>
       </Avatar>
       <div className="flex flex-col gap-1">
         <div className="flex items-baseline gap-2">
-          <span className="text-sm font-medium">User</span>
+          <span className="text-sm font-medium font-mono">{shortId}</span>
           <span className="text-xs text-muted-foreground">{formatDate(comment.createdAt)}</span>
         </div>
         <p className="text-sm leading-relaxed text-foreground">{comment.body}</p>

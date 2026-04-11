@@ -36,14 +36,15 @@ export function IssueDetailPage() {
   useEffect(() => {
     if (!activeWorkspace || !issueId) return
     const workspaceId = activeWorkspace.id
+    const resolvedIssueId = issueId
     setLoading(true)
     setError(false)
     async function load() {
       try {
-        const fetchedIssue = await getIssue(workspaceId, issueId!)
+        const fetchedIssue = await getIssue(workspaceId, resolvedIssueId)
         const [fetchedProject, commentsPage] = await Promise.all([
           getProject(workspaceId, fetchedIssue.projectId),
-          listComments(workspaceId, issueId!),
+          listComments(workspaceId, resolvedIssueId),
         ])
         setIssue(fetchedIssue)
         setProject(fetchedProject)
