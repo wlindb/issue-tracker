@@ -2,6 +2,7 @@
   "realm": "issue-tracker",
   "enabled": true,
   "sslRequired": "none",
+  "loginTheme": "clerk-inspired",
   "registrationAllowed": false,
   "loginWithEmailAllowed": true,
   "accessTokenLifespan": 300,

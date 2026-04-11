@@ -1,0 +1,560 @@
+/* ============================================================
+   Clerk-inspired Keycloak Login Theme
+   ============================================================ */
+
+/* --- Google Fonts: Inter --- */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+/* --- CSS Custom Properties --- */
+:root {
+  --cl-font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, sans-serif;
+
+  /* Colors */
+  --cl-bg: #171717;
+  --cl-card-bg: #ffffff;
+  --cl-border: #e5e7eb;
+  --cl-border-focus: #6c47ff;
+  --cl-border-error: #ef4444;
+
+  --cl-text-primary: #111827;
+  --cl-text-secondary: #6b7280;
+  --cl-text-placeholder: #9ca3af;
+
+  --cl-primary: #1c1c1e;
+  --cl-primary-hover: #2d2d2f;
+  --cl-primary-active: #3a3a3c;
+  --cl-primary-text: #ffffff;
+
+  --cl-social-bg: #ffffff;
+  --cl-social-border: #e5e7eb;
+  --cl-social-hover-bg: #f9fafb;
+  --cl-social-text: #374151;
+
+  --cl-error-bg: #fef2f2;
+  --cl-error-text: #ef4444;
+
+  --cl-divider-color: #e5e7eb;
+  --cl-divider-label: #9ca3af;
+
+  --cl-link: #6c47ff;
+  --cl-link-hover: #5a38e0;
+
+  /* Spacing & Shape */
+  --cl-radius-sm: 6px;
+  --cl-radius-md: 10px;
+  --cl-radius-lg: 16px;
+  --cl-card-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 4px 16px rgba(0, 0, 0, 0.08);
+  --cl-input-height: 42px;
+  --cl-btn-height: 42px;
+}
+
+/* --- Reset --- */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* --- Body / Page --- */
+body {
+  font-family: var(--cl-font-family);
+  background-color: var(--cl-bg);
+  background-image: none;
+  color: var(--cl-text-primary);
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* --- Card container (replaces default Keycloak layout) --- */
+#kc-container,
+.login-pf-page .container,
+.login-pf body {
+  background: transparent !important;
+}
+
+/* Override base PatternFly .login-pf background image */
+.login-pf {
+  background: var(--cl-bg) !important;
+  background-image: none !important;
+}
+
+#kc-container-wrapper,
+#kc-header,
+#kc-header-wrapper {
+  display: none !important;
+}
+
+/* Keycloak wraps content in #kc-content-wrapper; we style the card here */
+#kc-content,
+#kc-content-wrapper {
+  width: 100%;
+  max-width: 420px;
+  margin: 0 auto;
+}
+
+/* Outer PatternFly card shell — radius to match the inner card */
+.card-pf {
+  border-radius: var(--cl-radius-lg);
+  overflow: hidden;
+}
+
+/* The main login card */
+#kc-form-wrapper,
+.cl-card,
+#kc-content-wrapper {
+  background: var(--cl-card-bg);
+  border-radius: var(--cl-radius-lg);
+  box-shadow: var(--cl-card-shadow);
+  border: 1px solid var(--cl-border);
+  padding: 40px 36px 32px;
+  width: 100%;
+}
+
+/* --- Header --- */
+.cl-header {
+  text-align: center;
+  margin-bottom: 28px;
+}
+
+.cl-logo-wrap {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+.cl-logo-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--cl-radius-md);
+}
+
+.cl-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--cl-text-primary);
+  letter-spacing: -0.3px;
+  margin-bottom: 6px;
+}
+
+.cl-subtitle {
+  font-size: 14px;
+  color: var(--cl-text-secondary);
+  line-height: 1.5;
+}
+
+/* --- Global alert / flash message --- */
+#kc-content-wrapper .alert,
+.pf-m-danger,
+#kc-info-message {
+  border-radius: var(--cl-radius-md);
+  padding: 10px 14px;
+  font-size: 13px;
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
+
+#kc-content-wrapper .alert-error,
+.pf-m-danger {
+  background-color: var(--cl-error-bg);
+  color: var(--cl-error-text);
+  border: 1px solid #fecaca;
+}
+
+#kc-content-wrapper .alert-warning {
+  background-color: #fffbeb;
+  color: #d97706;
+  border: 1px solid #fde68a;
+}
+
+#kc-content-wrapper .alert-success,
+#kc-info-message {
+  background-color: #f0fdf4;
+  color: #16a34a;
+  border: 1px solid #bbf7d0;
+}
+
+/* --- Social Providers --- */
+.cl-social-providers {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+
+.cl-social-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  height: var(--cl-btn-height);
+  background: var(--cl-social-bg);
+  border: 1px solid var(--cl-social-border);
+  border-radius: var(--cl-radius-md);
+  color: var(--cl-social-text);
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+  padding: 0 16px;
+  font-family: var(--cl-font-family);
+}
+
+.cl-social-btn:hover {
+  background: var(--cl-social-hover-bg);
+  border-color: #d1d5db;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+  text-decoration: none;
+  color: var(--cl-social-text);
+}
+
+.cl-social-btn:focus-visible {
+  outline: 2px solid var(--cl-border-focus);
+  outline-offset: 2px;
+}
+
+.cl-social-btn i {
+  font-size: 17px;
+  flex-shrink: 0;
+}
+
+/* Font Awesome brand icon colors */
+.fa-google { color: #ea4335; }
+.fa-github { color: #24292e; }
+.fa-facebook { color: #1877f2; }
+.fa-twitter, .fa-x-twitter { color: #1da1f2; }
+.fa-linkedin { color: #0a66c2; }
+.fa-microsoft { color: #00a4ef; }
+
+/* --- Divider --- */
+.cl-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 20px 0;
+}
+
+.cl-divider-line {
+  flex: 1;
+  height: 1px;
+  background: var(--cl-divider-color);
+}
+
+.cl-divider-label {
+  font-size: 12px;
+  color: var(--cl-divider-label);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+
+/* --- Form --- */
+.cl-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.cl-form-wrap {
+  /* container for social + form */
+}
+
+.cl-field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+/* --- Field --- */
+.cl-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cl-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.cl-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--cl-text-primary);
+  display: block;
+}
+
+.cl-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.cl-input {
+  width: 100%;
+  height: var(--cl-input-height);
+  padding: 0 40px 0 12px;
+  border: 1.5px solid var(--cl-border);
+  border-radius: var(--cl-radius-md);
+  font-size: 14px;
+  font-family: var(--cl-font-family);
+  color: var(--cl-text-primary);
+  background: #ffffff;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+/* standalone input (not inside .cl-input-wrap) */
+.cl-field > .cl-input {
+  padding-right: 12px;
+}
+
+.cl-input::placeholder {
+  color: var(--cl-text-placeholder);
+}
+
+.cl-input:focus {
+  outline: none;
+  border-color: var(--cl-border-focus);
+  box-shadow: 0 0 0 3px rgba(108, 71, 255, 0.15);
+}
+
+.cl-field--error .cl-input {
+  border-color: var(--cl-border-error);
+}
+
+.cl-field--error .cl-input:focus {
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15);
+}
+
+.cl-field-error {
+  font-size: 12px;
+  color: var(--cl-error-text);
+  margin-top: 2px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* --- Password Toggle --- */
+.cl-password-toggle {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--cl-text-secondary);
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s;
+  border-radius: 4px;
+}
+
+.cl-password-toggle:hover {
+  color: var(--cl-text-primary);
+}
+
+.cl-password-toggle:focus-visible {
+  outline: 2px solid var(--cl-border-focus);
+  outline-offset: 1px;
+}
+
+.cl-password-toggle svg {
+  width: 17px;
+  height: 17px;
+  pointer-events: none;
+}
+
+/* --- Forgot Password link --- */
+.cl-forgot-link {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--cl-link);
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.cl-forgot-link:hover {
+  color: var(--cl-link-hover);
+  text-decoration: underline;
+}
+
+/* --- Remember Me --- */
+.cl-remember-wrap {
+  margin-bottom: 16px;
+}
+
+.cl-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--cl-text-secondary);
+  cursor: pointer;
+  user-select: none;
+}
+
+.cl-checkbox {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.cl-checkbox-custom {
+  width: 16px;
+  height: 16px;
+  border: 1.5px solid var(--cl-border);
+  border-radius: 4px;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.cl-checkbox:checked + .cl-checkbox-custom {
+  background: var(--cl-primary);
+  border-color: var(--cl-primary);
+}
+
+.cl-checkbox:checked + .cl-checkbox-custom::after {
+  content: '';
+  width: 9px;
+  height: 5px;
+  border-left: 2px solid #fff;
+  border-bottom: 2px solid #fff;
+  transform: rotate(-45deg) translateY(-1px);
+  display: block;
+}
+
+.cl-checkbox:focus-visible + .cl-checkbox-custom {
+  outline: 2px solid var(--cl-border-focus);
+  outline-offset: 2px;
+}
+
+/* --- Primary Button --- */
+.cl-primary-btn {
+  width: 100%;
+  height: var(--cl-btn-height);
+  background: var(--cl-primary);
+  color: var(--cl-primary-text);
+  border: none;
+  border-radius: var(--cl-radius-md);
+  font-size: 14px;
+  font-weight: 600;
+  font-family: var(--cl-font-family);
+  cursor: pointer;
+  transition: background 0.15s ease, box-shadow 0.15s ease, transform 0.05s ease;
+  letter-spacing: 0.01em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.cl-primary-btn:hover:not(:disabled) {
+  background: var(--cl-primary-hover);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+
+.cl-primary-btn:active:not(:disabled) {
+  background: var(--cl-primary-active);
+  transform: translateY(1px);
+}
+
+.cl-primary-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.cl-primary-btn:focus-visible {
+  outline: 2px solid var(--cl-border-focus);
+  outline-offset: 2px;
+}
+
+/* --- Footer (sign up link) --- */
+.cl-footer {
+  margin-top: 24px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--cl-text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding-top: 20px;
+  border-top: 1px solid var(--cl-border);
+}
+
+.cl-footer-link {
+  color: var(--cl-link);
+  font-weight: 500;
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.cl-footer-link:hover {
+  color: var(--cl-link-hover);
+  text-decoration: underline;
+}
+
+/* ============================================================
+   Keycloak default element overrides
+   These selectors target classes Keycloak renders in its
+   base template.ftl so we restyle them to match our theme.
+   ============================================================ */
+
+/* Hide the default KC logo/header area (we render our own) */
+#kc-header,
+#kc-header-wrapper,
+.login-pf-header {
+  display: none;
+}
+
+/* Keycloak wraps the card in #kc-content */
+#kc-content {
+  padding: 0;
+}
+
+/* Info/error message rendered by Keycloak outside our card */
+#kc-info-message {
+  font-size: 14px;
+}
+
+/* Keycloak sometimes adds .pf-c-alert for messages */
+.pf-c-alert {
+  border-radius: var(--cl-radius-md);
+  margin-bottom: 16px;
+  font-size: 13px;
+}
+
+/* --- Responsive --- */
+@media (max-width: 480px) {
+  #kc-form-wrapper,
+  #kc-content-wrapper,
+  .cl-card {
+    padding: 28px 20px 24px;
+    border-radius: var(--cl-radius-md);
+  }
+
+  .cl-title {
+    font-size: 20px;
+  }
+}
