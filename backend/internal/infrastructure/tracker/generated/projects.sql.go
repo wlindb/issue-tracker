@@ -13,13 +13,14 @@ import (
 )
 
 const createProject = `-- name: CreateProject :one
-INSERT INTO projects (id, owner_id, name, description, workspace_id, created_at, updated_at)
-VALUES ($1, $2, $3, $4, current_setting('app.workspace_id')::uuid, NOW(), NOW())
-RETURNING id, owner_id, name, description, created_at, updated_at, workspace_id
+INSERT INTO projects (id, identifier, owner_id, name, description, workspace_id, created_at, updated_at)
+VALUES ($1, $2, $3, $4, $5, current_setting('app.workspace_id')::uuid, NOW(), NOW())
+RETURNING id, owner_id, name, description, created_at, updated_at, workspace_id, identifier
 `
 
 type CreateProjectParams struct {
 	ID          uuid.UUID
+	Identifier  string
 	OwnerID     uuid.UUID
 	Name        string
 	Description pgtype.Text
@@ -28,6 +29,7 @@ type CreateProjectParams struct {
 func (q *Queries) CreateProject(ctx context.Context, arg CreateProjectParams) (Project, error) {
 	row := q.db.QueryRow(ctx, createProject,
 		arg.ID,
+		arg.Identifier,
 		arg.OwnerID,
 		arg.Name,
 		arg.Description,
@@ -41,12 +43,13 @@ func (q *Queries) CreateProject(ctx context.Context, arg CreateProjectParams) (P
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.WorkspaceID,
+		&i.Identifier,
 	)
 	return i, err
 }
 
 const getProject = `-- name: GetProject :one
-SELECT id, owner_id, name, description, created_at, updated_at, workspace_id FROM projects
+SELECT id, owner_id, name, description, created_at, updated_at, workspace_id, identifier FROM projects
 WHERE id = $1 AND workspace_id = current_setting('app.workspace_id')::uuid
 `
 
@@ -61,12 +64,13 @@ func (q *Queries) GetProject(ctx context.Context, id uuid.UUID) (Project, error)
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.WorkspaceID,
+		&i.Identifier,
 	)
 	return i, err
 }
 
 const listProjects = `-- name: ListProjects :many
-SELECT id, owner_id, name, description, created_at, updated_at, workspace_id FROM projects
+SELECT id, owner_id, name, description, created_at, updated_at, workspace_id, identifier FROM projects
 WHERE workspace_id = current_setting('app.workspace_id')::uuid
 ORDER BY created_at DESC
 LIMIT $1::int4
@@ -89,6 +93,7 @@ func (q *Queries) ListProjects(ctx context.Context, projectLimit int32) ([]Proje
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.WorkspaceID,
+			&i.Identifier,
 		); err != nil {
 			return nil, err
 		}

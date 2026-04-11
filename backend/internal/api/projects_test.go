@@ -23,17 +23,14 @@ import (
 	trackerdomain "github.com/wlindb/issue-tracker/internal/domain/tracker/project"
 )
 
-// mockProjectService implements the projectServicer interface for testing.
+// mockProjectService implements the ProjectService interface for testing.
 type mockProjectService struct {
 	mock.Mock
 }
 
-func (m *mockProjectService) Create(ctx context.Context, id uuid.UUID, ownerID uuid.UUID, name string, description *string) (*trackerdomain.Project, error) {
-	args := m.Called(ctx, id, ownerID, name, description)
-	if p, ok := args.Get(0).(*trackerdomain.Project); ok {
-		return p, args.Error(1)
-	}
-	return nil, args.Error(1)
+func (m *mockProjectService) Create(ctx context.Context, command trackerdomain.CreateProjectCommand) (trackerdomain.Project, error) {
+	args := m.Called(ctx, command)
+	return args.Get(0).(trackerdomain.Project), args.Error(1)
 }
 
 func (m *mockProjectService) List(ctx context.Context, query trackerdomain.ListProjectQuery) (trackerdomain.Projects, error) {
@@ -59,14 +56,15 @@ func Test_CreateProject_ValidBody_Returns201(t *testing.T) {
 	now := time.Now().UTC()
 	ownerID := uuid.New()
 
-	service.On("Create", mock.Anything, mock.Anything, ownerID, "Acme", (*string)(nil)).
-		Return(&trackerdomain.Project{
-			ID:        uuid.New(),
-			Name:      "Acme",
-			OwnerID:   ownerID,
-			CreatedAt: now,
-			UpdatedAt: now,
-		}, nil)
+	service.On("Create", mock.Anything, mock.MatchedBy(func(c trackerdomain.CreateProjectCommand) bool {
+		return c.Name == "Acme" && c.OwnerID == ownerID
+	})).Return(trackerdomain.Project{
+		ID:        uuid.New(),
+		Name:      "Acme",
+		OwnerID:   ownerID,
+		CreatedAt: now,
+		UpdatedAt: now,
+	}, nil)
 
 	e := newTestServer(t, service)
 	e.Use(injectUser(ownerID))
@@ -102,8 +100,9 @@ func Test_CreateProject_ServiceError_InternalServerError(t *testing.T) {
 	service := &mockProjectService{}
 	ownerID := uuid.New()
 
-	service.On("Create", mock.Anything, mock.Anything, ownerID, "Acme", (*string)(nil)).
-		Return(nil, errors.New("db down"))
+	service.On("Create", mock.Anything, mock.MatchedBy(func(c trackerdomain.CreateProjectCommand) bool {
+		return c.Name == "Acme" && c.OwnerID == ownerID
+	})).Return(trackerdomain.Project{}, errors.New("db down"))
 
 	e := newTestServer(t, service)
 	e.Use(injectUser(ownerID))

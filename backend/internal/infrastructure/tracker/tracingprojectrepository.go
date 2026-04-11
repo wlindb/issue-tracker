@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/google/uuid"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 
@@ -24,17 +23,17 @@ func NewTracingProjectRepository(inner projectdomain.ProjectRepository, tracer t
 	return &TracingProjectRepository{inner: inner, tracer: tracer}
 }
 
-func (r *TracingProjectRepository) Create(ctx context.Context, id uuid.UUID, ownerID uuid.UUID, name string, description *string) (*projectdomain.Project, error) {
+func (r *TracingProjectRepository) Create(ctx context.Context, project projectdomain.Project) (projectdomain.Project, error) {
 	ctx, span := r.tracer.Start(ctx, "tracker.ProjectRepository.Create")
 	defer span.End()
 
-	project, err := r.inner.Create(ctx, id, ownerID, name, description)
+	result, err := r.inner.Create(ctx, project)
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
-		return nil, fmt.Errorf("create project: %w", err)
+		return projectdomain.Project{}, fmt.Errorf("create project: %w", err)
 	}
-	return project, nil
+	return result, nil
 }
 
 func (r *TracingProjectRepository) List(ctx context.Context, query projectdomain.ListProjectQuery) (projectdomain.Projects, error) {

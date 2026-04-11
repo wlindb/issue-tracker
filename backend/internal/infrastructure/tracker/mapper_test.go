@@ -20,6 +20,7 @@ func Test_ProjectToDomain_NilDescription_SetsDescriptionNil(t *testing.T) {
 	now := time.Now().UTC()
 	row := trackerdb.Project{
 		ID:          id,
+		Identifier:  "test-project",
 		OwnerID:     ownerID,
 		Name:        "Test",
 		Description: pgtype.Text{Valid: false},
@@ -29,8 +30,9 @@ func Test_ProjectToDomain_NilDescription_SetsDescriptionNil(t *testing.T) {
 
 	actual := projectToDomain(row)
 
-	require.NotNil(t, actual)
+	require.NotZero(t, actual)
 	assert.Equal(t, id, actual.ID)
+	assert.Equal(t, "test-project", actual.Identifier)
 	assert.Equal(t, ownerID, actual.OwnerID)
 	assert.Equal(t, "Test", actual.Name)
 	assert.Nil(t, actual.Description)
@@ -42,6 +44,7 @@ func Test_ProjectToDomain_WithDescription_SetsDescription(t *testing.T) {
 	now := time.Now().UTC()
 	row := trackerdb.Project{
 		ID:          uuid.New(),
+		Identifier:  "test-project",
 		OwnerID:     uuid.New(),
 		Name:        "Test",
 		Description: pgtype.Text{String: description, Valid: true},

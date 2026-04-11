@@ -15,6 +15,7 @@ import (
 func projectFromDomain(domain trackerdomain.Project) model.Project {
 	return model.Project{
 		Id:          domain.ID,
+		Identifier:  domain.Identifier,
 		Name:        domain.Name,
 		Description: domain.Description,
 		OwnerId:     domain.OwnerID,
