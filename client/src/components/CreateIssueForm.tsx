@@ -3,6 +3,7 @@ import { type Issue, type Project } from '@/data/mock'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { createIssue } from '@/api/generated/issueTrackerAPI'
+import { useWorkspace } from '@/context/WorkspaceContext'
 
 interface CreateIssueFormProps {
   projects: Project[]
@@ -17,6 +18,7 @@ export function CreateIssueForm({ projects, defaultProjectId, onSave, onCancel }
   const [projectId, setProjectId] = useState(defaultProjectId ?? '')
   const [submitting, setSubmitting] = useState(false)
   const titleRef = useRef<HTMLInputElement>(null)
+  const { activeWorkspace } = useWorkspace()
 
   useEffect(() => {
     titleRef.current?.focus()
@@ -24,11 +26,11 @@ export function CreateIssueForm({ projects, defaultProjectId, onSave, onCancel }
 
   async function handleSubmit() {
     const trimmedTitle = title.trim()
-    if (!trimmedTitle || !projectId) return
+    if (!trimmedTitle || !projectId || !activeWorkspace) return
 
     setSubmitting(true)
     try {
-      const issue = await createIssue({
+      const issue = await createIssue(activeWorkspace.id, {
         projectId,
         title: trimmedTitle,
         description: description.trim() || null,

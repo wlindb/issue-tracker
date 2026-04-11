@@ -7,6 +7,7 @@ import { CreateIssueForm } from '@/components/CreateIssueForm'
 import { useIssueSearch } from '@/hooks/useIssueSearch'
 import { cn } from '@/lib/utils'
 import { listProjects, listIssues, type Issue, type Project } from '@/api/generated/issueTrackerAPI'
+import { useWorkspace } from '@/context/WorkspaceContext'
 
 export function AllIssuesPage() {
   const [issues, setIssues] = useState<Issue[]>([])
@@ -14,21 +15,24 @@ export function AllIssuesPage() {
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
   const [query, setQuery] = useState('')
+  const { activeWorkspace } = useWorkspace()
 
   const { results, isPending } = useIssueSearch(issues, query)
 
   useEffect(() => {
+    if (!activeWorkspace) return
+    const workspaceId = activeWorkspace.id
     async function load() {
-      const projectPage = await listProjects()
+      const projectPage = await listProjects(workspaceId)
       setProjects(projectPage.items)
       const issuePages = await Promise.all(
-        projectPage.items.map((p) => listIssues({ project_id: p.id }))
+        projectPage.items.map((p) => listIssues(workspaceId, { project_id: p.id }))
       )
       setIssues(issuePages.flatMap((page) => page.items))
       setLoading(false)
     }
     load()
-  }, [])
+  }, [activeWorkspace])
 
   function handleSave(issue: Issue) {
     setIssues([issue, ...issues])

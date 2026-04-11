@@ -74,6 +74,20 @@ export interface Comment {
   updatedAt: string;
 }
 
+export interface Workspace {
+  id: string;
+  name: string;
+  ownerId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface WorkspacePage {
+  items: Workspace[];
+  /** @nullable */
+  nextCursor?: string | null;
+}
+
 export interface ProjectPage {
   items: Project[];
   /** @nullable */
@@ -95,6 +109,10 @@ export interface CommentPage {
 export interface Error {
   code: string;
   message: string;
+}
+
+export interface CreateWorkspaceRequest {
+  name: string;
 }
 
 export interface CreateProjectRequest {
@@ -142,6 +160,11 @@ export interface UpdateIssueAssigneeRequest {
   assigneeId: string | null;
 }
 
+export interface SearchIssueRequest {
+  /** @minLength 1 */
+  query: string;
+}
+
 export interface CreateCommentRequest {
   /** @minLength 1 */
   body: string;
@@ -171,6 +194,11 @@ export type NotFoundResponse = Error;
  * Semantic validation error.
  */
 export type UnprocessableEntityResponse = Error;
+
+/**
+ * Endpoint not yet implemented.
+ */
+export type NotImplementedResponse = Error;
 
 /**
  * Unexpected server error.
@@ -213,13 +241,39 @@ limit?: LimitParamParameter;
 };
 
 /**
- * @summary Get the currently authenticated user.
+ * @summary List workspaces the authenticated user belongs to.
  */
-export const getMe = (
+export const listWorkspaces = (
 
  ) => {
-      return customFetch<User>(
-      {url: `/api/v1/users/me`, method: 'GET'
+      return customFetch<WorkspacePage>(
+      {url: `/api/v1/workspaces`, method: 'GET'
+    },
+      );
+    }
+
+/**
+ * @summary Create a new workspace.
+ */
+export const createWorkspace = (
+    createWorkspaceRequest: CreateWorkspaceRequest,
+ ) => {
+      return customFetch<Workspace>(
+      {url: `/api/v1/workspaces`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: createWorkspaceRequest
+    },
+      );
+    }
+
+/**
+ * @summary Get a single workspace by ID.
+ */
+export const getWorkspace = (
+    workspaceId: string,
+ ) => {
+      return customFetch<Workspace>(
+      {url: `/api/v1/workspaces/${workspaceId}`, method: 'GET'
     },
       );
     }
@@ -228,10 +282,11 @@ export const getMe = (
  * @summary List projects accessible to the authenticated user.
  */
 export const listProjects = (
+    workspaceId: string,
     params?: ListProjectsParams,
  ) => {
       return customFetch<ProjectPage>(
-      {url: `/api/v1/projects`, method: 'GET',
+      {url: `/api/v1/workspaces/${workspaceId}/projects`, method: 'GET',
         params
     },
       );
@@ -241,10 +296,11 @@ export const listProjects = (
  * @summary Create a new project.
  */
 export const createProject = (
+    workspaceId: string,
     createProjectRequest: CreateProjectRequest,
  ) => {
       return customFetch<Project>(
-      {url: `/api/v1/projects`, method: 'POST',
+      {url: `/api/v1/workspaces/${workspaceId}/projects`, method: 'POST',
       headers: {'Content-Type': 'application/json', },
       data: createProjectRequest
     },
@@ -255,10 +311,11 @@ export const createProject = (
  * @summary Get a single project by ID.
  */
 export const getProject = (
+    workspaceId: string,
     projectId: string,
  ) => {
       return customFetch<Project>(
-      {url: `/api/v1/projects/${projectId}`, method: 'GET'
+      {url: `/api/v1/workspaces/${workspaceId}/projects/${projectId}`, method: 'GET'
     },
       );
     }
@@ -267,11 +324,12 @@ export const getProject = (
  * @summary Replace a project's mutable fields.
  */
 export const updateProject = (
+    workspaceId: string,
     projectId: string,
     updateProjectRequest: UpdateProjectRequest,
  ) => {
       return customFetch<Project>(
-      {url: `/api/v1/projects/${projectId}`, method: 'PUT',
+      {url: `/api/v1/workspaces/${workspaceId}/projects/${projectId}`, method: 'PUT',
       headers: {'Content-Type': 'application/json', },
       data: updateProjectRequest
     },
@@ -282,10 +340,11 @@ export const updateProject = (
  * @summary Delete a project and all its issues.
  */
 export const deleteProject = (
+    workspaceId: string,
     projectId: string,
  ) => {
       return customFetch<void>(
-      {url: `/api/v1/projects/${projectId}`, method: 'DELETE'
+      {url: `/api/v1/workspaces/${workspaceId}/projects/${projectId}`, method: 'DELETE'
     },
       );
     }
@@ -294,10 +353,11 @@ export const deleteProject = (
  * @summary List issues with optional filters.
  */
 export const listIssues = (
+    workspaceId: string,
     params: ListIssuesParams,
  ) => {
       return customFetch<IssuePage>(
-      {url: `/api/v1/issues`, method: 'GET',
+      {url: `/api/v1/workspaces/${workspaceId}/issues`, method: 'GET',
         params
     },
       );
@@ -307,12 +367,28 @@ export const listIssues = (
  * @summary Create a new issue.
  */
 export const createIssue = (
+    workspaceId: string,
     createIssueRequest: CreateIssueRequest,
  ) => {
       return customFetch<Issue>(
-      {url: `/api/v1/issues`, method: 'POST',
+      {url: `/api/v1/workspaces/${workspaceId}/issues`, method: 'POST',
       headers: {'Content-Type': 'application/json', },
       data: createIssueRequest
+    },
+      );
+    }
+
+/**
+ * @summary Search issues by a query string.
+ */
+export const searchIssues = (
+    workspaceId: string,
+    searchIssueRequest: SearchIssueRequest,
+ ) => {
+      return customFetch<unknown>(
+      {url: `/api/v1/workspaces/${workspaceId}/issues/search`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: searchIssueRequest
     },
       );
     }
@@ -321,10 +397,11 @@ export const createIssue = (
  * @summary Get a single issue by ID.
  */
 export const getIssue = (
+    workspaceId: string,
     issueId: string,
  ) => {
       return customFetch<Issue>(
-      {url: `/api/v1/issues/${issueId}`, method: 'GET'
+      {url: `/api/v1/workspaces/${workspaceId}/issues/${issueId}`, method: 'GET'
     },
       );
     }
@@ -333,10 +410,11 @@ export const getIssue = (
  * @summary Delete an issue and its comments.
  */
 export const deleteIssue = (
+    workspaceId: string,
     issueId: string,
  ) => {
       return customFetch<void>(
-      {url: `/api/v1/issues/${issueId}`, method: 'DELETE'
+      {url: `/api/v1/workspaces/${workspaceId}/issues/${issueId}`, method: 'DELETE'
     },
       );
     }
@@ -345,11 +423,12 @@ export const deleteIssue = (
  * @summary Update the title of an issue.
  */
 export const updateIssueTitle = (
+    workspaceId: string,
     issueId: string,
     updateIssueTitleRequest: UpdateIssueTitleRequest,
  ) => {
       return customFetch<Issue>(
-      {url: `/api/v1/issues/${issueId}/title`, method: 'PUT',
+      {url: `/api/v1/workspaces/${workspaceId}/issues/${issueId}/title`, method: 'PUT',
       headers: {'Content-Type': 'application/json', },
       data: updateIssueTitleRequest
     },
@@ -360,11 +439,12 @@ export const updateIssueTitle = (
  * @summary Update the description of an issue.
  */
 export const updateIssueDescription = (
+    workspaceId: string,
     issueId: string,
     updateIssueDescriptionRequest: UpdateIssueDescriptionRequest,
  ) => {
       return customFetch<Issue>(
-      {url: `/api/v1/issues/${issueId}/description`, method: 'PUT',
+      {url: `/api/v1/workspaces/${workspaceId}/issues/${issueId}/description`, method: 'PUT',
       headers: {'Content-Type': 'application/json', },
       data: updateIssueDescriptionRequest
     },
@@ -375,11 +455,12 @@ export const updateIssueDescription = (
  * @summary Update the status of an issue.
  */
 export const updateIssueStatus = (
+    workspaceId: string,
     issueId: string,
     updateIssueStatusRequest: UpdateIssueStatusRequest,
  ) => {
       return customFetch<Issue>(
-      {url: `/api/v1/issues/${issueId}/status`, method: 'PUT',
+      {url: `/api/v1/workspaces/${workspaceId}/issues/${issueId}/status`, method: 'PUT',
       headers: {'Content-Type': 'application/json', },
       data: updateIssueStatusRequest
     },
@@ -390,11 +471,12 @@ export const updateIssueStatus = (
  * @summary Update the priority of an issue.
  */
 export const updateIssuePriority = (
+    workspaceId: string,
     issueId: string,
     updateIssuePriorityRequest: UpdateIssuePriorityRequest,
  ) => {
       return customFetch<Issue>(
-      {url: `/api/v1/issues/${issueId}/priority`, method: 'PUT',
+      {url: `/api/v1/workspaces/${workspaceId}/issues/${issueId}/priority`, method: 'PUT',
       headers: {'Content-Type': 'application/json', },
       data: updateIssuePriorityRequest
     },
@@ -405,11 +487,12 @@ export const updateIssuePriority = (
  * @summary Update the assignee of an issue.
  */
 export const updateIssueAssignee = (
+    workspaceId: string,
     issueId: string,
     updateIssueAssigneeRequest: UpdateIssueAssigneeRequest,
  ) => {
       return customFetch<Issue>(
-      {url: `/api/v1/issues/${issueId}/assigneeId`, method: 'PUT',
+      {url: `/api/v1/workspaces/${workspaceId}/issues/${issueId}/assigneeId`, method: 'PUT',
       headers: {'Content-Type': 'application/json', },
       data: updateIssueAssigneeRequest
     },
@@ -420,11 +503,12 @@ export const updateIssueAssignee = (
  * @summary List comments on an issue.
  */
 export const listComments = (
+    workspaceId: string,
     issueId: string,
     params?: ListCommentsParams,
  ) => {
       return customFetch<CommentPage>(
-      {url: `/api/v1/issues/${issueId}/comments`, method: 'GET',
+      {url: `/api/v1/workspaces/${workspaceId}/issues/${issueId}/comments`, method: 'GET',
         params
     },
       );
@@ -434,11 +518,12 @@ export const listComments = (
  * @summary Add a comment to an issue.
  */
 export const createComment = (
+    workspaceId: string,
     issueId: string,
     createCommentRequest: CreateCommentRequest,
  ) => {
       return customFetch<Comment>(
-      {url: `/api/v1/issues/${issueId}/comments`, method: 'POST',
+      {url: `/api/v1/workspaces/${workspaceId}/issues/${issueId}/comments`, method: 'POST',
       headers: {'Content-Type': 'application/json', },
       data: createCommentRequest
     },
@@ -449,15 +534,18 @@ export const createComment = (
  * @summary Delete a comment.
  */
 export const deleteComment = (
+    workspaceId: string,
     commentId: string,
  ) => {
       return customFetch<void>(
-      {url: `/api/v1/comments/${commentId}`, method: 'DELETE'
+      {url: `/api/v1/workspaces/${workspaceId}/comments/${commentId}`, method: 'DELETE'
     },
       );
     }
 
-export type GetMeResult = NonNullable<Awaited<ReturnType<typeof getMe>>>
+export type ListWorkspacesResult = NonNullable<Awaited<ReturnType<typeof listWorkspaces>>>
+export type CreateWorkspaceResult = NonNullable<Awaited<ReturnType<typeof createWorkspace>>>
+export type GetWorkspaceResult = NonNullable<Awaited<ReturnType<typeof getWorkspace>>>
 export type ListProjectsResult = NonNullable<Awaited<ReturnType<typeof listProjects>>>
 export type CreateProjectResult = NonNullable<Awaited<ReturnType<typeof createProject>>>
 export type GetProjectResult = NonNullable<Awaited<ReturnType<typeof getProject>>>
@@ -465,6 +553,7 @@ export type UpdateProjectResult = NonNullable<Awaited<ReturnType<typeof updatePr
 export type DeleteProjectResult = NonNullable<Awaited<ReturnType<typeof deleteProject>>>
 export type ListIssuesResult = NonNullable<Awaited<ReturnType<typeof listIssues>>>
 export type CreateIssueResult = NonNullable<Awaited<ReturnType<typeof createIssue>>>
+export type SearchIssuesResult = NonNullable<Awaited<ReturnType<typeof searchIssues>>>
 export type GetIssueResult = NonNullable<Awaited<ReturnType<typeof getIssue>>>
 export type DeleteIssueResult = NonNullable<Awaited<ReturnType<typeof deleteIssue>>>
 export type UpdateIssueTitleResult = NonNullable<Awaited<ReturnType<typeof updateIssueTitle>>>

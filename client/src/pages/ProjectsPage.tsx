@@ -5,20 +5,24 @@ import { Button } from '@/components/ui/button'
 import { CreateProjectForm } from '@/components/CreateProjectForm'
 import { cn } from '@/lib/utils'
 import { listProjects, type Project } from '@/api/generated/issueTrackerAPI'
+import { useWorkspace } from '@/context/WorkspaceContext'
 
 export function ProjectsPage() {
   const [projects, setProjects] = useState<Project[]>([])
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
+  const { activeWorkspace } = useWorkspace()
 
   useEffect(() => {
+    if (!activeWorkspace) return
+    const workspaceId = activeWorkspace.id
     async function load() {
-      const page = await listProjects()
+      const page = await listProjects(workspaceId)
       setProjects(page.items)
       setLoading(false)
     }
     load()
-  }, [])
+  }, [activeWorkspace])
 
   function handleSave(project: Project) {
     setProjects([project, ...projects])
