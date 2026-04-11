@@ -84,6 +84,19 @@ func Test_Create_RepositoryError_ReturnsError(t *testing.T) {
 	repository.AssertExpectations(t)
 }
 
+func Test_Create_InvalidCommand_ReturnsError(t *testing.T) {
+	repository := &mockProjectRepository{}
+	service := project.NewProjectService(repository)
+
+	command := project.CreateProjectCommand{Name: "", OwnerID: uuid.New()}
+
+	_, err := service.Create(context.Background(), command)
+
+	require.Error(t, err)
+	assert.ErrorIs(t, err, project.ErrInvalidProject)
+	repository.AssertNotCalled(t, "Create")
+}
+
 func Test_List_WithProjects_ReturnsProjects(t *testing.T) {
 	repository := &mockProjectRepository{}
 	service := project.NewProjectService(repository)

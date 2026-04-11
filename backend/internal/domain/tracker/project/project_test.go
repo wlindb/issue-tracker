@@ -81,3 +81,38 @@ func Test_New_ValidArguments_ReturnsProject(t *testing.T) {
 	assert.False(t, actual.CreatedAt.IsZero())
 	assert.False(t, actual.UpdatedAt.IsZero())
 }
+
+func Test_ToProject_ValidCommand_ReturnsProject(t *testing.T) {
+	ownerID := uuid.New()
+	id := uuid.New()
+	cmd := project.CreateProjectCommand{Name: "My Project", OwnerID: ownerID}
+
+	actual, err := cmd.ToProject(id, cmd.Slugify)
+
+	require.NoError(t, err)
+	assert.Equal(t, id, actual.ID)
+	assert.Equal(t, "my-project", actual.Identifier)
+	assert.Equal(t, "My Project", actual.Name)
+	assert.Equal(t, ownerID, actual.OwnerID)
+	assert.False(t, actual.CreatedAt.IsZero())
+}
+
+func Test_ToProject_EmptyName_ReturnsError(t *testing.T) {
+	cmd := project.CreateProjectCommand{Name: "", OwnerID: uuid.New()}
+
+	actual, err := cmd.ToProject(uuid.New(), cmd.Slugify)
+
+	require.Error(t, err)
+	assert.ErrorIs(t, err, project.ErrInvalidProject)
+	assert.Zero(t, actual)
+}
+
+func Test_ToProject_NilOwnerID_ReturnsError(t *testing.T) {
+	cmd := project.CreateProjectCommand{Name: "My Project", OwnerID: uuid.Nil}
+
+	actual, err := cmd.ToProject(uuid.New(), cmd.Slugify)
+
+	require.Error(t, err)
+	assert.ErrorIs(t, err, project.ErrInvalidProject)
+	assert.Zero(t, actual)
+}

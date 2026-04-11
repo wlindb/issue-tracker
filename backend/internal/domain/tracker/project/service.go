@@ -16,7 +16,10 @@ func NewProjectService(repository ProjectRepository) *ProjectService {
 }
 
 func (s *ProjectService) Create(ctx context.Context, command CreateProjectCommand) (Project, error) {
-	project := command.ToProject(uuid.New(), command.Slugify)
+	project, err := command.ToProject(uuid.New(), command.Slugify)
+	if err != nil {
+		return Project{}, fmt.Errorf("create project: %w", err)
+	}
 	result, err := s.repository.Create(ctx, project)
 	if err != nil {
 		return Project{}, fmt.Errorf("create project: %w", err)

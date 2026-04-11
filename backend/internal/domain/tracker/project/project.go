@@ -56,17 +56,9 @@ func (c CreateProjectCommand) Slugify(s string) string {
 type Slugifier func(s string) string
 
 // ToProject builds a Project from the command using the given id and slugifier.
-func (c CreateProjectCommand) ToProject(id uuid.UUID, slugifier Slugifier) Project {
-	now := time.Now()
-	return Project{
-		ID:          id,
-		Identifier:  slugifier(c.Name),
-		Name:        c.Name,
-		Description: c.Description,
-		OwnerID:     c.OwnerID,
-		CreatedAt:   now,
-		UpdatedAt:   now,
-	}
+// Returns ErrInvalidProject if the command contains invalid data.
+func (c CreateProjectCommand) ToProject(id uuid.UUID, slugifier Slugifier) (Project, error) {
+	return New(id, slugifier(c.Name), c.Name, c.Description, c.OwnerID)
 }
 
 const defaultLimit = 20
