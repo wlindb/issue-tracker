@@ -54,7 +54,10 @@ func setupIssueFixture(t *testing.T) issueIntegrationFixture {
 	ctx := api.WithWorkspaceID(api.WithUserID(t.Context(), ownerID), workspaceID)
 	projRepo := tracker.NewProjectRepository(testPool)
 	projectID := uuid.New()
-	_, err = projRepo.Create(ctx, projectID, ownerID, "IssueProject-"+projectID.String()[:8], nil)
+	projectName := "IssueProject-" + projectID.String()[:8]
+	project, err := projectdomain.New(projectID, strings.ToLower(projectID.String()[:8]), projectName, nil, ownerID)
+	require.NoError(t, err)
+	_, err = projRepo.Create(ctx, project)
 	require.NoError(t, err)
 
 	return issueIntegrationFixture{
