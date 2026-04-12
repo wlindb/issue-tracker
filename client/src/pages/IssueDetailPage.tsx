@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { Separator } from '@/components/ui/separator'
 import {
-  listProjects,
-  listIssues,
+  getIssue,
+  getProject,
   listComments,
   createComment,
   updateIssueTitle,
@@ -24,7 +24,7 @@ import { IssueMetaSidebar } from '@/components/issue-detail/IssueMetaSidebar'
 import { CommentSection } from '@/components/issue-detail/CommentSection'
 
 export function IssueDetailPage() {
-  const { identifier } = useParams<{ identifier: string }>()
+  const { issueId } = useParams<{ issueId: string }>()
   const { activeWorkspace } = useWorkspace()
 
   const [issue, setIssue] = useState<Issue | null>(null)
@@ -34,29 +34,17 @@ export function IssueDetailPage() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!activeWorkspace || !identifier) return
+    if (!activeWorkspace || !issueId) return
     const workspaceId = activeWorkspace.id
-    // Issue identifiers have the format "<PROJECT_IDENTIFIER>-<number>", e.g. "PLAT-1"
-    const projectPrefix = identifier.includes('-') ? identifier.split('-')[0] : null
     async function load() {
       try {
-        const projectPage = await listProjects(workspaceId)
-        const foundProject = projectPrefix
-          ? projectPage.items.find((p) => p.identifier === projectPrefix)
-          : undefined
-        if (!foundProject) {
-          setError('Issue not found.')
-          return
-        }
-        const issuePage = await listIssues(workspaceId, { project_id: foundProject.id })
-        const foundIssue = issuePage.items.find((i) => i.identifier === identifier)
-        if (!foundIssue) {
-          setError('Issue not found.')
-          return
-        }
-        const commentPage = await listComments(workspaceId, foundIssue.id)
-        setProject(foundProject)
-        setIssue(foundIssue)
+        const fetchedIssue = await getIssue(workspaceId, issueId!)
+        const [fetchedProject, commentPage] = await Promise.all([
+          getProject(workspaceId, fetchedIssue.projectId),
+          listComments(workspaceId, issueId!),
+        ])
+        setIssue(fetchedIssue)
+        setProject(fetchedProject)
         setComments(commentPage.items)
       } catch {
         setError('Issue not found.')
@@ -65,7 +53,7 @@ export function IssueDetailPage() {
       }
     }
     load()
-  }, [activeWorkspace, identifier])
+  }, [activeWorkspace, issueId])
 
   async function handleTitleSave(title: string) {
     if (!activeWorkspace || !issue) return
