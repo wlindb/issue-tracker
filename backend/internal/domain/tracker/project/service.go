@@ -27,6 +27,14 @@ func (s *ProjectService) Create(ctx context.Context, command CreateProjectComman
 	return result, nil
 }
 
+func (s *ProjectService) Get(ctx context.Context, id uuid.UUID) (Project, error) {
+	project, err := s.repository.Get(ctx, id)
+	if err != nil {
+		return Project{}, fmt.Errorf("get project: %w", err)
+	}
+	return project, nil
+}
+
 func (s *ProjectService) List(ctx context.Context, query ListProjectQuery) (Projects, error) {
 	projects, err := s.repository.List(ctx, query)
 	if err != nil {

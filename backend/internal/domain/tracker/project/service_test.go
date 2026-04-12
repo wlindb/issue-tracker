@@ -30,6 +30,11 @@ func (m *mockProjectRepository) List(ctx context.Context, query project.ListProj
 	return projects, args.Error(1)
 }
 
+func (m *mockProjectRepository) Get(ctx context.Context, id uuid.UUID) (project.Project, error) {
+	args := m.Called(ctx, id)
+	return args.Get(0).(project.Project), args.Error(1)
+}
+
 func Test_Create_ValidProject_ReturnsProject(t *testing.T) {
 	repository := &mockProjectRepository{}
 	service := project.NewProjectService(repository)

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/google/uuid"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 
@@ -47,4 +48,17 @@ func (r *TracingProjectRepository) List(ctx context.Context, query projectdomain
 		return projectdomain.Projects{}, fmt.Errorf("list projects: %w", err)
 	}
 	return projects, nil
+}
+
+func (r *TracingProjectRepository) Get(ctx context.Context, id uuid.UUID) (projectdomain.Project, error) {
+	ctx, span := r.tracer.Start(ctx, "tracker.ProjectRepository.Get")
+	defer span.End()
+
+	project, err := r.inner.Get(ctx, id)
+	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+		return projectdomain.Project{}, fmt.Errorf("get project: %w", err)
+	}
+	return project, nil
 }
