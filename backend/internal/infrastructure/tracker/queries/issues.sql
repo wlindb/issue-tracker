@@ -13,6 +13,11 @@ WHERE project_id = @project_id
 ORDER BY created_at DESC
 LIMIT 100;
 
+-- name: GetIssue :one
+SELECT * FROM issues
+WHERE id = @id
+  AND workspace_id = current_setting('app.workspace_id')::uuid;
+
 -- name: UpdateIssue :one
 UPDATE issues
 SET description = @description,
@@ -21,4 +26,5 @@ SET description = @description,
     assignee_id = @assignee_id,
     updated_at  = NOW()
 WHERE id = @id
+  AND updated_at = @updated_at
 RETURNING *;

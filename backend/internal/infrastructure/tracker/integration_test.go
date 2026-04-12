@@ -716,3 +716,121 @@ func Test_ListIssues_IsolatesByProject_ReturnsOnlyProjectIssues(t *testing.T) {
 	assert.Len(t, actual.Items, 1)
 	assert.Equal(t, "Issue in A", actual.Items[0].Title)
 }
+
+func createTestIssue(t *testing.T, ctx context.Context, projectID uuid.UUID) issuedomain.Issue {
+	t.Helper()
+	repository := tracker.NewIssueRepository(testPool)
+	issue := issuedomain.Issue{
+		ID:         uuid.New(),
+		Identifier: "test-" + uuid.New().String()[:8],
+		Title:      "Test Issue",
+		Status:     issuedomain.StatusBacklog,
+		Priority:   issuedomain.PriorityNone,
+		Labels:     []string{},
+		ProjectID:  projectID,
+		ReporterID: uuid.New(),
+	}
+	created, err := repository.CreateIssue(ctx, issue)
+	require.NoError(t, err)
+	return created
+}
+
+// — Update integration tests —
+
+func Test_UpdateIssue_ValidUpdate_SuccessfulUpdate(t *testing.T) {
+	repository := tracker.NewIssueRepository(testPool)
+	_, ctx := createTestWorkspace(t)
+	projectID := createTestProject(t, ctx)
+	created := createTestIssue(t, ctx, projectID)
+
+	created.Status = issuedomain.StatusInProgress
+	created.Priority = issuedomain.PriorityHigh
+	description := "updated description"
+	created.Description = &description
+
+	actual, err := repository.Update(ctx, created)
+
+	require.NoError(t, err)
+	assert.Equal(t, issuedomain.StatusInProgress, actual.Status)
+	assert.Equal(t, issuedomain.PriorityHigh, actual.Priority)
+	require.NotNil(t, actual.Description)
+	assert.Equal(t, "updated description", *actual.Description)
+	assert.True(t, actual.UpdatedAt.After(created.UpdatedAt) || actual.UpdatedAt.Equal(created.UpdatedAt))
+}
+
+// — RLS enforcement on updates —
+
+func Test_UpdateIssue_NonMember_ReturnsError(t *testing.T) {
+	repository := tracker.NewIssueRepository(testPool)
+	workspaceID, ctx := createTestWorkspace(t)
+	projectID := createTestProject(t, ctx)
+	created := createTestIssue(t, ctx, projectID)
+
+	nonMemberID := uuid.New()
+	nonMemberCtx := withWorkspaceContext(workspaceID, nonMemberID)
+
+	created.Status = issuedomain.StatusDone
+	_, err := repository.Update(nonMemberCtx, created)
+
+	require.Error(t, err)
+}
+
+// — Optimistic locking (concurrent update protection) —
+
+func Test_UpdateIssue_StaleEntity_ReturnsUpdateConflict(t *testing.T) {
+	repository := tracker.NewIssueRepository(testPool)
+	_, ctx := createTestWorkspace(t)
+	projectID := createTestProject(t, ctx)
+	created := createTestIssue(t, ctx, projectID)
+
+	// First update succeeds.
+	created.Status = issuedomain.StatusInProgress
+	_, err := repository.Update(ctx, created)
+	require.NoError(t, err)
+
+	// Second update with stale entity (old UpdatedAt) must be rejected.
+	created.Status = issuedomain.StatusDone
+	_, err = repository.Update(ctx, created)
+
+	require.Error(t, err)
+	assert.ErrorIs(t, err, issuedomain.ErrUpdateConflict)
+}
+
+// — GetIssue integration tests —
+
+func Test_GetIssue_ExistingIssue_ReturnsIssue(t *testing.T) {
+	repository := tracker.NewIssueRepository(testPool)
+	_, ctx := createTestWorkspace(t)
+	projectID := createTestProject(t, ctx)
+	created := createTestIssue(t, ctx, projectID)
+
+	actual, err := repository.GetIssue(ctx, created.ID)
+
+	require.NoError(t, err)
+	assert.Equal(t, created.ID, actual.ID)
+	assert.Equal(t, created.Title, actual.Title)
+}
+
+func Test_GetIssue_NonExistentID_ReturnsNotFound(t *testing.T) {
+	repository := tracker.NewIssueRepository(testPool)
+	_, ctx := createTestWorkspace(t)
+
+	_, err := repository.GetIssue(ctx, uuid.New())
+
+	require.Error(t, err)
+	assert.ErrorIs(t, err, issuedomain.ErrIssueNotFound)
+}
+
+func Test_GetIssue_NonMember_ReturnsNotFound(t *testing.T) {
+	repository := tracker.NewIssueRepository(testPool)
+	workspaceID, ctx := createTestWorkspace(t)
+	projectID := createTestProject(t, ctx)
+	created := createTestIssue(t, ctx, projectID)
+
+	nonMemberCtx := withWorkspaceContext(workspaceID, uuid.New())
+
+	_, err := repository.GetIssue(nonMemberCtx, created.ID)
+
+	require.Error(t, err)
+	assert.ErrorIs(t, err, issuedomain.ErrIssueNotFound)
+}

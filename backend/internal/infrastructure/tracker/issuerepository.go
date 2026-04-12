@@ -2,9 +2,11 @@ package tracker
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	issuedomain "github.com/wlindb/issue-tracker/internal/domain/tracker/issue"
@@ -13,6 +15,7 @@ import (
 
 // issueQuerier defines the query methods used by IssueRepository.
 type issueQuerier interface {
+	GetIssue(ctx context.Context, id uuid.UUID) (trackerdb.Issue, error)
 	CreateIssue(ctx context.Context, arg trackerdb.CreateIssueParams) (trackerdb.Issue, error)
 	ListIssues(ctx context.Context, arg trackerdb.ListIssuesParams) ([]trackerdb.Issue, error)
 	UpdateIssue(ctx context.Context, arg trackerdb.UpdateIssueParams) (trackerdb.Issue, error)
@@ -40,10 +43,26 @@ func (r *IssueRepository) CreateIssue(ctx context.Context, issue issuedomain.Iss
 	return issueToDomain(row), nil
 }
 
+// GetIssue retrieves a single issue by its ID, or ErrIssueNotFound if it does not exist.
+func (r *IssueRepository) GetIssue(ctx context.Context, id uuid.UUID) (issuedomain.Issue, error) {
+	row, err := r.queries.GetIssue(ctx, id)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return issuedomain.Issue{}, fmt.Errorf("get issue: %w", issuedomain.ErrIssueNotFound)
+		}
+		return issuedomain.Issue{}, fmt.Errorf("get issue: %w", err)
+	}
+	return issueToDomain(row), nil
+}
+
 // Update persists mutable fields of an existing issue and returns the updated domain model.
+// Returns ErrUpdateConflict if the issue was modified since it was read (optimistic locking).
 func (r *IssueRepository) Update(ctx context.Context, issue issuedomain.Issue) (issuedomain.Issue, error) {
 	row, err := r.queries.UpdateIssue(ctx, updateIssueParamsFromDomain(issue))
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return issuedomain.Issue{}, fmt.Errorf("update issue: %w", issuedomain.ErrUpdateConflict)
+		}
 		return issuedomain.Issue{}, fmt.Errorf("update issue: %w", err)
 	}
 	return issueToDomain(row), nil

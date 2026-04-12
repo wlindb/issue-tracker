@@ -20,16 +20,6 @@ import (
 	tracker "github.com/wlindb/issue-tracker/internal/infrastructure/tracker"
 )
 
-func injectWorkspace(id uuid.UUID) echo.MiddlewareFunc {
-	return func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) error {
-			ctx := api.WithWorkspaceID(c.Request().Context(), id)
-			c.SetRequest(c.Request().WithContext(ctx))
-			return next(c)
-		}
-	}
-}
-
 func newProjectIntegrationServer(t *testing.T) *echo.Echo {
 	t.Helper()
 	repository := tracker.NewProjectRepository(testPool)
@@ -59,7 +49,7 @@ func Test_CreateProject_ValidRequest_Returns201(t *testing.T) {
 
 	e := newProjectIntegrationServer(t)
 	e.Use(injectUser(ownerID))
-	e.Use(injectWorkspace(workspaceID))
+	e.Use(injectWorkspace(workspaceID, ownerID))
 
 	req := httptest.NewRequest(
 		http.MethodPost,
