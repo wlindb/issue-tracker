@@ -1,6 +1,7 @@
 package comment
 
 import (
+	"context"
 	"errors"
 	"time"
 
@@ -39,6 +40,39 @@ func NewListCommentQuery(cursor *string, limit *int) ListCommentQuery {
 	return ListCommentQuery{Cursor: cursor, Limit: limit}
 }
 
+// New creates a new Comment with the given fields.
+// Returns ErrInvalidComment if any required field is empty or nil.
+func New(id uuid.UUID, body string, authorID uuid.UUID, issueID uuid.UUID) (Comment, error) {
+	if id == uuid.Nil {
+		return Comment{}, ErrInvalidComment
+	}
+	if body == "" {
+		return Comment{}, ErrInvalidComment
+	}
+	if authorID == uuid.Nil {
+		return Comment{}, ErrInvalidComment
+	}
+	if issueID == uuid.Nil {
+		return Comment{}, ErrInvalidComment
+	}
+	now := time.Now()
+	return Comment{
+		ID:        id,
+		Body:      body,
+		AuthorID:  authorID,
+		IssueID:   issueID,
+		CreatedAt: now,
+		UpdatedAt: now,
+	}, nil
+}
+
+// Repository defines the persistence operations for comments.
+type Repository interface {
+	Create(ctx context.Context, comment Comment) (Comment, error)
+	Get(ctx context.Context, issueID uuid.UUID) ([]Comment, error)
+}
+
 var (
-	ErrIssueNotFound = errors.New("issue not found")
+	ErrIssueNotFound  = errors.New("issue not found")
+	ErrInvalidComment = errors.New("invalid comment")
 )

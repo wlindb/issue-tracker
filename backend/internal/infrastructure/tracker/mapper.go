@@ -4,6 +4,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 
+	commentdomain "github.com/wlindb/issue-tracker/internal/domain/tracker/comment"
 	issuedomain "github.com/wlindb/issue-tracker/internal/domain/tracker/issue"
 	projectdomain "github.com/wlindb/issue-tracker/internal/domain/tracker/project"
 	workspacedomain "github.com/wlindb/issue-tracker/internal/domain/tracker/workspace"
@@ -166,4 +167,32 @@ func workspacesToDomain(rows []trackerdb.Workspace) []workspacedomain.Workspace 
 		workspaces[i] = workspaceToDomain(row)
 	}
 	return workspaces
+}
+
+func createCommentParamsFromDomain(c commentdomain.Comment) trackerdb.CreateCommentParams {
+	return trackerdb.CreateCommentParams{
+		ID:       c.ID,
+		Body:     c.Body,
+		AuthorID: c.AuthorID,
+		IssueID:  c.IssueID,
+	}
+}
+
+func commentToDomain(row trackerdb.Comment) commentdomain.Comment {
+	return commentdomain.Comment{
+		ID:        row.ID,
+		Body:      row.Body,
+		AuthorID:  row.AuthorID,
+		IssueID:   row.IssueID,
+		CreatedAt: row.CreatedAt.Time,
+		UpdatedAt: row.UpdatedAt.Time,
+	}
+}
+
+func commentsToDomain(rows []trackerdb.Comment) []commentdomain.Comment {
+	comments := make([]commentdomain.Comment, len(rows))
+	for i, row := range rows {
+		comments[i] = commentToDomain(row)
+	}
+	return comments
 }

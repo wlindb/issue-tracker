@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	commentdomain "github.com/wlindb/issue-tracker/internal/domain/tracker/comment"
 	issuedomain "github.com/wlindb/issue-tracker/internal/domain/tracker/issue"
 	trackerdb "github.com/wlindb/issue-tracker/internal/infrastructure/tracker/generated"
 )
@@ -302,4 +303,87 @@ func Test_ListIssuesParamsFromDomain_AllFilters_MapsCorrectly(t *testing.T) {
 	assert.Equal(t, "high", actual.Priority.String)
 	assert.True(t, actual.AssigneeID.Valid)
 	assert.Equal(t, assigneeID, uuid.UUID(actual.AssigneeID.Bytes))
+}
+
+// — Comment mapper tests —
+
+func Test_CommentToDomain_MapsAllFields(t *testing.T) {
+	commentID := uuid.New()
+	authorID := uuid.New()
+	issueID := uuid.New()
+	now := time.Now().UTC()
+	row := trackerdb.Comment{
+		ID:        commentID,
+		Body:      "my comment",
+		AuthorID:  authorID,
+		IssueID:   issueID,
+		CreatedAt: pgtype.Timestamptz{Time: now, Valid: true},
+		UpdatedAt: pgtype.Timestamptz{Time: now, Valid: true},
+	}
+
+	actual := commentToDomain(row)
+
+	assert.Equal(t, commentID, actual.ID)
+	assert.Equal(t, "my comment", actual.Body)
+	assert.Equal(t, authorID, actual.AuthorID)
+	assert.Equal(t, issueID, actual.IssueID)
+	assert.Equal(t, now, actual.CreatedAt)
+	assert.Equal(t, now, actual.UpdatedAt)
+}
+
+func Test_CommentsToDomain_Empty_ReturnsEmptySlice(t *testing.T) {
+	actual := commentsToDomain([]trackerdb.Comment{})
+
+	assert.NotNil(t, actual)
+	assert.Empty(t, actual)
+}
+
+func Test_CommentsToDomain_MultipleRows_ReturnsMappedComments(t *testing.T) {
+	now := time.Now().UTC()
+	firstID, secondID := uuid.New(), uuid.New()
+	rows := []trackerdb.Comment{
+		{
+			ID:        firstID,
+			Body:      "Comment A",
+			AuthorID:  uuid.New(),
+			IssueID:   uuid.New(),
+			CreatedAt: pgtype.Timestamptz{Time: now, Valid: true},
+			UpdatedAt: pgtype.Timestamptz{Time: now, Valid: true},
+		},
+		{
+			ID:        secondID,
+			Body:      "Comment B",
+			AuthorID:  uuid.New(),
+			IssueID:   uuid.New(),
+			CreatedAt: pgtype.Timestamptz{Time: now, Valid: true},
+			UpdatedAt: pgtype.Timestamptz{Time: now, Valid: true},
+		},
+	}
+
+	actual := commentsToDomain(rows)
+
+	require.Len(t, actual, 2)
+	assert.Equal(t, firstID, actual[0].ID)
+	assert.Equal(t, "Comment A", actual[0].Body)
+	assert.Equal(t, secondID, actual[1].ID)
+	assert.Equal(t, "Comment B", actual[1].Body)
+}
+
+func Test_CreateCommentParamsFromDomain_MapsCorrectly(t *testing.T) {
+	commentID := uuid.New()
+	authorID := uuid.New()
+	issueID := uuid.New()
+	domainComment := commentdomain.Comment{
+		ID:       commentID,
+		Body:     "test comment body",
+		AuthorID: authorID,
+		IssueID:  issueID,
+	}
+
+	actual := createCommentParamsFromDomain(domainComment)
+
+	assert.Equal(t, commentID, actual.ID)
+	assert.Equal(t, "test comment body", actual.Body)
+	assert.Equal(t, authorID, actual.AuthorID)
+	assert.Equal(t, issueID, actual.IssueID)
 }
