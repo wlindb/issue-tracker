@@ -218,6 +218,52 @@ func Test_ListWorkspaces_NoUserID_Returns401(t *testing.T) {
 	service.AssertNotCalled(t, "List")
 }
 
+func Test_ListWorkspaceMembers_WorkspaceExists_Returns200WithEmptyList(t *testing.T) {
+	service := &mockWorkspaceService{}
+	workspaceID := uuid.New()
+	now := time.Now().UTC()
+
+	service.On("Get", mock.Anything, workspaceID).
+		Return(&workspacedomain.Workspace{
+			ID:        workspaceID,
+			Name:      "Acme",
+			OwnerID:   uuid.New(),
+			CreatedAt: now,
+			UpdatedAt: now,
+		}, nil)
+
+	e := newWorkspaceTestServer(t, service)
+	e.Use(injectUser(uuid.New()))
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/workspaces/"+workspaceID.String()+"/members", nil)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusOK, rec.Code)
+	var got []model.WorkspaceMember
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &got))
+	assert.Empty(t, got)
+	service.AssertExpectations(t)
+}
+
+func Test_ListWorkspaceMembers_WorkspaceNotFound_Returns404(t *testing.T) {
+	service := &mockWorkspaceService{}
+	workspaceID := uuid.New()
+
+	service.On("Get", mock.Anything, workspaceID).
+		Return(nil, workspacedomain.ErrWorkspaceNotFound)
+
+	e := newWorkspaceTestServer(t, service)
+	e.Use(injectUser(uuid.New()))
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/workspaces/"+workspaceID.String()+"/members", nil)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusNotFound, rec.Code)
+	service.AssertExpectations(t)
+}
+
 func Test_ListWorkspaces_ServiceError_Returns500(t *testing.T) {
 	service := &mockWorkspaceService{}
 	userID := uuid.New()
