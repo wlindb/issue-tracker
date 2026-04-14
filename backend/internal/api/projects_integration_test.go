@@ -80,6 +80,8 @@ func Test_GetProject_ValidRequest_Returns200(t *testing.T) {
 	assert.Equal(t, "Get Test Project", actual.Name)
 	assert.Equal(t, ownerID, actual.OwnerId)
 }
+
+func Test_CreateProject_ValidRequest_Returns201(t *testing.T) {
 	ownerID := uuid.New()
 
 	// Create a workspace first so the FK constraint on workspace_id is satisfied.
