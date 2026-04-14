@@ -77,8 +77,8 @@ jobs:
           go-version: "1.26"
           cache-dependency-path: backend/go.sum
 
-      - name: Build
-        run: go build -tags integration ./...
+      - name: Vet integration test packages
+        run: go vet -tags integration ./...
 
       - name: Run integration tests
         run: make test-integration > test-integration-results.json
