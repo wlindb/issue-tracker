@@ -79,10 +79,12 @@ jobs:
 
       - name: Vet integration test packages
         run: go vet -tags integration ./...
-
+      
       - name: Run integration tests
-        run: make test-integration > test-integration-results.json
-
+        run: |
+          set -o pipefail
+          make test-integration 2>&1 | tee test-integration-results.json
+      
       - name: Publish integration test report
         uses: dorny/test-reporter@v3
         if: always()
