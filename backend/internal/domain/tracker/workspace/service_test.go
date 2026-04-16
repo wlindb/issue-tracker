@@ -44,6 +44,12 @@ func (m *mockWorkspaceRepository) IsMember(ctx context.Context, workspaceID uuid
 	return args.Bool(0), args.Error(1)
 }
 
+func (m *mockWorkspaceRepository) ListMembers(ctx context.Context, workspaceID uuid.UUID) (workspace.WorkspaceMembers, error) {
+	args := m.Called(ctx, workspaceID)
+	members, _ := args.Get(0).(workspace.WorkspaceMembers)
+	return members, args.Error(1)
+}
+
 func Test_Create_ValidWorkspace_ReturnsWorkspace(t *testing.T) {
 	repository := &mockWorkspaceRepository{}
 	ownerID := uuid.New()

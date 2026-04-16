@@ -46,6 +46,12 @@ func (m *mockWorkspaceService) List(ctx context.Context, userID uuid.UUID) ([]wo
 	return workspaces, args.Error(1)
 }
 
+func (m *mockWorkspaceService) ListMembers(ctx context.Context, workspaceID uuid.UUID) (workspacedomain.WorkspaceMembers, error) {
+	args := m.Called(ctx, workspaceID)
+	members, _ := args.Get(0).(workspacedomain.WorkspaceMembers)
+	return members, args.Error(1)
+}
+
 func newWorkspaceTestServer(t *testing.T, service api.WorkspaceService) *echo.Echo {
 	t.Helper()
 	e := echo.New()
@@ -221,16 +227,9 @@ func Test_ListWorkspaces_NoUserID_Returns401(t *testing.T) {
 func Test_ListWorkspaceMembers_WorkspaceExists_Returns200WithEmptyList(t *testing.T) {
 	service := &mockWorkspaceService{}
 	workspaceID := uuid.New()
-	now := time.Now().UTC()
 
-	service.On("Get", mock.Anything, workspaceID).
-		Return(&workspacedomain.Workspace{
-			ID:        workspaceID,
-			Name:      "Acme",
-			OwnerID:   uuid.New(),
-			CreatedAt: now,
-			UpdatedAt: now,
-		}, nil)
+	service.On("ListMembers", mock.Anything, workspaceID).
+		Return(workspacedomain.WorkspaceMembers{}, nil)
 
 	e := newWorkspaceTestServer(t, service)
 	e.Use(injectUser(uuid.New()))
@@ -250,8 +249,8 @@ func Test_ListWorkspaceMembers_WorkspaceNotFound_Returns404(t *testing.T) {
 	service := &mockWorkspaceService{}
 	workspaceID := uuid.New()
 
-	service.On("Get", mock.Anything, workspaceID).
-		Return(nil, workspacedomain.ErrWorkspaceNotFound)
+	service.On("ListMembers", mock.Anything, workspaceID).
+		Return(workspacedomain.WorkspaceMembers{}, workspacedomain.ErrWorkspaceNotFound)
 
 	e := newWorkspaceTestServer(t, service)
 	e.Use(injectUser(uuid.New()))

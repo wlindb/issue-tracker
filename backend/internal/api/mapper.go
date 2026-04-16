@@ -58,6 +58,16 @@ func workspacesFromDomain(domain []workspacedomain.Workspace) []model.Workspace 
 	return items
 }
 
+func workspaceMembersFromDomain(domain workspacedomain.WorkspaceMembers) []model.WorkspaceMember {
+	items := make([]model.WorkspaceMember, len(domain.Members))
+	for i, m := range domain.Members {
+		items[i] = model.WorkspaceMember{
+			Id: m.UserID,
+		}
+	}
+	return items
+}
+
 func listProjectQueryFromRequest(params model.ListProjectsParams) trackerdomain.ListProjectQuery {
 	return trackerdomain.NewListProjectQuery(params.Cursor, params.Limit)
 }

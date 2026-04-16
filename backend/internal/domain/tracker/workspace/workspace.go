@@ -26,6 +26,10 @@ type WorkspaceMember struct {
 	UserID      uuid.UUID
 }
 
+type WorkspaceMembers struct {
+	Members []WorkspaceMember
+}
+
 // New constructs and validates a Workspace value.
 func New(id uuid.UUID, name string, ownerID uuid.UUID) (Workspace, error) {
 	if id == uuid.Nil {
@@ -51,5 +55,6 @@ type WorkspaceRepository interface {
 	Create(ctx context.Context, workspace Workspace) (Workspace, error)
 	Get(ctx context.Context, id uuid.UUID) (*Workspace, error)
 	List(ctx context.Context, userID uuid.UUID) ([]Workspace, error)
+	ListMembers(ctx context.Context, workspaceID uuid.UUID) (WorkspaceMembers, error)
 	IsMember(ctx context.Context, workspaceID uuid.UUID, userID uuid.UUID) (bool, error)
 }
