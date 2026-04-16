@@ -16,6 +16,7 @@ type WorkspaceService interface {
 	Create(ctx context.Context, workspace workspacedomain.Workspace) (workspacedomain.Workspace, error)
 	Get(ctx context.Context, id uuid.UUID) (*workspacedomain.Workspace, error)
 	List(ctx context.Context, userID uuid.UUID) ([]workspacedomain.Workspace, error)
+	ListMembers(ctx context.Context, workspaceID uuid.UUID) (workspacedomain.WorkspaceMembers, error)
 }
 
 type WorkspaceHandler struct {
@@ -72,4 +73,17 @@ func (h *WorkspaceHandler) GetWorkspace(ctx context.Context, req model.GetWorksp
 		return nil, fmt.Errorf("get workspace: %w", err)
 	}
 	return model.GetWorkspace200JSONResponse(workspaceFromDomain(*workspace)), nil
+}
+
+func (h *WorkspaceHandler) ListWorkspaceMembers(ctx context.Context, req model.ListWorkspaceMembersRequestObject) (model.ListWorkspaceMembersResponseObject, error) {
+	members, err := h.service.ListMembers(ctx, req.WorkspaceId)
+	if err != nil {
+		if errors.Is(err, workspacedomain.ErrWorkspaceNotFound) {
+			return model.ListWorkspaceMembers404JSONResponse{
+				NotFoundJSONResponse: newNotFound("not_found", "workspace not found"),
+			}, nil
+		}
+		return nil, fmt.Errorf("list workspace members: %w", err)
+	}
+	return model.ListWorkspaceMembers200JSONResponse(workspaceMembersFromDomain(members)), nil
 }

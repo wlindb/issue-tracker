@@ -63,6 +63,19 @@ func (r *TracingWorkspaceRepository) List(ctx context.Context, userID uuid.UUID)
 	return workspaces, nil
 }
 
+func (r *TracingWorkspaceRepository) ListMembers(ctx context.Context, workspaceID uuid.UUID) (workspacedomain.WorkspaceMembers, error) {
+	ctx, span := r.tracer.Start(ctx, "tracker.WorkspaceRepository.ListMembers")
+	defer span.End()
+
+	members, err := r.inner.ListMembers(ctx, workspaceID)
+	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+		return workspacedomain.WorkspaceMembers{}, fmt.Errorf("list workspace members: %w", err)
+	}
+	return members, nil
+}
+
 func (r *TracingWorkspaceRepository) IsMember(ctx context.Context, workspaceID uuid.UUID, userID uuid.UUID) (bool, error) {
 	ctx, span := r.tracer.Start(ctx, "tracker.WorkspaceRepository.IsMember")
 	defer span.End()

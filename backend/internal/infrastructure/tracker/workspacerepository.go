@@ -84,6 +84,18 @@ func (r *WorkspaceRepository) List(ctx context.Context, userID uuid.UUID) ([]wor
 	return workspacesToDomain(rows), nil
 }
 
+// ListMembers returns all members of a workspace, or ErrWorkspaceNotFound if it does not exist.
+func (r *WorkspaceRepository) ListMembers(ctx context.Context, workspaceID uuid.UUID) (workspacedomain.WorkspaceMembers, error) {
+	_, err := r.queries.GetWorkspace(ctx, workspaceID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return workspacedomain.WorkspaceMembers{}, fmt.Errorf("list workspace members: %w", workspacedomain.ErrWorkspaceNotFound)
+		}
+		return workspacedomain.WorkspaceMembers{}, fmt.Errorf("list workspace members: %w", err)
+	}
+	return workspacedomain.WorkspaceMembers{}, nil
+}
+
 // IsMember reports whether userID is a member of workspaceID.
 func (r *WorkspaceRepository) IsMember(ctx context.Context, workspaceID uuid.UUID, userID uuid.UUID) (bool, error) {
 	member, err := r.queries.IsMember(ctx, trackerdb.IsMemberParams{

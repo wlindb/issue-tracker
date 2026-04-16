@@ -39,6 +39,14 @@ func (s *WorkspaceService) List(ctx context.Context, userID uuid.UUID) ([]Worksp
 	return workspaces, nil
 }
 
+func (s *WorkspaceService) ListMembers(ctx context.Context, workspaceID uuid.UUID) (WorkspaceMembers, error) {
+	members, err := s.repository.ListMembers(ctx, workspaceID)
+	if err != nil {
+		return WorkspaceMembers{}, fmt.Errorf("list workspace members: %w", err)
+	}
+	return members, nil
+}
+
 func (s *WorkspaceService) IsMember(ctx context.Context, workspaceID uuid.UUID, userID uuid.UUID) (bool, error) {
 	member, err := s.repository.IsMember(ctx, workspaceID, userID)
 	if err != nil {
