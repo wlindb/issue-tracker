@@ -134,6 +134,19 @@ func Test_GetComments_EmptyResult_ReturnsEmptySlice(t *testing.T) {
 	querier.AssertExpectations(t)
 }
 
+func Test_GetComments_NilResult_ReturnsEmptySlice(t *testing.T) {
+	querier := &mockCommentQuerier{}
+	repository := &CommentRepository{queries: querier}
+
+	querier.On("ListCommentsByIssue", mock.Anything, mock.Anything).Return(nil, nil)
+
+	actual, err := repository.Get(context.Background(), uuid.New())
+
+	require.NoError(t, err)
+	assert.Empty(t, actual)
+	querier.AssertExpectations(t)
+}
+
 func Test_GetComments_QueryError_ReturnsWrappedError(t *testing.T) {
 	querier := &mockCommentQuerier{}
 	repository := &CommentRepository{queries: querier}

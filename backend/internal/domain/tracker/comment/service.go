@@ -17,13 +17,9 @@ func NewCommentService(repository Repository) *CommentService {
 	return &CommentService{repository: repository}
 }
 
-// Create creates a new comment and persists it.
-func (s *CommentService) Create(ctx context.Context, id uuid.UUID, issueID uuid.UUID, authorID uuid.UUID, body string) (*Comment, error) {
-	c, err := New(id, body, authorID, issueID)
-	if err != nil {
-		return nil, fmt.Errorf("create comment: %w", err)
-	}
-	result, err := s.repository.Create(ctx, c)
+// Create persists a comment and returns the stored result.
+func (s *CommentService) Create(ctx context.Context, comment Comment) (*Comment, error) {
+	result, err := s.repository.Create(ctx, comment)
 	if err != nil {
 		return nil, fmt.Errorf("create comment: %w", err)
 	}

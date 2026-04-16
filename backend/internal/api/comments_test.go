@@ -35,8 +35,8 @@ func (m *mockCommentService) List(ctx context.Context, issueID uuid.UUID, query 
 	return comments, args.Error(1)
 }
 
-func (m *mockCommentService) Create(ctx context.Context, id uuid.UUID, issueID uuid.UUID, authorID uuid.UUID, body string) (*commentdomain.Comment, error) {
-	args := m.Called(ctx, id, issueID, authorID, body)
+func (m *mockCommentService) Create(ctx context.Context, comment commentdomain.Comment) (*commentdomain.Comment, error) {
+	args := m.Called(ctx, comment)
 	if c, ok := args.Get(0).(*commentdomain.Comment); ok {
 		return c, args.Error(1)
 	}
@@ -177,7 +177,9 @@ func Test_CreateComment_ValidBody_Returns201(t *testing.T) {
 	authorID := uuid.New()
 	now := time.Now().UTC()
 
-	service.On("Create", mock.Anything, mock.Anything, issueID, authorID, "Hello world").
+	service.On("Create", mock.Anything, mock.MatchedBy(func(c commentdomain.Comment) bool {
+		return c.IssueID == issueID && c.AuthorID == authorID && c.Body == "Hello world"
+	})).
 		Return(&commentdomain.Comment{
 			ID:        uuid.New(),
 			Body:      "Hello world",
@@ -240,7 +242,9 @@ func Test_CreateComment_IssueNotFound_Returns404(t *testing.T) {
 	issueID := uuid.New()
 	authorID := uuid.New()
 
-	service.On("Create", mock.Anything, mock.Anything, issueID, authorID, "Hello").
+	service.On("Create", mock.Anything, mock.MatchedBy(func(c commentdomain.Comment) bool {
+		return c.IssueID == issueID && c.AuthorID == authorID && c.Body == "Hello"
+	})).
 		Return(nil, commentdomain.ErrIssueNotFound)
 
 	e := newCommentTestServer(t, service)
@@ -260,7 +264,9 @@ func Test_CreateComment_ServiceError_Returns500(t *testing.T) {
 	issueID := uuid.New()
 	authorID := uuid.New()
 
-	service.On("Create", mock.Anything, mock.Anything, issueID, authorID, "Hello").
+	service.On("Create", mock.Anything, mock.MatchedBy(func(c commentdomain.Comment) bool {
+		return c.IssueID == issueID && c.AuthorID == authorID && c.Body == "Hello"
+	})).
 		Return(nil, errors.New("db down"))
 
 	e := newCommentTestServer(t, service)
