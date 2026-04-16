@@ -32,6 +32,55 @@ func newProjectIntegrationServer(t *testing.T) *echo.Echo {
 	return e
 }
 
+func Test_GetProject_ValidRequest_Returns200(t *testing.T) {
+	ownerID := uuid.New()
+
+	// Create a workspace first so the FK constraint on workspace_id is satisfied.
+	workspaceServer := newWorkspaceIntegrationServer(t)
+	workspaceServer.Use(injectUser(ownerID))
+	createWorkspaceReq := httptest.NewRequest(http.MethodPost, "/api/v1/workspaces", strings.NewReader(`{"name":"Test Workspace"}`))
+	createWorkspaceReq.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	createWorkspaceRec := httptest.NewRecorder()
+	workspaceServer.ServeHTTP(createWorkspaceRec, createWorkspaceReq)
+	require.Equal(t, http.StatusCreated, createWorkspaceRec.Code)
+	var createdWorkspace model.Workspace
+	require.NoError(t, json.Unmarshal(createWorkspaceRec.Body.Bytes(), &createdWorkspace))
+	workspaceID := createdWorkspace.Id
+
+	e := newProjectIntegrationServer(t)
+	e.Use(injectUser(ownerID))
+	e.Use(injectWorkspace(workspaceID, ownerID))
+
+	// Create the project first.
+	createReq := httptest.NewRequest(
+		http.MethodPost,
+		"/api/v1/workspaces/"+workspaceID.String()+"/projects",
+		strings.NewReader(`{"name":"Get Test Project"}`),
+	)
+	createReq.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	createRec := httptest.NewRecorder()
+	e.ServeHTTP(createRec, createReq)
+	require.Equal(t, http.StatusCreated, createRec.Code)
+	var created model.Project
+	require.NoError(t, json.Unmarshal(createRec.Body.Bytes(), &created))
+
+	// Now fetch the project by ID.
+	getReq := httptest.NewRequest(
+		http.MethodGet,
+		"/api/v1/workspaces/"+workspaceID.String()+"/projects/"+created.Id.String(),
+		nil,
+	)
+	getRec := httptest.NewRecorder()
+	e.ServeHTTP(getRec, getReq)
+
+	require.Equal(t, http.StatusOK, getRec.Code)
+	var actual model.Project
+	require.NoError(t, json.Unmarshal(getRec.Body.Bytes(), &actual))
+	assert.Equal(t, created.Id, actual.Id)
+	assert.Equal(t, "Get Test Project", actual.Name)
+	assert.Equal(t, ownerID, actual.OwnerId)
+}
+
 func Test_CreateProject_ValidRequest_Returns201(t *testing.T) {
 	ownerID := uuid.New()
 

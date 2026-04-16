@@ -2,7 +2,10 @@ package api
 
 import (
 	"context"
+	"errors"
 	"fmt"
+
+	"github.com/google/uuid"
 
 	"github.com/wlindb/issue-tracker/internal/api/model"
 	trackerdomain "github.com/wlindb/issue-tracker/internal/domain/tracker/project"
@@ -12,6 +15,7 @@ import (
 type ProjectService interface {
 	Create(ctx context.Context, command trackerdomain.CreateProjectCommand) (trackerdomain.Project, error)
 	List(ctx context.Context, query trackerdomain.ListProjectQuery) (trackerdomain.Projects, error)
+	Get(ctx context.Context, id uuid.UUID) (trackerdomain.Project, error)
 }
 
 type ProjectHandler struct {
@@ -60,8 +64,22 @@ func (h *ProjectHandler) CreateProject(ctx context.Context, req model.CreateProj
 	return model.CreateProject201JSONResponse(projectFromDomain(result)), nil
 }
 
-func (h *Handler) GetProject(_ context.Context, _ model.GetProjectRequestObject) (model.GetProjectResponseObject, error) {
-	return model.GetProject500JSONResponse{InternalServerErrorJSONResponse: model.InternalServerErrorJSONResponse(notImplemented())}, nil
+func (h *ProjectHandler) GetProject(ctx context.Context, req model.GetProjectRequestObject) (model.GetProjectResponseObject, error) {
+	if _, err := userIDFromContext(ctx); err != nil {
+		return model.GetProject401JSONResponse{
+			UnauthorizedJSONResponse: newUnauthorized("unauthorized", "authentication required"),
+		}, nil
+	}
+	project, err := h.service.Get(ctx, req.ProjectId)
+	if errors.Is(err, trackerdomain.ErrProjectNotFound) {
+		return model.GetProject404JSONResponse{
+			NotFoundJSONResponse: newNotFound("not_found", "project not found"),
+		}, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("get project: %w", err)
+	}
+	return model.GetProject200JSONResponse(projectFromDomain(project)), nil
 }
 
 func (h *Handler) UpdateProject(_ context.Context, _ model.UpdateProjectRequestObject) (model.UpdateProjectResponseObject, error) {
