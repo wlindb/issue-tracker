@@ -834,3 +834,25 @@ func Test_GetIssue_NonMember_ReturnsNotFound(t *testing.T) {
 	require.Error(t, err)
 	assert.ErrorIs(t, err, issuedomain.ErrIssueNotFound)
 }
+
+// — ListMembers integration tests —
+
+func Test_ListMembers_ExistingWorkspace_ReturnsEmptyMembers(t *testing.T) {
+	workspaceID, ctx := createTestWorkspace(t)
+	repository := tracker.NewWorkspaceRepository(testPool)
+
+	actual, err := repository.ListMembers(ctx, workspaceID)
+
+	require.NoError(t, err)
+	assert.Empty(t, actual.Members)
+}
+
+func Test_ListMembers_NonExistentWorkspace_ReturnsErrWorkspaceNotFound(t *testing.T) {
+	_, ctx := createTestWorkspace(t)
+	repository := tracker.NewWorkspaceRepository(testPool)
+
+	_, err := repository.ListMembers(ctx, uuid.New())
+
+	require.Error(t, err)
+	assert.ErrorIs(t, err, workspacedomain.ErrWorkspaceNotFound)
+}

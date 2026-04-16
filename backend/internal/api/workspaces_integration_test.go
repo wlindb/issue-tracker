@@ -172,3 +172,27 @@ func Test_GetWorkspace_WithExistingWorkspace_Returns200(t *testing.T) {
 	assert.Equal(t, created.Id, actual.Id)
 	assert.Equal(t, "GetTest", actual.Name)
 }
+
+func Test_ListWorkspaceMembers_WithExistingWorkspace_Returns200(t *testing.T) {
+	ownerID := uuid.New()
+	e := newWorkspaceIntegrationServer(t)
+	e.Use(injectUser(ownerID))
+
+	createReq := httptest.NewRequest(http.MethodPost, "/api/v1/workspaces", strings.NewReader(`{"name":"MembersTest"}`))
+	createReq.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	createRec := httptest.NewRecorder()
+	e.ServeHTTP(createRec, createReq)
+	require.Equal(t, http.StatusCreated, createRec.Code)
+
+	var created model.Workspace
+	require.NoError(t, json.Unmarshal(createRec.Body.Bytes(), &created))
+
+	membersReq := httptest.NewRequest(http.MethodGet, "/api/v1/workspaces/"+created.Id.String()+"/members", nil)
+	membersRec := httptest.NewRecorder()
+	e.ServeHTTP(membersRec, membersReq)
+
+	require.Equal(t, http.StatusOK, membersRec.Code)
+	var actual []model.WorkspaceMember
+	require.NoError(t, json.Unmarshal(membersRec.Body.Bytes(), &actual))
+	assert.NotNil(t, actual)
+}
