@@ -87,7 +87,7 @@ func newCommentIntegrationServer(t *testing.T, f commentIntegrationFixture) *ech
 	return e
 }
 
-func Test_CreateComment_Integration_Returns201(t *testing.T) {
+func Test_CreateComment_ValidBody_Returns201(t *testing.T) {
 	f := setupCommentFixture(t)
 	e := newCommentIntegrationServer(t, f)
 
@@ -107,7 +107,7 @@ func Test_CreateComment_Integration_Returns201(t *testing.T) {
 	assert.NotEqual(t, uuid.Nil, actual.Id)
 }
 
-func Test_ListComments_Integration_Returns200(t *testing.T) {
+func Test_ListComments_CommentsExist_Returns200(t *testing.T) {
 	f := setupCommentFixture(t)
 	e := newCommentIntegrationServer(t, f)
 
