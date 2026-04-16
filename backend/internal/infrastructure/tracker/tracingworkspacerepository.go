@@ -71,7 +71,7 @@ func (r *TracingWorkspaceRepository) ListMembers(ctx context.Context, workspaceI
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
-		return workspacedomain.WorkspaceMembers{}, fmt.Errorf("list workspace members: %w", err)
+		return workspacedomain.WorkspaceMembers{}, err
 	}
 	return members, nil
 }
