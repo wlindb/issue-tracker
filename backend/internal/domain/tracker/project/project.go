@@ -99,6 +99,7 @@ func New(id uuid.UUID, identifier string, name string, description *string, owne
 type ProjectRepository interface {
 	Create(ctx context.Context, project Project) (Project, error)
 	List(ctx context.Context, query ListProjectQuery) (Projects, error)
+	Get(ctx context.Context, id uuid.UUID) (Project, error)
 }
 
 var (

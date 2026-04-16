@@ -39,6 +39,11 @@ func (m *mockProjectService) List(ctx context.Context, query trackerdomain.ListP
 	return projects, args.Error(1)
 }
 
+func (m *mockProjectService) Get(ctx context.Context, id uuid.UUID) (trackerdomain.Project, error) {
+	args := m.Called(ctx, id)
+	return args.Get(0).(trackerdomain.Project), args.Error(1)
+}
+
 // newTestServer builds a minimal Echo server wired to the given project service.
 func newTestServer(t *testing.T, service api.ProjectService) *echo.Echo {
 	t.Helper()

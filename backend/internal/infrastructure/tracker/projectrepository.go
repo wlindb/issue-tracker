@@ -2,9 +2,12 @@ package tracker
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	projectdomain "github.com/wlindb/issue-tracker/internal/domain/tracker/project"
@@ -29,6 +32,18 @@ func (r *ProjectRepository) Create(ctx context.Context, project projectdomain.Pr
 	row, err := r.queries.CreateProject(ctx, createProjectParamsFromDomain(project))
 	if err != nil {
 		return projectdomain.Project{}, fmt.Errorf("create project: %w", err)
+	}
+	return projectToDomain(row), nil
+}
+
+// Get fetches a single project by ID within the current workspace.
+func (r *ProjectRepository) Get(ctx context.Context, id uuid.UUID) (projectdomain.Project, error) {
+	row, err := r.queries.GetProject(ctx, id)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return projectdomain.Project{}, fmt.Errorf("get project: %w", projectdomain.ErrProjectNotFound)
+		}
+		return projectdomain.Project{}, fmt.Errorf("get project: %w", err)
 	}
 	return projectToDomain(row), nil
 }

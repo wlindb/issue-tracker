@@ -3,6 +3,8 @@ package project
 import (
 	"context"
 	"errors"
+
+	"github.com/google/uuid"
 )
 
 // StubRepository is a temporary no-op repository used until a real infrastructure
@@ -15,4 +17,8 @@ func (StubRepository) Create(_ context.Context, _ Project) (Project, error) {
 
 func (StubRepository) List(_ context.Context, _ ListProjectQuery) (Projects, error) {
 	return Projects{}, errors.New("not implemented")
+}
+
+func (StubRepository) Get(_ context.Context, _ uuid.UUID) (Project, error) {
+	return Project{}, errors.New("not implemented")
 }

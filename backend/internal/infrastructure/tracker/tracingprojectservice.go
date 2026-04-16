@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/google/uuid"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 
@@ -15,6 +16,7 @@ import (
 type projectServicer interface {
 	Create(ctx context.Context, command projectdomain.CreateProjectCommand) (projectdomain.Project, error)
 	List(ctx context.Context, query projectdomain.ListProjectQuery) (projectdomain.Projects, error)
+	Get(ctx context.Context, id uuid.UUID) (projectdomain.Project, error)
 }
 
 // TracingProjectService wraps a projectServicer and adds an OTel child span to each operation.
@@ -52,4 +54,17 @@ func (s *TracingProjectService) List(ctx context.Context, query projectdomain.Li
 		return projectdomain.Projects{}, fmt.Errorf("list projects: %w", err)
 	}
 	return projects, nil
+}
+
+func (s *TracingProjectService) Get(ctx context.Context, id uuid.UUID) (projectdomain.Project, error) {
+	ctx, span := s.tracer.Start(ctx, "tracker.ProjectService.Get")
+	defer span.End()
+
+	project, err := s.inner.Get(ctx, id)
+	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+		return projectdomain.Project{}, fmt.Errorf("get project: %w", err)
+	}
+	return project, nil
 }
