@@ -16,6 +16,7 @@ import (
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 
+	commentdomain "github.com/wlindb/issue-tracker/internal/domain/tracker/comment"
 	issuedomain "github.com/wlindb/issue-tracker/internal/domain/tracker/issue"
 	projectdomain "github.com/wlindb/issue-tracker/internal/domain/tracker/project"
 	workspacedomain "github.com/wlindb/issue-tracker/internal/domain/tracker/workspace"
@@ -855,4 +856,72 @@ func Test_ListMembers_NonExistentWorkspace_ReturnsErrWorkspaceNotFound(t *testin
 
 	require.Error(t, err)
 	assert.ErrorIs(t, err, workspacedomain.ErrWorkspaceNotFound)
+}
+
+// — Comment repository integration tests —
+
+func Test_CreateComment_Success_ReturnsComment(t *testing.T) {
+	repository := tracker.NewCommentRepository(testPool)
+	_, ctx := createTestWorkspace(t)
+	projectID := createTestProject(t, ctx)
+	issue := createTestIssue(t, ctx, projectID)
+
+	c := commentdomain.Comment{
+		ID:       uuid.New(),
+		Body:     "A test comment",
+		AuthorID: uuid.New(),
+		IssueID:  issue.ID,
+	}
+
+	actual, err := repository.Create(ctx, c)
+
+	require.NoError(t, err)
+	assert.Equal(t, c.ID, actual.ID)
+	assert.Equal(t, "A test comment", actual.Body)
+	assert.Equal(t, c.AuthorID, actual.AuthorID)
+	assert.Equal(t, issue.ID, actual.IssueID)
+	assert.False(t, actual.CreatedAt.IsZero())
+	assert.False(t, actual.UpdatedAt.IsZero())
+}
+
+func Test_GetComments_WithExistingComments_ReturnsComments(t *testing.T) {
+	repository := tracker.NewCommentRepository(testPool)
+	_, ctx := createTestWorkspace(t)
+	projectID := createTestProject(t, ctx)
+	issue := createTestIssue(t, ctx, projectID)
+
+	_, err := repository.Create(ctx, commentdomain.Comment{
+		ID:       uuid.New(),
+		Body:     "First comment",
+		AuthorID: uuid.New(),
+		IssueID:  issue.ID,
+	})
+	require.NoError(t, err)
+
+	_, err = repository.Create(ctx, commentdomain.Comment{
+		ID:       uuid.New(),
+		Body:     "Second comment",
+		AuthorID: uuid.New(),
+		IssueID:  issue.ID,
+	})
+	require.NoError(t, err)
+
+	actual, err := repository.Get(ctx, issue.ID)
+
+	require.NoError(t, err)
+	require.Len(t, actual, 2)
+	assert.Equal(t, "First comment", actual[0].Body)
+	assert.Equal(t, "Second comment", actual[1].Body)
+}
+
+func Test_GetComments_NoComments_ReturnsEmptySlice(t *testing.T) {
+	repository := tracker.NewCommentRepository(testPool)
+	_, ctx := createTestWorkspace(t)
+	projectID := createTestProject(t, ctx)
+	issue := createTestIssue(t, ctx, projectID)
+
+	actual, err := repository.Get(ctx, issue.ID)
+
+	require.NoError(t, err)
+	assert.Empty(t, actual)
 }

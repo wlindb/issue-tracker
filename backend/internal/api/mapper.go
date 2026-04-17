@@ -91,6 +91,14 @@ func commentsFromDomain(items []commentdomain.Comment) []model.Comment {
 	return out
 }
 
+func createCommentToDomain(issueID uuid.UUID, authorID uuid.UUID, body string) (commentdomain.Comment, error) {
+	c, err := commentdomain.New(uuid.New(), body, authorID, issueID)
+	if err != nil {
+		return commentdomain.Comment{}, fmt.Errorf("comment: %w", err)
+	}
+	return c, nil
+}
+
 func listCommentQueryFromRequest(params model.ListCommentsParams) commentdomain.ListCommentQuery {
 	return commentdomain.NewListCommentQuery(params.Cursor, params.Limit)
 }

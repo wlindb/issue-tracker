@@ -9,6 +9,16 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type Comment struct {
+	ID          uuid.UUID
+	Body        string
+	AuthorID    uuid.UUID
+	IssueID     uuid.UUID
+	WorkspaceID uuid.UUID
+	CreatedAt   pgtype.Timestamptz
+	UpdatedAt   pgtype.Timestamptz
+}
+
 type Issue struct {
 	ID          uuid.UUID
 	Identifier  string

@@ -15,7 +15,7 @@ import (
 // CommentService is what the handler needs from the domain.
 type CommentService interface {
 	List(ctx context.Context, issueID uuid.UUID, query commentdomain.ListCommentQuery) (commentdomain.Comments, error)
-	Create(ctx context.Context, id uuid.UUID, issueID uuid.UUID, authorID uuid.UUID, body string) (*commentdomain.Comment, error)
+	Create(ctx context.Context, comment commentdomain.Comment) (*commentdomain.Comment, error)
 }
 
 type CommentHandler struct {
@@ -59,7 +59,13 @@ func (h *CommentHandler) CreateComment(ctx context.Context, req model.CreateComm
 			BadRequestJSONResponse: newBadRequest("invalid_input", "body is required"),
 		}, nil
 	}
-	comment, err := h.service.Create(ctx, uuid.New(), req.IssueId, userID, req.Body.Body)
+	c, err := createCommentToDomain(req.IssueId, userID, req.Body.Body)
+	if err != nil {
+		return model.CreateComment400JSONResponse{
+			BadRequestJSONResponse: newBadRequest("invalid_input", err.Error()),
+		}, nil
+	}
+	comment, err := h.service.Create(ctx, c)
 	if errors.Is(err, commentdomain.ErrIssueNotFound) {
 		return model.CreateComment404JSONResponse{
 			NotFoundJSONResponse: newNotFound("issue_not_found", "issue not found"),
