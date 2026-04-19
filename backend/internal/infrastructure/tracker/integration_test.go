@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
+	"github.com/testcontainers/testcontainers-go/modules/postgres"
 	"github.com/testcontainers/testcontainers-go/wait"
 
 	commentdomain "github.com/wlindb/issue-tracker/internal/domain/tracker/comment"
@@ -92,33 +93,24 @@ func TestMain(m *testing.M) {
 }
 
 func startPostgres(ctx context.Context) (string, func(), error) {
-	req := testcontainers.ContainerRequest{
-		Image: "postgres:17-alpine",
-		Env: map[string]string{
-			"POSTGRES_USER":     "test",
-			"POSTGRES_PASSWORD": "test",
-			"POSTGRES_DB":       "test",
-		},
-		ExposedPorts: []string{"5432/tcp"},
-		WaitingFor:   wait.ForListeningPort("5432/tcp"),
-	}
-	c, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
-		ContainerRequest: req, Started: true,
-	})
+	container, err := postgres.Run(ctx,
+		"postgres:17-alpine",
+		postgres.WithDatabase("test"),
+		postgres.WithUsername("test"),
+		postgres.WithPassword("test"),
+		testcontainers.WithWaitStrategy(
+			wait.ForLog("database system is ready to accept connections").WithOccurrence(2),
+		),
+	)
 	if err != nil {
 		return "", nil, fmt.Errorf("start container: %w", err)
 	}
-	port, err := c.MappedPort(ctx, "5432")
+	dsn, err := container.ConnectionString(ctx)
 	if err != nil {
-		return "", nil, errors.Join(fmt.Errorf("mapped port: %w", err), c.Terminate(ctx))
+		return "", nil, errors.Join(fmt.Errorf("connection string: %w", err), container.Terminate(ctx))
 	}
-	host, err := c.Host(ctx)
-	if err != nil {
-		return "", nil, errors.Join(fmt.Errorf("host: %w", err), c.Terminate(ctx))
-	}
-	dsn := fmt.Sprintf("postgres://test:test@%s:%s/test", host, port.Port())
 	return dsn, func() {
-		if err := c.Terminate(ctx); err != nil {
+		if err := container.Terminate(ctx); err != nil {
 			fmt.Fprintf(os.Stderr, "terminate container: %v\n", err)
 		}
 	}, nil
