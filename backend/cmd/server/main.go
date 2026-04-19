@@ -19,6 +19,7 @@ import (
 
 	"github.com/wlindb/issue-tracker/internal/api"
 	"github.com/wlindb/issue-tracker/internal/config"
+	commentdomain "github.com/wlindb/issue-tracker/internal/domain/tracker/comment"
 	issuedomain "github.com/wlindb/issue-tracker/internal/domain/tracker/issue"
 	trackerdomain "github.com/wlindb/issue-tracker/internal/domain/tracker/project"
 	workspacedomain "github.com/wlindb/issue-tracker/internal/domain/tracker/workspace"
@@ -120,6 +121,10 @@ func newHandler(pool *pgxpool.Pool, tracer trace.Tracer, workspaceService *works
 		trackerinfra.NewIssueRepository(pool),
 		tracer,
 	)
+	commentRepository := trackerinfra.NewTracingCommentRepository(
+		trackerinfra.NewCommentRepository(pool),
+		tracer,
+	)
 	return &api.Handler{
 		WorkspaceHandler: api.NewWorkspaceHandler(workspaceService),
 		ProjectHandler: api.NewProjectHandler(
@@ -131,6 +136,12 @@ func newHandler(pool *pgxpool.Pool, tracer trace.Tracer, workspaceService *works
 		IssueHandler: api.NewIssueHandler(
 			trackerinfra.NewTracingIssueService(
 				issuedomain.NewIssueService(issueRepository),
+				tracer,
+			),
+		),
+		CommentHandler: api.NewCommentHandler(
+			trackerinfra.NewTracingCommentService(
+				commentdomain.NewCommentService(commentRepository),
 				tracer,
 			),
 		),
