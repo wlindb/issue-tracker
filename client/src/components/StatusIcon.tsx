@@ -6,9 +6,9 @@ import {
   XCircleIcon,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import type { Status } from '@/data/mock'
+import type { IssueStatus } from '@/api/generated/issueTrackerAPI'
 
-const config: Record<Status, { icon: React.ElementType; className: string }> = {
+const config: Record<IssueStatus, { icon: React.ElementType; className: string }> = {
   in_progress: { icon: CircleDotIcon, className: 'text-blue-500' },
   todo: { icon: CircleIcon, className: 'text-muted-foreground' },
   backlog: { icon: CircleDashedIcon, className: 'text-muted-foreground' },
@@ -16,7 +16,7 @@ const config: Record<Status, { icon: React.ElementType; className: string }> = {
   cancelled: { icon: XCircleIcon, className: 'text-muted-foreground' },
 }
 
-export const STATUS_LABEL: Record<Status, string> = {
+export const STATUS_LABEL: Record<IssueStatus, string> = {
   in_progress: 'In Progress',
   todo: 'Todo',
   backlog: 'Backlog',
@@ -25,7 +25,7 @@ export const STATUS_LABEL: Record<Status, string> = {
 }
 
 interface StatusIconProps {
-  status: Status
+  status: IssueStatus
   className?: string
 }
 

@@ -1,9 +1,9 @@
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
-import type { Status } from '@/data/mock'
+import type { IssueStatus } from '@/api/generated/issueTrackerAPI'
 import { STATUS_LABEL } from './StatusIcon'
 
-const statusColors: Record<Status, string> = {
+const statusColors: Record<IssueStatus, string> = {
   in_progress: 'bg-blue-500/10 text-blue-600 dark:text-blue-400',
   todo: 'bg-muted text-muted-foreground',
   backlog: 'bg-muted text-muted-foreground',
@@ -12,7 +12,7 @@ const statusColors: Record<Status, string> = {
 }
 
 interface StatusBadgeProps {
-  status: Status
+  status: IssueStatus
   className?: string
 }
 

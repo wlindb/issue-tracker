@@ -1,8 +1,8 @@
 import { AlertCircleIcon, ArrowDownIcon, ArrowRightIcon, ArrowUpIcon, MinusIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import type { Priority } from '@/data/mock'
+import type { IssuePriority } from '@/api/generated/issueTrackerAPI'
 
-const config: Record<Priority, { icon: React.ElementType; className: string }> = {
+const config: Record<IssuePriority, { icon: React.ElementType; className: string }> = {
   urgent: { icon: AlertCircleIcon, className: 'text-red-500' },
   high: { icon: ArrowUpIcon, className: 'text-orange-500' },
   medium: { icon: ArrowRightIcon, className: 'text-yellow-500' },
@@ -11,7 +11,7 @@ const config: Record<Priority, { icon: React.ElementType; className: string }> =
 }
 
 interface PriorityIconProps {
-  priority: Priority
+  priority: IssuePriority
   className?: string
 }
 

@@ -3,20 +3,11 @@ import { SendHorizontalIcon } from 'lucide-react'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
-import type { Comment } from '@/data/mock'
+import type { Comment } from '@/api/generated/issueTrackerAPI'
 
 interface CommentSectionProps {
   comments: Comment[]
   onAddComment: (body: string) => void
-}
-
-function getInitials(name: string): string {
-  return name
-    .split(' ')
-    .map((p) => p[0])
-    .slice(0, 2)
-    .join('')
-    .toUpperCase()
 }
 
 function formatDate(iso: string): string {
@@ -78,14 +69,17 @@ export function CommentSection({ comments, onAddComment }: CommentSectionProps) 
 }
 
 function CommentItem({ comment }: { comment: Comment }) {
+  const shortId = comment.authorId.slice(-4)
   return (
     <div className="flex gap-3">
-      <Avatar size="sm" className="mt-0.5 shrink-0">
-        <AvatarFallback>{getInitials(comment.authorName)}</AvatarFallback>
+      <Avatar size="sm" className="mt-0.5 shrink-0" title={comment.authorId}>
+        <AvatarFallback>U</AvatarFallback>
       </Avatar>
       <div className="flex flex-col gap-1">
         <div className="flex items-baseline gap-2">
-          <span className="text-sm font-medium">{comment.authorName}</span>
+          <span className="text-sm font-medium" title={comment.authorId}>
+            User {shortId}
+          </span>
           <span className="text-xs text-muted-foreground">{formatDate(comment.createdAt)}</span>
         </div>
         <p className="text-sm leading-relaxed text-foreground">{comment.body}</p>

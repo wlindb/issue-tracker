@@ -1,20 +1,54 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { PlusCircle } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { IssueGroupSection } from '@/components/IssueGroupSection'
 import { CreateIssueForm } from '@/components/CreateIssueForm'
-import { issues as mockIssues, projects, type Issue } from '@/data/mock'
+import {
+  getProject,
+  listIssues,
+  type Issue,
+  type Project,
+} from '@/api/generated/issueTrackerAPI'
+import { useWorkspace } from '@/context/WorkspaceContext'
 import { groupIssuesByStatus } from '@/lib/groupIssuesByStatus'
 import { cn } from '@/lib/utils'
 
 export function ProjectDetailPage() {
-  const { identifier } = useParams<{ identifier: string }>()
-  const project = projects.find((p) => p.identifier === identifier)
+  const { projectId } = useParams<{ projectId: string }>()
+  const { activeWorkspace } = useWorkspace()
 
-  const [issues, setIssues] = useState<Issue[]>(mockIssues)
+  const [project, setProject] = useState<Project | null>(null)
+  const [issues, setIssues] = useState<Issue[]>([])
+  const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
+
+  useEffect(() => {
+    if (!activeWorkspace || !projectId) return
+    const workspaceId = activeWorkspace.id
+    async function load() {
+      const [fetchedProject, issuePage] = await Promise.all([
+        getProject(workspaceId, projectId!),
+        listIssues(workspaceId, { project_id: projectId! }),
+      ])
+      setProject(fetchedProject)
+      setIssues(issuePage.items)
+      setLoading(false)
+    }
+    load()
+  }, [activeWorkspace, projectId])
+
+  function handleSave(issue: Issue) {
+    setIssues([issue, ...issues])
+    setCreating(false)
+  }
+
+  if (loading) {
+    return (
+      <p className="px-6 py-8 text-sm text-muted-foreground">Loading…</p>
+    )
+  }
 
   if (!project) {
     return (
@@ -22,13 +56,7 @@ export function ProjectDetailPage() {
     )
   }
 
-  function handleSave(issue: Issue) {
-    setIssues([issue, ...issues])
-    setCreating(false)
-  }
-
-  const projectIssues = issues.filter((issue) => issue.projectId === project.id)
-  const groups = groupIssuesByStatus(projectIssues)
+  const groups = groupIssuesByStatus(issues)
 
   return (
     <div className="flex flex-col">
@@ -55,7 +83,7 @@ export function ProjectDetailPage() {
 
       {creating && (
         <CreateIssueForm
-          projects={projects}
+          projects={[project]}
           defaultProjectId={project.id}
           onSave={handleSave}
           onCancel={() => setCreating(false)}

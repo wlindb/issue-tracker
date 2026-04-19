@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { ChevronRightIcon } from 'lucide-react'
-import type { Issue, Project } from '@/data/mock'
+import type { Issue, Project } from '@/api/generated/issueTrackerAPI'
 
 interface IssueBreadcrumbsProps {
   project: Project
