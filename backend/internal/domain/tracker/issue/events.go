@@ -1,0 +1,24 @@
+package issue
+
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
+
+// IssueCreatedEvent carries the data emitted when an issue is successfully persisted.
+type IssueCreatedEvent struct {
+	IssueID    uuid.UUID `json:"issue_id"`
+	ProjectID  uuid.UUID `json:"project_id"`
+	ReporterID uuid.UUID `json:"reporter_id"`
+	Title      string    `json:"title"`
+	Status     Status    `json:"status"`
+	Priority   Priority  `json:"priority"`
+	OccurredAt time.Time `json:"occurred_at"`
+}
+
+// EventPublisher is the port the domain uses to broadcast domain events.
+// Implementations live in the infrastructure layer.
+type EventPublisher interface {
+	PublishIssueCreated(event IssueCreatedEvent) error
+}

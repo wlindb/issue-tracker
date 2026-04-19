@@ -3,6 +3,8 @@ package issue
 import (
 	"context"
 	"fmt"
+	"log/slog"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -10,11 +12,12 @@ import (
 // IssueService implements the domain logic for managing issues.
 type IssueService struct {
 	repository IssueRepository
+	publisher  EventPublisher
 }
 
-// NewIssueService creates an IssueService wired to the given repository.
-func NewIssueService(repository IssueRepository) *IssueService {
-	return &IssueService{repository: repository}
+// NewIssueService creates an IssueService wired to the given repository and event publisher.
+func NewIssueService(repository IssueRepository, publisher EventPublisher) *IssueService {
+	return &IssueService{repository: repository, publisher: publisher}
 }
 
 // ListIssues returns a paginated list of issues for the given project.
@@ -41,6 +44,17 @@ func (s *IssueService) CreateIssue(ctx context.Context, command CreateIssueComma
 	result, err := s.repository.CreateIssue(ctx, issue)
 	if err != nil {
 		return Issue{}, fmt.Errorf("create issue: %w", err)
+	}
+	if publishErr := s.publisher.PublishIssueCreated(IssueCreatedEvent{
+		IssueID:    result.ID,
+		ProjectID:  result.ProjectID,
+		ReporterID: result.ReporterID,
+		Title:      result.Title,
+		Status:     result.Status,
+		Priority:   result.Priority,
+		OccurredAt: time.Now().UTC(),
+	}); publishErr != nil {
+		slog.Error("publish issue created event", "error", publishErr)
 	}
 	return result, nil
 }

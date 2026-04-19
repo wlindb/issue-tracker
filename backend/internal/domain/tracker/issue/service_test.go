@@ -19,6 +19,15 @@ type mockIssueRepository struct {
 	mock.Mock
 }
 
+type mockEventPublisher struct {
+	mock.Mock
+}
+
+func (m *mockEventPublisher) PublishIssueCreated(event issue.IssueCreatedEvent) error {
+	args := m.Called(event)
+	return args.Error(0)
+}
+
 func (m *mockIssueRepository) GetIssue(ctx context.Context, id uuid.UUID) (issue.Issue, error) {
 	args := m.Called(ctx, id)
 	if result, ok := args.Get(0).(issue.Issue); ok {
@@ -53,7 +62,7 @@ func (m *mockIssueRepository) Update(ctx context.Context, i issue.Issue) (issue.
 
 func Test_ListIssues_WithIssues_ReturnsPage(t *testing.T) {
 	repository := &mockIssueRepository{}
-	service := issue.NewIssueService(repository)
+	service := issue.NewIssueService(repository, issue.NoOpEventPublisher{})
 
 	projectID := uuid.New()
 	query := issue.ListIssueQuery{}
@@ -74,7 +83,7 @@ func Test_ListIssues_WithIssues_ReturnsPage(t *testing.T) {
 
 func Test_ListIssues_EmptyResult_ReturnsEmptyPage(t *testing.T) {
 	repository := &mockIssueRepository{}
-	service := issue.NewIssueService(repository)
+	service := issue.NewIssueService(repository, issue.NoOpEventPublisher{})
 
 	projectID := uuid.New()
 	query := issue.ListIssueQuery{}
@@ -90,7 +99,7 @@ func Test_ListIssues_EmptyResult_ReturnsEmptyPage(t *testing.T) {
 
 func Test_ListIssues_RepositoryError_ReturnsError(t *testing.T) {
 	repository := &mockIssueRepository{}
-	service := issue.NewIssueService(repository)
+	service := issue.NewIssueService(repository, issue.NoOpEventPublisher{})
 
 	projectID := uuid.New()
 	query := issue.ListIssueQuery{}
@@ -106,7 +115,7 @@ func Test_ListIssues_RepositoryError_ReturnsError(t *testing.T) {
 
 func Test_ListIssues_WithQueryFilters_PassesFiltersToRepository(t *testing.T) {
 	repository := &mockIssueRepository{}
-	service := issue.NewIssueService(repository)
+	service := issue.NewIssueService(repository, issue.NoOpEventPublisher{})
 
 	projectID := uuid.New()
 	assigneeID := uuid.New()
@@ -138,7 +147,7 @@ func Test_ListIssues_WithQueryFilters_PassesFiltersToRepository(t *testing.T) {
 
 func Test_CreateIssue_ValidCommand_ReturnsCreatedIssue(t *testing.T) {
 	repository := &mockIssueRepository{}
-	service := issue.NewIssueService(repository)
+	service := issue.NewIssueService(repository, issue.NoOpEventPublisher{})
 
 	projectID := uuid.New()
 	reporterID := uuid.New()
@@ -169,7 +178,7 @@ func Test_CreateIssue_ValidCommand_ReturnsCreatedIssue(t *testing.T) {
 
 func Test_CreateIssue_RepositoryError_ReturnsError(t *testing.T) {
 	repository := &mockIssueRepository{}
-	service := issue.NewIssueService(repository)
+	service := issue.NewIssueService(repository, issue.NoOpEventPublisher{})
 
 	command := issue.CreateIssueCommand{
 		ProjectID:  uuid.New(),
@@ -192,7 +201,7 @@ func Test_CreateIssue_RepositoryError_ReturnsError(t *testing.T) {
 
 func Test_GetIssue_Found_ReturnsIssue(t *testing.T) {
 	repository := &mockIssueRepository{}
-	service := issue.NewIssueService(repository)
+	service := issue.NewIssueService(repository, issue.NoOpEventPublisher{})
 
 	issueID := uuid.New()
 	expected := issue.Issue{
@@ -212,7 +221,7 @@ func Test_GetIssue_Found_ReturnsIssue(t *testing.T) {
 
 func Test_GetIssue_NotFound_ReturnsError(t *testing.T) {
 	repository := &mockIssueRepository{}
-	service := issue.NewIssueService(repository)
+	service := issue.NewIssueService(repository, issue.NoOpEventPublisher{})
 
 	issueID := uuid.New()
 	repository.On("GetIssue", mock.Anything, issueID).Return(issue.Issue{}, issue.ErrIssueNotFound)
@@ -227,7 +236,7 @@ func Test_GetIssue_NotFound_ReturnsError(t *testing.T) {
 
 func Test_UpdateIssueAssignee_ValidAssignee_ReturnsUpdatedIssue(t *testing.T) {
 	repository := &mockIssueRepository{}
-	service := issue.NewIssueService(repository)
+	service := issue.NewIssueService(repository, issue.NoOpEventPublisher{})
 
 	issueID := uuid.New()
 	assigneeID := uuid.New()
@@ -255,7 +264,7 @@ func Test_UpdateIssueAssignee_ValidAssignee_ReturnsUpdatedIssue(t *testing.T) {
 
 func Test_UpdateIssueAssignee_NilAssignee_ClearsAssignee(t *testing.T) {
 	repository := &mockIssueRepository{}
-	service := issue.NewIssueService(repository)
+	service := issue.NewIssueService(repository, issue.NoOpEventPublisher{})
 
 	issueID := uuid.New()
 	oldAssignee := uuid.New()
@@ -283,7 +292,7 @@ func Test_UpdateIssueAssignee_NilAssignee_ClearsAssignee(t *testing.T) {
 
 func Test_UpdateIssueAssignee_IssueNotFound_ReturnsError(t *testing.T) {
 	repository := &mockIssueRepository{}
-	service := issue.NewIssueService(repository)
+	service := issue.NewIssueService(repository, issue.NoOpEventPublisher{})
 
 	issueID := uuid.New()
 	assigneeID := uuid.New()
@@ -297,7 +306,7 @@ func Test_UpdateIssueAssignee_IssueNotFound_ReturnsError(t *testing.T) {
 
 func Test_UpdateIssueAssignee_UpdateError_ReturnsError(t *testing.T) {
 	repository := &mockIssueRepository{}
-	service := issue.NewIssueService(repository)
+	service := issue.NewIssueService(repository, issue.NoOpEventPublisher{})
 
 	issueID := uuid.New()
 	assigneeID := uuid.New()
@@ -317,7 +326,7 @@ func Test_UpdateIssueAssignee_UpdateError_ReturnsError(t *testing.T) {
 
 func Test_UpdateIssueDescription_ValidDescription_ReturnsUpdatedIssue(t *testing.T) {
 	repository := &mockIssueRepository{}
-	service := issue.NewIssueService(repository)
+	service := issue.NewIssueService(repository, issue.NoOpEventPublisher{})
 
 	issueID := uuid.New()
 	description := "new description"
@@ -345,7 +354,7 @@ func Test_UpdateIssueDescription_ValidDescription_ReturnsUpdatedIssue(t *testing
 
 func Test_UpdateIssueDescription_NilDescription_ClearsDescription(t *testing.T) {
 	repository := &mockIssueRepository{}
-	service := issue.NewIssueService(repository)
+	service := issue.NewIssueService(repository, issue.NoOpEventPublisher{})
 
 	issueID := uuid.New()
 	oldDesc := "old description"
@@ -373,7 +382,7 @@ func Test_UpdateIssueDescription_NilDescription_ClearsDescription(t *testing.T) 
 
 func Test_UpdateIssueDescription_IssueNotFound_ReturnsError(t *testing.T) {
 	repository := &mockIssueRepository{}
-	service := issue.NewIssueService(repository)
+	service := issue.NewIssueService(repository, issue.NoOpEventPublisher{})
 
 	issueID := uuid.New()
 	desc := "description"
@@ -389,7 +398,7 @@ func Test_UpdateIssueDescription_IssueNotFound_ReturnsError(t *testing.T) {
 
 func Test_UpdateIssuePriority_ValidPriority_ReturnsUpdatedIssue(t *testing.T) {
 	repository := &mockIssueRepository{}
-	service := issue.NewIssueService(repository)
+	service := issue.NewIssueService(repository, issue.NoOpEventPublisher{})
 
 	issueID := uuid.New()
 	existing := issue.Issue{
@@ -415,7 +424,7 @@ func Test_UpdateIssuePriority_ValidPriority_ReturnsUpdatedIssue(t *testing.T) {
 
 func Test_UpdateIssuePriority_InvalidPriority_ReturnsError(t *testing.T) {
 	repository := &mockIssueRepository{}
-	service := issue.NewIssueService(repository)
+	service := issue.NewIssueService(repository, issue.NoOpEventPublisher{})
 
 	issueID := uuid.New()
 	existing := issue.Issue{
@@ -436,7 +445,7 @@ func Test_UpdateIssuePriority_InvalidPriority_ReturnsError(t *testing.T) {
 
 func Test_UpdateIssuePriority_IssueNotFound_ReturnsError(t *testing.T) {
 	repository := &mockIssueRepository{}
-	service := issue.NewIssueService(repository)
+	service := issue.NewIssueService(repository, issue.NoOpEventPublisher{})
 
 	issueID := uuid.New()
 	repository.On("GetIssue", mock.Anything, issueID).Return(issue.Issue{}, issue.ErrIssueNotFound)
@@ -449,7 +458,7 @@ func Test_UpdateIssuePriority_IssueNotFound_ReturnsError(t *testing.T) {
 
 func Test_UpdateIssuePriority_UpdateError_ReturnsError(t *testing.T) {
 	repository := &mockIssueRepository{}
-	service := issue.NewIssueService(repository)
+	service := issue.NewIssueService(repository, issue.NoOpEventPublisher{})
 
 	issueID := uuid.New()
 	existing := issue.Issue{ID: issueID, Status: issue.StatusTodo, Priority: issue.PriorityNone, Labels: []string{}}
@@ -468,7 +477,7 @@ func Test_UpdateIssuePriority_UpdateError_ReturnsError(t *testing.T) {
 
 func Test_UpdateIssueStatus_ValidStatus_ReturnsUpdatedIssue(t *testing.T) {
 	repository := &mockIssueRepository{}
-	service := issue.NewIssueService(repository)
+	service := issue.NewIssueService(repository, issue.NoOpEventPublisher{})
 
 	issueID := uuid.New()
 	existing := issue.Issue{
@@ -494,7 +503,7 @@ func Test_UpdateIssueStatus_ValidStatus_ReturnsUpdatedIssue(t *testing.T) {
 
 func Test_UpdateIssueStatus_InvalidStatus_ReturnsError(t *testing.T) {
 	repository := &mockIssueRepository{}
-	service := issue.NewIssueService(repository)
+	service := issue.NewIssueService(repository, issue.NoOpEventPublisher{})
 
 	issueID := uuid.New()
 	existing := issue.Issue{
@@ -515,7 +524,7 @@ func Test_UpdateIssueStatus_InvalidStatus_ReturnsError(t *testing.T) {
 
 func Test_UpdateIssueStatus_IssueNotFound_ReturnsError(t *testing.T) {
 	repository := &mockIssueRepository{}
-	service := issue.NewIssueService(repository)
+	service := issue.NewIssueService(repository, issue.NoOpEventPublisher{})
 
 	issueID := uuid.New()
 	repository.On("GetIssue", mock.Anything, issueID).Return(issue.Issue{}, issue.ErrIssueNotFound)
@@ -528,7 +537,7 @@ func Test_UpdateIssueStatus_IssueNotFound_ReturnsError(t *testing.T) {
 
 func Test_UpdateIssueStatus_UpdateError_ReturnsError(t *testing.T) {
 	repository := &mockIssueRepository{}
-	service := issue.NewIssueService(repository)
+	service := issue.NewIssueService(repository, issue.NoOpEventPublisher{})
 
 	issueID := uuid.New()
 	existing := issue.Issue{ID: issueID, Status: issue.StatusTodo, Priority: issue.PriorityNone, Labels: []string{}}
@@ -541,4 +550,69 @@ func Test_UpdateIssueStatus_UpdateError_ReturnsError(t *testing.T) {
 	require.Error(t, err)
 	assert.ErrorIs(t, err, updateErr)
 	repository.AssertExpectations(t)
+}
+
+func Test_CreateIssue_SuccessfulPersistence_PublishesIssueCreatedEvent(t *testing.T) {
+	repository := &mockIssueRepository{}
+	publisher := &mockEventPublisher{}
+	service := issue.NewIssueService(repository, publisher)
+
+	projectID := uuid.New()
+	reporterID := uuid.New()
+	command := issue.CreateIssueCommand{
+		ProjectID:  projectID,
+		ReporterID: reporterID,
+		Title:      "Event test",
+		Status:     issue.StatusTodo,
+		Priority:   issue.PriorityMedium,
+	}
+	returned := issue.Issue{
+		ID:         uuid.New(),
+		ProjectID:  projectID,
+		ReporterID: reporterID,
+		Title:      "Event test",
+		Status:     issue.StatusTodo,
+		Priority:   issue.PriorityMedium,
+	}
+
+	repository.On("CreateIssue", mock.Anything, mock.Anything).Return(returned, nil)
+	publisher.On("PublishIssueCreated", mock.MatchedBy(func(event issue.IssueCreatedEvent) bool {
+		return event.IssueID == returned.ID &&
+			event.ProjectID == projectID &&
+			event.ReporterID == reporterID &&
+			event.Title == "Event test"
+	})).Return(nil)
+
+	actual, err := service.CreateIssue(context.Background(), command)
+	require.NoError(t, err)
+	assert.Equal(t, returned, actual)
+	repository.AssertExpectations(t)
+	publisher.AssertExpectations(t)
+}
+
+func Test_CreateIssue_PublisherError_StillReturnsIssue(t *testing.T) {
+	repository := &mockIssueRepository{}
+	publisher := &mockEventPublisher{}
+	service := issue.NewIssueService(repository, publisher)
+
+	command := issue.CreateIssueCommand{
+		ProjectID:  uuid.New(),
+		ReporterID: uuid.New(),
+		Title:      "Publisher fails",
+		Status:     issue.StatusBacklog,
+		Priority:   issue.PriorityLow,
+	}
+	returned := issue.Issue{
+		ID:    uuid.New(),
+		Title: "Publisher fails",
+	}
+
+	repository.On("CreateIssue", mock.Anything, mock.Anything).Return(returned, nil)
+	publisher.On("PublishIssueCreated", mock.Anything).Return(errors.New("nats down"))
+
+	actual, err := service.CreateIssue(context.Background(), command)
+	require.NoError(t, err)
+	assert.Equal(t, returned, actual)
+	repository.AssertExpectations(t)
+	publisher.AssertExpectations(t)
 }

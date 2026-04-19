@@ -17,13 +17,17 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	natsgo "github.com/nats-io/nats.go"
+
 	"github.com/wlindb/issue-tracker/internal/api"
+	applicationtracker "github.com/wlindb/issue-tracker/internal/application/tracker"
 	"github.com/wlindb/issue-tracker/internal/config"
 	commentdomain "github.com/wlindb/issue-tracker/internal/domain/tracker/comment"
 	issuedomain "github.com/wlindb/issue-tracker/internal/domain/tracker/issue"
 	trackerdomain "github.com/wlindb/issue-tracker/internal/domain/tracker/project"
 	workspacedomain "github.com/wlindb/issue-tracker/internal/domain/tracker/workspace"
 	"github.com/wlindb/issue-tracker/internal/infrastructure/db"
+	embeddednats "github.com/wlindb/issue-tracker/internal/infrastructure/nats"
 	trackerinfra "github.com/wlindb/issue-tracker/internal/infrastructure/tracker"
 	"github.com/wlindb/issue-tracker/internal/pkg/telemetry"
 )
@@ -85,10 +89,31 @@ func run() error {
 
 	tracer := otel.Tracer(cfg.OTELServiceName)
 
+	natsServer, err := embeddednats.StartEmbeddedServer()
+	if err != nil {
+		return fmt.Errorf("embedded nats: %w", err)
+	}
+	defer natsServer.Shutdown()
+	log.Println("embedded nats started")
+
+	natsConnection, err := embeddednats.Connect(natsServer)
+	if err != nil {
+		return fmt.Errorf("nats connect: %w", err)
+	}
+	defer natsConnection.Close()
+	log.Println("nats connected")
+
+	issueCreatedHandler := applicationtracker.NewIssueCreatedHandler()
+	subscriber := trackerinfra.NewNATSIssueCreatedSubscriber(natsConnection, issueCreatedHandler)
+	if _, err := subscriber.Subscribe(); err != nil {
+		return fmt.Errorf("nats subscribe issue created: %w", err)
+	}
+	log.Println("nats issue created consumer subscribed")
+
 	workspaceService := workspacedomain.NewWorkspaceService(
 		trackerinfra.NewTracingWorkspaceRepository(trackerinfra.NewWorkspaceRepository(pool), tracer),
 	)
-	h := newHandler(pool, tracer, workspaceService)
+	h := newHandler(pool, tracer, workspaceService, natsConnection)
 
 	e, err := newServer(h, cfg, workspaceService)
 	if err != nil {
@@ -112,7 +137,7 @@ func run() error {
 	return nil
 }
 
-func newHandler(pool *pgxpool.Pool, tracer trace.Tracer, workspaceService *workspacedomain.WorkspaceService) *api.Handler {
+func newHandler(pool *pgxpool.Pool, tracer trace.Tracer, workspaceService *workspacedomain.WorkspaceService, natsConnection *natsgo.Conn) *api.Handler {
 	projectRepository := trackerinfra.NewTracingProjectRepository(
 		trackerinfra.NewProjectRepository(pool),
 		tracer,
@@ -125,6 +150,7 @@ func newHandler(pool *pgxpool.Pool, tracer trace.Tracer, workspaceService *works
 		trackerinfra.NewCommentRepository(pool),
 		tracer,
 	)
+	publisher := trackerinfra.NewNATSEventPublisher(natsConnection)
 	return &api.Handler{
 		WorkspaceHandler: api.NewWorkspaceHandler(workspaceService),
 		ProjectHandler: api.NewProjectHandler(
@@ -135,7 +161,7 @@ func newHandler(pool *pgxpool.Pool, tracer trace.Tracer, workspaceService *works
 		),
 		IssueHandler: api.NewIssueHandler(
 			trackerinfra.NewTracingIssueService(
-				issuedomain.NewIssueService(issueRepository),
+				issuedomain.NewIssueService(issueRepository, publisher),
 				tracer,
 			),
 		),
