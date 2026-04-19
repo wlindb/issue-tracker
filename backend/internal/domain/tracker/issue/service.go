@@ -3,6 +3,7 @@ package issue
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
 	"github.com/google/uuid"
 )
@@ -12,7 +13,7 @@ type IssueService struct {
 	repository IssueRepository
 }
 
-// NewIssueService creates an IssueService wired to the given repository.
+// NewIssueService creates an IssueService wired to the given repository and event publisher.
 func NewIssueService(repository IssueRepository) *IssueService {
 	return &IssueService{repository: repository}
 }
@@ -37,12 +38,14 @@ func (s *IssueService) GetIssue(ctx context.Context, issueID uuid.UUID) (Issue, 
 
 // CreateIssue creates a new issue from the given command.
 func (s *IssueService) CreateIssue(ctx context.Context, command CreateIssueCommand) (Issue, error) {
-	issue := command.ToIssue(uuid.New(), command.Slugify)
-	result, err := s.repository.CreateIssue(ctx, issue)
+	issue, err := s.repository.CreateIssue(ctx, command.ToIssue(uuid.New(), command.Slugify))
 	if err != nil {
 		return Issue{}, fmt.Errorf("create issue: %w", err)
 	}
-	return result, nil
+	if err := issue.EmitCreated(ctx); err != nil {
+		slog.Error("publish issue created event", "error", err)
+	}
+	return issue, nil
 }
 
 // UpdateIssueAssignee updates the assignee of an issue.

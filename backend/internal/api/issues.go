@@ -40,7 +40,7 @@ func NewIssueHandler(service IssueService) IssueHandler {
 }
 
 func (h *Handler) ListIssues(ctx context.Context, req model.ListIssuesRequestObject) (model.ListIssuesResponseObject, error) {
-	if _, err := userIDFromContext(ctx); err != nil {
+	if _, err := UserIDFromContext(ctx); err != nil {
 		return model.ListIssues401JSONResponse{
 			UnauthorizedJSONResponse: newUnauthorized("unauthorized", "authentication required"),
 		}, nil
@@ -72,7 +72,7 @@ func (h *Handler) CreateIssue(ctx context.Context, req model.CreateIssueRequestO
 			BadRequestJSONResponse: newBadRequest("invalid_input", "title is required"),
 		}, nil
 	}
-	userID, err := userIDFromContext(ctx)
+	userID, err := UserIDFromContext(ctx)
 	if err != nil {
 		return model.CreateIssue401JSONResponse{
 			UnauthorizedJSONResponse: newUnauthorized("unauthorized", "authentication required"),
@@ -100,7 +100,7 @@ func (h *Handler) SearchIssues(_ context.Context, req model.SearchIssuesRequestO
 }
 
 func (h *Handler) GetIssue(ctx context.Context, req model.GetIssueRequestObject) (model.GetIssueResponseObject, error) {
-	if _, err := userIDFromContext(ctx); err != nil {
+	if _, err := UserIDFromContext(ctx); err != nil {
 		return model.GetIssue401JSONResponse{
 			UnauthorizedJSONResponse: newUnauthorized("unauthorized", "authentication required"),
 		}, nil
@@ -122,7 +122,7 @@ func (h *Handler) UpdateIssueTitle(_ context.Context, _ model.UpdateIssueTitleRe
 }
 
 func (h *Handler) UpdateIssueDescription(ctx context.Context, req model.UpdateIssueDescriptionRequestObject) (model.UpdateIssueDescriptionResponseObject, error) {
-	if _, err := userIDFromContext(ctx); err != nil {
+	if _, err := UserIDFromContext(ctx); err != nil {
 		return model.UpdateIssueDescription401JSONResponse{
 			UnauthorizedJSONResponse: newUnauthorized("unauthorized", "authentication required"),
 		}, nil
@@ -140,7 +140,7 @@ func (h *Handler) UpdateIssueDescription(ctx context.Context, req model.UpdateIs
 }
 
 func (h *Handler) UpdateIssueStatus(ctx context.Context, req model.UpdateIssueStatusRequestObject) (model.UpdateIssueStatusResponseObject, error) {
-	if _, err := userIDFromContext(ctx); err != nil {
+	if _, err := UserIDFromContext(ctx); err != nil {
 		return model.UpdateIssueStatus401JSONResponse{
 			UnauthorizedJSONResponse: newUnauthorized("unauthorized", "authentication required"),
 		}, nil
@@ -163,7 +163,7 @@ func (h *Handler) UpdateIssueStatus(ctx context.Context, req model.UpdateIssueSt
 }
 
 func (h *Handler) UpdateIssuePriority(ctx context.Context, req model.UpdateIssuePriorityRequestObject) (model.UpdateIssuePriorityResponseObject, error) {
-	if _, err := userIDFromContext(ctx); err != nil {
+	if _, err := UserIDFromContext(ctx); err != nil {
 		return model.UpdateIssuePriority401JSONResponse{
 			UnauthorizedJSONResponse: newUnauthorized("unauthorized", "authentication required"),
 		}, nil
@@ -186,7 +186,7 @@ func (h *Handler) UpdateIssuePriority(ctx context.Context, req model.UpdateIssue
 }
 
 func (h *Handler) UpdateIssueAssignee(ctx context.Context, req model.UpdateIssueAssigneeRequestObject) (model.UpdateIssueAssigneeResponseObject, error) {
-	if _, err := userIDFromContext(ctx); err != nil {
+	if _, err := UserIDFromContext(ctx); err != nil {
 		return model.UpdateIssueAssignee401JSONResponse{
 			UnauthorizedJSONResponse: newUnauthorized("unauthorized", "authentication required"),
 		}, nil

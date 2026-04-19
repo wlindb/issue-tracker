@@ -27,7 +27,7 @@ func NewProjectHandler(service ProjectService) ProjectHandler {
 }
 
 func (h *ProjectHandler) ListProjects(ctx context.Context, req model.ListProjectsRequestObject) (model.ListProjectsResponseObject, error) {
-	if _, err := userIDFromContext(ctx); err != nil {
+	if _, err := UserIDFromContext(ctx); err != nil {
 		return model.ListProjects401JSONResponse{
 			UnauthorizedJSONResponse: newUnauthorized("unauthorized", "authentication required"),
 		}, nil
@@ -43,7 +43,7 @@ func (h *ProjectHandler) ListProjects(ctx context.Context, req model.ListProject
 }
 
 func (h *ProjectHandler) CreateProject(ctx context.Context, req model.CreateProjectRequestObject) (model.CreateProjectResponseObject, error) {
-	userID, err := userIDFromContext(ctx)
+	userID, err := UserIDFromContext(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("create project: %w", err)
 	}
@@ -65,7 +65,7 @@ func (h *ProjectHandler) CreateProject(ctx context.Context, req model.CreateProj
 }
 
 func (h *ProjectHandler) GetProject(ctx context.Context, req model.GetProjectRequestObject) (model.GetProjectResponseObject, error) {
-	if _, err := userIDFromContext(ctx); err != nil {
+	if _, err := UserIDFromContext(ctx); err != nil {
 		return model.GetProject401JSONResponse{
 			UnauthorizedJSONResponse: newUnauthorized("unauthorized", "authentication required"),
 		}, nil

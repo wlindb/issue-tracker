@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/wlindb/issue-tracker/internal/domain/tracker/issue"
+	"github.com/wlindb/issue-tracker/internal/pkg/domain/event"
 )
 
 type mockIssueRepository struct {
@@ -540,5 +541,71 @@ func Test_UpdateIssueStatus_UpdateError_ReturnsError(t *testing.T) {
 	_, err := service.UpdateIssueStatus(context.Background(), issueID, issue.StatusDone)
 	require.Error(t, err)
 	assert.ErrorIs(t, err, updateErr)
+	repository.AssertExpectations(t)
+}
+
+func Test_CreateIssue_SuccessfulPersistence_PublishesIssueCreatedEvent(t *testing.T) {
+	repository := &mockIssueRepository{}
+	service := issue.NewIssueService(repository)
+
+	projectID := uuid.New()
+	reporterID := uuid.New()
+	command := issue.CreateIssueCommand{
+		ProjectID:  projectID,
+		ReporterID: reporterID,
+		Title:      "Event test",
+		Status:     issue.StatusTodo,
+		Priority:   issue.PriorityMedium,
+	}
+	expected := issue.Issue{
+		ID:         uuid.New(),
+		ProjectID:  projectID,
+		ReporterID: reporterID,
+		Title:      "Event test",
+		Status:     issue.StatusTodo,
+		Priority:   issue.PriorityMedium,
+	}
+
+	var published []issue.IssueCreatedEvent
+	ctx := event.WithPublisher[issue.IssueCreatedEvent](context.Background(), func(_ context.Context, e issue.IssueCreatedEvent) error {
+		published = append(published, e)
+		return nil
+	})
+
+	repository.On("CreateIssue", mock.Anything, mock.Anything).Return(expected, nil)
+	actual, err := service.CreateIssue(ctx, command)
+	require.NoError(t, err)
+
+	require.Len(t, published, 1)
+	assert.Equal(t, expected, actual)
+	assert.Equal(t, expected, published[0].Payload)
+	repository.AssertExpectations(t)
+}
+
+func Test_CreateIssue_PublisherError_StillReturnsIssue(t *testing.T) {
+	repository := &mockIssueRepository{}
+	service := issue.NewIssueService(repository)
+
+	command := issue.CreateIssueCommand{
+		ProjectID:  uuid.New(),
+		ReporterID: uuid.New(),
+		Title:      "Publisher fails",
+		Status:     issue.StatusBacklog,
+		Priority:   issue.PriorityLow,
+	}
+	returned := issue.Issue{
+		ID:    uuid.New(),
+		Title: "Publisher fails",
+	}
+
+	ctx := event.WithPublisher[issue.IssueCreatedEvent](context.Background(), func(_ context.Context, _ issue.IssueCreatedEvent) error {
+		return errors.New("nats down")
+	})
+
+	repository.On("CreateIssue", mock.Anything, mock.Anything).Return(returned, nil)
+
+	actual, err := service.CreateIssue(ctx, command)
+	require.NoError(t, err)
+	assert.Equal(t, returned, actual)
 	repository.AssertExpectations(t)
 }

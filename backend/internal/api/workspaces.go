@@ -28,7 +28,7 @@ func NewWorkspaceHandler(service WorkspaceService) WorkspaceHandler {
 }
 
 func (h *WorkspaceHandler) ListWorkspaces(ctx context.Context, _ model.ListWorkspacesRequestObject) (model.ListWorkspacesResponseObject, error) {
-	userID, err := userIDFromContext(ctx)
+	userID, err := UserIDFromContext(ctx)
 	if err != nil {
 		return model.ListWorkspaces401JSONResponse{
 			UnauthorizedJSONResponse: newUnauthorized("unauthorized", "authentication required"),
@@ -45,7 +45,7 @@ func (h *WorkspaceHandler) ListWorkspaces(ctx context.Context, _ model.ListWorks
 }
 
 func (h *WorkspaceHandler) CreateWorkspace(ctx context.Context, req model.CreateWorkspaceRequestObject) (model.CreateWorkspaceResponseObject, error) {
-	userID, err := userIDFromContext(ctx)
+	userID, err := UserIDFromContext(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("create workspace: %w", err)
 	}

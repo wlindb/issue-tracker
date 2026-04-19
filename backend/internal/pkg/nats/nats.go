@@ -1,0 +1,115 @@
+package embeddednats
+
+import (
+	"fmt"
+	"time"
+
+	"github.com/google/uuid"
+	natsserver "github.com/nats-io/nats-server/v2/server"
+	natsgo "github.com/nats-io/nats.go"
+)
+
+const readyTimeout = 5 * time.Second
+
+// AuthCalloutSubject is the NATS system subject the server publishes auth callout requests to.
+const AuthCalloutSubject = "$SYS.REQ.USER.AUTH"
+
+// WorkspaceSubject builds workspace-scoped NATS subjects from a format pattern.
+type WorkspaceSubject struct {
+	subject string
+}
+
+// Subject formats the NATS subject string for the given workspace ID.
+func (s WorkspaceSubject) Subject(workspaceID uuid.UUID) string {
+	return fmt.Sprintf(s.subject, workspaceID)
+}
+
+// IssueCreatedSubject is the workspace-scoped subject pattern for issue created events.
+var IssueCreatedSubject = WorkspaceSubject{subject: "workspaces.%s.issues.created"}
+
+// IssueCreatedSubjectAll is the wildcard subject for internal consumers.
+const IssueCreatedSubjectAll = "workspaces.*.issues.created"
+
+// ServerOption is a functional option applied to the embedded NATS server configuration.
+type ServerOption func(*natsserver.Options) error
+
+// AuthCalloutConfig holds configuration for NATS Auth Callout.
+type AuthCalloutConfig struct {
+	// IssuerPublicKey is the account NKey public key used to sign authorization responses.
+	IssuerPublicKey string
+	// AuthUsers is the list of usernames that bypass the auth callout (internal service connections).
+	AuthUsers []string
+}
+
+// WithAuthCallout configures the embedded server to use NATS Auth Callout.
+// All connecting clients whose username is not in config.AuthUsers will be forwarded
+// to the auth callout handler on AuthCalloutSubject.
+func WithAuthCallout(config AuthCalloutConfig) ServerOption {
+	return func(options *natsserver.Options) error {
+		options.AuthCallout = &natsserver.AuthCallout{
+			Issuer:    config.IssuerPublicKey,
+			AuthUsers: config.AuthUsers,
+		}
+		return nil
+	}
+}
+
+// WithExternalPort binds the server to all interfaces on the given port,
+// making it reachable by external clients. Without this option the server
+// binds to loopback only on a random port.
+func WithExternalPort(port int) ServerOption {
+	return func(options *natsserver.Options) error {
+		options.Host = "0.0.0.0"
+		options.Port = port
+		return nil
+	}
+}
+
+// WithInternalUser adds a named user to the server that can connect without
+// going through the auth callout. Use this together with WithAuthCallout by
+// listing the same username in AuthCalloutConfig.AuthUsers.
+func WithInternalUser(username, password string) ServerOption {
+	return func(options *natsserver.Options) error {
+		options.Users = append(options.Users, &natsserver.User{
+			Username: username,
+			Password: password,
+		})
+		return nil
+	}
+}
+
+// StartEmbeddedServer starts an in-process NATS server and returns it once it is
+// ready to accept connections. The caller is responsible for calling server.Shutdown().
+func StartEmbeddedServer(opts ...ServerOption) (*natsserver.Server, error) {
+	options := &natsserver.Options{
+		Host:   "127.0.0.1",
+		Port:   natsserver.RANDOM_PORT,
+		NoLog:  true,
+		NoSigs: true,
+	}
+	for _, option := range opts {
+		if err := option(options); err != nil {
+			return nil, fmt.Errorf("apply server option: %w", err)
+		}
+	}
+	server, err := natsserver.NewServer(options)
+	if err != nil {
+		return nil, fmt.Errorf("new embedded nats server: %w", err)
+	}
+	server.Start()
+	if !server.ReadyForConnections(readyTimeout) {
+		return nil, fmt.Errorf("embedded nats server did not become ready within %s", readyTimeout)
+	}
+	return server, nil
+}
+
+// Connect returns a NATS client connection to the given embedded server.
+// Additional nats.go client options (e.g. natsgo.UserInfo) may be passed via opts.
+// The caller is responsible for calling connection.Close() on shutdown.
+func Connect(server *natsserver.Server, opts ...natsgo.Option) (*natsgo.Conn, error) {
+	connection, err := natsgo.Connect(server.ClientURL(), opts...)
+	if err != nil {
+		return nil, fmt.Errorf("connect to embedded nats: %w", err)
+	}
+	return connection, nil
+}
