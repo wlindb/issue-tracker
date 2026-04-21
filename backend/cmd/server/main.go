@@ -23,6 +23,7 @@ import (
 	applicationtracker "github.com/wlindb/issue-tracker/internal/application/tracker"
 	"github.com/wlindb/issue-tracker/internal/config"
 	commentdomain "github.com/wlindb/issue-tracker/internal/domain/tracker/comment"
+	"github.com/wlindb/issue-tracker/internal/domain/tracker/issue"
 	issuedomain "github.com/wlindb/issue-tracker/internal/domain/tracker/issue"
 	trackerdomain "github.com/wlindb/issue-tracker/internal/domain/tracker/project"
 	workspacedomain "github.com/wlindb/issue-tracker/internal/domain/tracker/workspace"
@@ -151,6 +152,7 @@ func newHandler(pool *pgxpool.Pool, tracer trace.Tracer, workspaceService *works
 		tracer,
 	)
 	publisher := trackerinfra.NewNATSEventPublisher(natsConnection)
+	issue.Created.AddSubscriber(publisher.Publisher)
 	return &api.Handler{
 		WorkspaceHandler: api.NewWorkspaceHandler(workspaceService),
 		ProjectHandler: api.NewProjectHandler(

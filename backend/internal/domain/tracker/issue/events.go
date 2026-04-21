@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/wlindb/issue-tracker/internal/pkg/domain/event"
 )
 
 // IssueCreatedEvent carries the data emitted when an issue is successfully persisted.
@@ -16,6 +17,8 @@ type IssueCreatedEvent struct {
 	Priority   Priority  `json:"priority"`
 	OccurredAt time.Time `json:"occurred_at"`
 }
+
+var Created = event.NewBaseEvent[IssueCreatedEvent]()
 
 // EventPublisher is the port the domain uses to broadcast domain events.
 // Implementations live in the infrastructure layer.
