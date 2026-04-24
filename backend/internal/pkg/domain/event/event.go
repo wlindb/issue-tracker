@@ -5,35 +5,35 @@ import (
 	"sync"
 )
 
-type Subscriber[T any] func(context.Context, T)
+type Publisher[T any] func(context.Context, T)
 
 type Event[T any] interface {
 	Emit(ctx context.Context, payload T)
-	AddSubscriber(handler Subscriber[T]) int
+	AddSubscriber(handler Publisher[T]) int
 }
 
 type BaseEvent[T any] struct {
-	mu          sync.RWMutex
-	subscribers []Subscriber[T]
+	mu         sync.RWMutex
+	publishers []Publisher[T]
 }
 
 func NewBaseEvent[T any]() *BaseEvent[T] {
 	return &BaseEvent[T]{
-		subscribers: make([]Subscriber[T], 0, 1),
+		publishers: make([]Publisher[T], 0, 1),
 	}
 }
 
-func (event *BaseEvent[T]) AddSubscriber(subscriber Subscriber[T]) int {
+func (event *BaseEvent[T]) AddPublisher(publisher Publisher[T]) int {
 	event.mu.Lock()
 	defer event.mu.Unlock()
 
-	if subscriber == nil {
+	if publisher == nil {
 		panic("consumer cannot be nil")
 	}
 
-	event.subscribers = append(event.subscribers, subscriber)
+	event.publishers = append(event.publishers, publisher)
 
-	return len(event.subscribers)
+	return len(event.publishers)
 }
 
 func (event *BaseEvent[T]) Emit(ctx context.Context, payload T) {
@@ -50,17 +50,17 @@ func (event *BaseEvent[T]) Emit(ctx context.Context, payload T) {
 
 func (event *BaseEvent[T]) notify(ctx context.Context, payload T, done chan<- bool) {
 	var wg sync.WaitGroup
-	for _, subscriber := range event.Subscribers() {
+	for _, publish := range event.Subscribers() {
 		wg.Go(func() {
-			subscriber(ctx, payload)
+			publish(ctx, payload)
 		})
 	}
 	wg.Wait()
 	done <- true
 }
 
-func (event *BaseEvent[T]) Subscribers() []Subscriber[T] {
+func (event *BaseEvent[T]) Subscribers() []Publisher[T] {
 	event.mu.RLock()
 	defer event.mu.RUnlock()
-	return append([]Subscriber[T]{}, event.subscribers...)
+	return append([]Publisher[T]{}, event.publishers...)
 }
