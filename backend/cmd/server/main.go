@@ -164,7 +164,7 @@ func newHandler(pool *pgxpool.Pool, tracer trace.Tracer, workspaceService *works
 		),
 		IssueHandler: api.NewIssueHandler(
 			trackerinfra.NewTracingIssueService(
-				issuedomain.NewIssueService(issueRepository, publisher),
+				issuedomain.NewIssueService(issueRepository),
 				tracer,
 			),
 		),
