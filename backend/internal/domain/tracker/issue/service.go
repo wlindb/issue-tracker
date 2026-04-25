@@ -43,7 +43,7 @@ func (s *IssueService) CreateIssue(ctx context.Context, command CreateIssueComma
 	if err != nil {
 		return Issue{}, fmt.Errorf("create issue: %w", err)
 	}
-	Created.Emit(ctx, IssueCreatedEvent{
+	Created.Publish(ctx, IssueCreatedEvent{
 		IssueID:    result.ID,
 		ProjectID:  result.ProjectID,
 		ReporterID: result.ReporterID,

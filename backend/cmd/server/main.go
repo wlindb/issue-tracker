@@ -105,10 +105,15 @@ func run() error {
 	log.Println("nats connected")
 
 	issueCreatedHandler := applicationtracker.NewIssueCreatedHandler()
-	subscriber := trackerinfra.NewNATSIssueCreatedSubscriber(natsConnection, issueCreatedHandler)
-	if _, err := subscriber.Subscribe(); err != nil {
+	subscriber := trackerinfra.NewNATSEventSubscriber[issue.IssueCreatedEvent](natsConnection)
+	if err := subscriber.Subscribe(issueCreatedHandler.Handler); err != nil {
 		return fmt.Errorf("nats subscribe issue created: %w", err)
 	}
+
+	// subscriber := trackerinfra.NewNATSIssueCreatedSubscriber(natsConnection, issueCreatedHandler)
+	// if _, err := subscriber.Subscribe(); err != nil {
+	// 	return fmt.Errorf("nats subscribe issue created: %w", err)
+	// }
 	log.Println("nats issue created consumer subscribed")
 
 	workspaceService := workspacedomain.NewWorkspaceService(

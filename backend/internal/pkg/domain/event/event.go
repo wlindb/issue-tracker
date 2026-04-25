@@ -5,11 +5,14 @@ import (
 	"sync"
 )
 
-type Publisher[T any] func(context.Context, T)
+type (
+	Publisher[T any]  func(context.Context, T)
+	Subscriber[T any] func(context.Context, T)
+)
 
 type Event[T any] interface {
 	Emit(ctx context.Context, payload T)
-	AddSubscriber(handler Publisher[T]) int
+	AddPublisher(handler Publisher[T]) int
 }
 
 type BaseEvent[T any] struct {
@@ -36,7 +39,7 @@ func (event *BaseEvent[T]) AddPublisher(publisher Publisher[T]) int {
 	return len(event.publishers)
 }
 
-func (event *BaseEvent[T]) Emit(ctx context.Context, payload T) {
+func (event *BaseEvent[T]) Publish(ctx context.Context, payload T) {
 	go func() {
 		done := make(chan bool)
 		go event.notify(ctx, payload, done)
