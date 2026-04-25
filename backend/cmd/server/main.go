@@ -17,8 +17,6 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	natsgo "github.com/nats-io/nats.go"
-
 	"github.com/wlindb/issue-tracker/internal/api"
 	applicationtracker "github.com/wlindb/issue-tracker/internal/application/tracker"
 	"github.com/wlindb/issue-tracker/internal/config"
@@ -105,21 +103,19 @@ func run() error {
 	log.Println("nats connected")
 
 	issueCreatedHandler := applicationtracker.NewIssueCreatedHandler()
-	subscriber := trackerinfra.NewNATSEventSubscriber[issue.IssueCreatedEvent](natsConnection)
+	subscriber := embeddednats.NewNATSEventSubscriber[issue.IssueCreatedEvent](natsConnection, embeddednats.IssueCreatedSubject)
 	if err := subscriber.Subscribe(issueCreatedHandler.Handler); err != nil {
 		return fmt.Errorf("nats subscribe issue created: %w", err)
 	}
-
-	// subscriber := trackerinfra.NewNATSIssueCreatedSubscriber(natsConnection, issueCreatedHandler)
-	// if _, err := subscriber.Subscribe(); err != nil {
-	// 	return fmt.Errorf("nats subscribe issue created: %w", err)
-	// }
 	log.Println("nats issue created consumer subscribed")
+
+	publisher := embeddednats.NewNATSEventPublisher[issue.IssueCreatedEvent](natsConnection, embeddednats.IssueCreatedSubject)
+	issue.Created.AddPublisher(publisher.Publisher)
 
 	workspaceService := workspacedomain.NewWorkspaceService(
 		trackerinfra.NewTracingWorkspaceRepository(trackerinfra.NewWorkspaceRepository(pool), tracer),
 	)
-	h := newHandler(pool, tracer, workspaceService, natsConnection)
+	h := newHandler(pool, tracer, workspaceService)
 
 	e, err := newServer(h, cfg, workspaceService)
 	if err != nil {
@@ -143,7 +139,7 @@ func run() error {
 	return nil
 }
 
-func newHandler(pool *pgxpool.Pool, tracer trace.Tracer, workspaceService *workspacedomain.WorkspaceService, natsConnection *natsgo.Conn) *api.Handler {
+func newHandler(pool *pgxpool.Pool, tracer trace.Tracer, workspaceService *workspacedomain.WorkspaceService) *api.Handler {
 	projectRepository := trackerinfra.NewTracingProjectRepository(
 		trackerinfra.NewProjectRepository(pool),
 		tracer,
@@ -156,8 +152,6 @@ func newHandler(pool *pgxpool.Pool, tracer trace.Tracer, workspaceService *works
 		trackerinfra.NewCommentRepository(pool),
 		tracer,
 	)
-	publisher := trackerinfra.NewNATSEventPublisher[issue.IssueCreatedEvent](natsConnection)
-	issue.Created.AddPublisher(publisher.Publisher)
 
 	return &api.Handler{
 		WorkspaceHandler: api.NewWorkspaceHandler(workspaceService),

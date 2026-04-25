@@ -10,6 +10,8 @@ import (
 
 const readyTimeout = 5 * time.Second
 
+const IssueCreatedSubject = "issues.created"
+
 // StartEmbeddedServer starts an in-process NATS server on a random available port
 // and returns it once it is ready to accept connections.
 // The caller is responsible for calling server.Shutdown() on shutdown.
