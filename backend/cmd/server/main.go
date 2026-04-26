@@ -22,12 +22,11 @@ import (
 	"github.com/wlindb/issue-tracker/internal/config"
 	commentdomain "github.com/wlindb/issue-tracker/internal/domain/tracker/comment"
 	"github.com/wlindb/issue-tracker/internal/domain/tracker/issue"
-	issuedomain "github.com/wlindb/issue-tracker/internal/domain/tracker/issue"
 	trackerdomain "github.com/wlindb/issue-tracker/internal/domain/tracker/project"
 	workspacedomain "github.com/wlindb/issue-tracker/internal/domain/tracker/workspace"
 	"github.com/wlindb/issue-tracker/internal/infrastructure/db"
-	embeddednats "github.com/wlindb/issue-tracker/internal/infrastructure/nats"
 	trackerinfra "github.com/wlindb/issue-tracker/internal/infrastructure/tracker"
+	embeddednats "github.com/wlindb/issue-tracker/internal/pkg/nats"
 	"github.com/wlindb/issue-tracker/internal/pkg/telemetry"
 )
 
@@ -163,7 +162,7 @@ func newHandler(pool *pgxpool.Pool, tracer trace.Tracer, workspaceService *works
 		),
 		IssueHandler: api.NewIssueHandler(
 			trackerinfra.NewTracingIssueService(
-				issuedomain.NewIssueService(issueRepository),
+				issue.NewIssueService(issueRepository),
 				tracer,
 			),
 		),

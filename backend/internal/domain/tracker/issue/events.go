@@ -18,10 +18,4 @@ type IssueCreatedEvent struct {
 	OccurredAt time.Time `json:"occurred_at"`
 }
 
-var Created = event.NewBaseEvent[IssueCreatedEvent]()
-
-// EventPublisher is the port the domain uses to broadcast domain events.
-// Implementations live in the infrastructure layer.
-type EventPublisher interface {
-	PublishIssueCreated(event IssueCreatedEvent) error
-}
+var Created = event.New[IssueCreatedEvent]()
