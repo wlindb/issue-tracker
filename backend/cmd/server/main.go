@@ -108,8 +108,9 @@ func run() error {
 	}
 	log.Println("nats issue created consumer subscribed")
 
-	publisher := embeddednats.NewNATSEventPublisher[issue.IssueCreatedEvent](natsConnection, embeddednats.IssueCreatedSubject)
-	issue.Created.AddPublisher(publisher.Publisher)
+	if err := trackerinfra.NewEventPublisher(natsConnection); err != nil {
+		return fmt.Errorf("create event publisher: %w", err)
+	}
 
 	workspaceService := workspacedomain.NewWorkspaceService(
 		trackerinfra.NewTracingWorkspaceRepository(trackerinfra.NewWorkspaceRepository(pool), tracer),

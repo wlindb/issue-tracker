@@ -1,4 +1,4 @@
-package tracker
+package notification
 
 import (
 	"context"
@@ -7,15 +7,13 @@ import (
 	issuedomain "github.com/wlindb/issue-tracker/internal/domain/tracker/issue"
 )
 
-// IssueCreatedHandler handles IssueCreatedEvent by logging its details.
-type IssueCreatedHandler struct{}
+type NotificationHandler struct{}
 
-// NewIssueCreatedHandler returns an IssueCreatedHandler.
-func NewIssueCreatedHandler() *IssueCreatedHandler {
-	return &IssueCreatedHandler{}
+func NewNotificationHandler() NotificationHandler {
+	return NotificationHandler{}
 }
 
-func (h *IssueCreatedHandler) Handler(_ context.Context, event issuedomain.IssueCreatedEvent) {
+func (h NotificationHandler) Handler(_ context.Context, event issuedomain.IssueCreatedEvent) {
 	slog.Info("issue created",
 		"issue_id", event.IssueID,
 		"project_id", event.ProjectID,
