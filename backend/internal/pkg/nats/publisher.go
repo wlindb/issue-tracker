@@ -3,6 +3,7 @@ package embeddednats
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 
 	natsgo "github.com/nats-io/nats.go"
 
@@ -19,13 +20,14 @@ func NewNATSEventPublisher[T any](connection *natsgo.Conn, subject string) *NATS
 }
 
 func publish[T any](connection *natsgo.Conn, subject string) event.Publisher[T] {
-	return func(_ context.Context, event T) {
+	return func(_ context.Context, event T) error {
 		payload, err := json.Marshal(event)
 		if err != nil {
-			return
+			return fmt.Errorf("publish to %s marshal: %w", subject, err)
 		}
 		if err := connection.Publish(subject, payload); err != nil {
-			return
+			return fmt.Errorf("publish to %s publish: %w", subject, err)
 		}
+		return nil
 	}
 }
