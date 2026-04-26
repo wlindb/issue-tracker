@@ -18,6 +18,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/wlindb/issue-tracker/internal/api"
+	"github.com/wlindb/issue-tracker/internal/application/notification"
 	applicationtracker "github.com/wlindb/issue-tracker/internal/application/tracker"
 	"github.com/wlindb/issue-tracker/internal/config"
 	commentdomain "github.com/wlindb/issue-tracker/internal/domain/tracker/comment"
@@ -101,8 +102,9 @@ func run() error {
 	defer natsConnection.Close()
 	log.Println("nats connected")
 
-	issueCreatedHandler := applicationtracker.NewIssueCreatedHandler()
 	subscriber := embeddednats.NewNATSEventSubscriber[issue.IssueCreatedEvent](natsConnection, embeddednats.IssueCreatedSubject)
+	notification.NewNotificationHandler(subscriber)
+	// issueCreatedHandler := applicationtracker.NewIssueCreatedHandler()
 	if err := subscriber.Subscribe(issueCreatedHandler.Handler); err != nil {
 		return fmt.Errorf("nats subscribe issue created: %w", err)
 	}
