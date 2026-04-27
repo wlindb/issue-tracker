@@ -1,4 +1,4 @@
-package notification
+package embedding
 
 import (
 	"context"
@@ -13,20 +13,20 @@ type IssueCreatedSubscriber interface {
 	Subscribe(handler event.Subscriber[issue.IssueCreatedEvent]) error
 }
 
-type NotificationHandler struct{}
+type EmbeddingHandler struct{}
 
-func NewNotificationHandler(issueCreatedSubscriber IssueCreatedSubscriber) (NotificationHandler, error) {
-	var zero NotificationHandler
+func NewEmbeddingHandler(issueCreatedSubscriber IssueCreatedSubscriber) (EmbeddingHandler, error) {
+	var zero EmbeddingHandler
 
-	handler := NotificationHandler{}
+	handler := EmbeddingHandler{}
 	if err := issueCreatedSubscriber.Subscribe(handler.Handler); err != nil {
-		return zero, fmt.Errorf("nats subscribe issue created: %w", err)
+		return zero, fmt.Errorf("subscribe issue created: %w", err)
 	}
 
 	return handler, nil
 }
 
-func (h NotificationHandler) Handler(_ context.Context, event issue.IssueCreatedEvent) {
+func (h EmbeddingHandler) Handler(_ context.Context, event issue.IssueCreatedEvent) {
 	slog.Info("issue created",
 		"issue_id", event.IssueID,
 		"project_id", event.ProjectID,

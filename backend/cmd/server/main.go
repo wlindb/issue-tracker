@@ -16,10 +16,10 @@ import (
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/nats-io/nats.go"
 
 	"github.com/wlindb/issue-tracker/internal/api"
-	"github.com/wlindb/issue-tracker/internal/application/notification"
-	applicationtracker "github.com/wlindb/issue-tracker/internal/application/tracker"
+	"github.com/wlindb/issue-tracker/internal/application/embedding"
 	"github.com/wlindb/issue-tracker/internal/config"
 	commentdomain "github.com/wlindb/issue-tracker/internal/domain/tracker/comment"
 	"github.com/wlindb/issue-tracker/internal/domain/tracker/issue"
@@ -39,26 +39,16 @@ func main() {
 
 func run() error {
 	ctx := context.Background()
-
 	cfg, err := config.Load()
 	if err != nil {
 		return fmt.Errorf("config: %w", err)
 	}
 
-	otelShutdown, err := telemetry.Setup(ctx, telemetry.Config{
-		ServiceName: cfg.OTELServiceName,
-	})
+	otelCloser, err := newOtel(ctx, *cfg)
 	if err != nil {
-		return fmt.Errorf("telemetry: %w", err)
+		return fmt.Errorf("create otel: %w", err)
 	}
-	defer func() {
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		if err := otelShutdown(shutdownCtx); err != nil {
-			log.Printf("telemetry shutdown: %v", err)
-		}
-	}()
-	log.Println("telemetry initialised")
+	defer otelCloser()
 
 	// Run migrations as the superuser before creating the restricted app pool.
 	// Migrations may create roles (e.g. appuser) that the app pool depends on.
@@ -71,7 +61,6 @@ func run() error {
 		return fmt.Errorf("tracker migrate: %w", err)
 	}
 	migrationPool.Close()
-	log.Println("tracker migrations applied")
 
 	pool, err := db.New(ctx, cfg.DatabaseURL,
 		db.WithAppSessionVars(
@@ -84,31 +73,18 @@ func run() error {
 		return fmt.Errorf("database: %w", err)
 	}
 	defer pool.Close()
-	log.Println("database connected")
 
 	tracer := otel.Tracer(cfg.OTELServiceName)
 
-	natsServer, err := embeddednats.StartEmbeddedServer()
+	natsConnection, natsCloser, err := newNATSConnection()
 	if err != nil {
-		return fmt.Errorf("embedded nats: %w", err)
+		return fmt.Errorf("create nats connection: %w", err)
 	}
-	defer natsServer.Shutdown()
-	log.Println("embedded nats started")
+	defer natsCloser()
 
-	natsConnection, err := embeddednats.Connect(natsServer)
-	if err != nil {
-		return fmt.Errorf("nats connect: %w", err)
+	if _, err := embedding.NewEmbeddingHandler(embeddednats.NewNATSEventSubscriber[issue.IssueCreatedEvent](natsConnection, embeddednats.IssueCreatedSubject)); err != nil {
+		return fmt.Errorf("create event publisher: %w", err)
 	}
-	defer natsConnection.Close()
-	log.Println("nats connected")
-
-	subscriber := embeddednats.NewNATSEventSubscriber[issue.IssueCreatedEvent](natsConnection, embeddednats.IssueCreatedSubject)
-	notification.NewNotificationHandler(subscriber)
-	// issueCreatedHandler := applicationtracker.NewIssueCreatedHandler()
-	if err := subscriber.Subscribe(issueCreatedHandler.Handler); err != nil {
-		return fmt.Errorf("nats subscribe issue created: %w", err)
-	}
-	log.Println("nats issue created consumer subscribed")
 
 	if err := trackerinfra.NewEventPublisher(natsConnection); err != nil {
 		return fmt.Errorf("create event publisher: %w", err)
@@ -139,6 +115,43 @@ func run() error {
 		return fmt.Errorf("server: %w", err)
 	}
 	return nil
+}
+
+func newOtel(ctx context.Context, cfg config.Config) (func(), error) {
+	var zero func()
+
+	otelShutdown, err := telemetry.Setup(ctx, telemetry.Config{
+		ServiceName: cfg.OTELServiceName,
+	})
+	if err != nil {
+		return zero, fmt.Errorf("telemetry: %w", err)
+	}
+	closer := func() {
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := otelShutdown(shutdownCtx); err != nil {
+			log.Printf("telemetry shutdown: %v", err)
+		}
+	}
+	return closer, nil
+}
+
+func newNATSConnection() (*nats.Conn, func(), error) {
+	var zero func()
+	natsServer, err := embeddednats.StartEmbeddedServer()
+	if err != nil {
+		return &nats.Conn{}, zero, fmt.Errorf("embedded nats: %w", err)
+	}
+
+	natsConnection, err := embeddednats.Connect(natsServer)
+	if err != nil {
+		return &nats.Conn{}, zero, fmt.Errorf("nats connect: %w", err)
+	}
+
+	return natsConnection, func() {
+		natsServer.Shutdown()
+		natsConnection.Close()
+	}, nil
 }
 
 func newHandler(pool *pgxpool.Pool, tracer trace.Tracer, workspaceService *workspacedomain.WorkspaceService) *api.Handler {
