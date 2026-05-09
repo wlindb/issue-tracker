@@ -1,7 +1,7 @@
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 import type { IssueStatus } from '@/api/generated/issueTrackerAPI'
-import { STATUS_LABEL } from './StatusIcon'
+import { STATUS_LABEL } from './statusLabel'
 
 const statusColors: Record<IssueStatus, string> = {
   in_progress: 'bg-blue-500/10 text-blue-600 dark:text-blue-400',

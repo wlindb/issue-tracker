@@ -16,14 +16,6 @@ const config: Record<IssueStatus, { icon: React.ElementType; className: string }
   cancelled: { icon: XCircleIcon, className: 'text-muted-foreground' },
 }
 
-export const STATUS_LABEL: Record<IssueStatus, string> = {
-  in_progress: 'In Progress',
-  todo: 'Todo',
-  backlog: 'Backlog',
-  done: 'Done',
-  cancelled: 'Cancelled',
-}
-
 interface StatusIconProps {
   status: IssueStatus
   className?: string

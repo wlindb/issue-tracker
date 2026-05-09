@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { ChevronDownIcon, ChevronRightIcon } from 'lucide-react'
 import type { IssueGroup } from '@/lib/groupIssuesByStatus'
-import { StatusIcon, STATUS_LABEL } from './StatusIcon'
+import { StatusIcon } from './StatusIcon'
+import { STATUS_LABEL } from './statusLabel'
 import { IssueRow } from './IssueRow'
 
 interface IssueGroupSectionProps {

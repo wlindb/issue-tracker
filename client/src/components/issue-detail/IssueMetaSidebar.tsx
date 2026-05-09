@@ -4,7 +4,8 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import type { Issue, IssuePriority, IssueStatus, User } from '@/api/generated/issueTrackerAPI'
 import { PriorityIcon } from '@/components/PriorityIcon'
-import { StatusIcon, STATUS_LABEL } from '@/components/StatusIcon'
+import { StatusIcon } from '@/components/StatusIcon'
+import { STATUS_LABEL } from '@/components/statusLabel'
 import { cn } from '@/lib/utils'
 
 const PRIORITY_LABEL: Record<IssuePriority, string> = {
