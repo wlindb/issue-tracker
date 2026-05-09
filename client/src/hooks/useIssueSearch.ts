@@ -26,8 +26,7 @@ export function useIssueSearch(issues: Issue[], query: string): UseIssueSearchRe
 
     return issues.filter(
       (issue) =>
-        issue.title.toLowerCase().includes(normalized) ||
-        issue.identifier.toLowerCase().includes(normalized),
+        issue.title.toLowerCase().includes(normalized),
     )
   }, [issues, debouncedQuery])
 
