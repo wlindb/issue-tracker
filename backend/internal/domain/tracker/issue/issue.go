@@ -172,3 +172,12 @@ func (i Issue) Unassign() Issue {
 	i.AssigneeID = nil
 	return i
 }
+
+func (i Issue) EmitCreated(ctx context.Context) error {
+	event := IssueCreatedEvent{OccurredAt: time.Now().UTC(), Payload: i}
+	if err := Created.Publish(ctx, event); err != nil {
+		return fmt.Errorf("issue emit created: %w", err)
+	}
+
+	return nil
+}

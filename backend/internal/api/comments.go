@@ -27,7 +27,7 @@ func NewCommentHandler(service CommentService) CommentHandler {
 }
 
 func (h *CommentHandler) ListComments(ctx context.Context, req model.ListCommentsRequestObject) (model.ListCommentsResponseObject, error) {
-	if _, err := userIDFromContext(ctx); err != nil {
+	if _, err := UserIDFromContext(ctx); err != nil {
 		return model.ListComments401JSONResponse{
 			UnauthorizedJSONResponse: newUnauthorized("unauthorized", "authentication required"),
 		}, nil
@@ -48,7 +48,7 @@ func (h *CommentHandler) ListComments(ctx context.Context, req model.ListComment
 }
 
 func (h *CommentHandler) CreateComment(ctx context.Context, req model.CreateCommentRequestObject) (model.CreateCommentResponseObject, error) {
-	userID, err := userIDFromContext(ctx)
+	userID, err := UserIDFromContext(ctx)
 	if err != nil {
 		return model.CreateComment401JSONResponse{
 			UnauthorizedJSONResponse: newUnauthorized("unauthorized", "authentication required"),
