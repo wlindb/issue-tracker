@@ -117,7 +117,7 @@ export function IssueDetailPage() {
   return (
     <div className="flex flex-col">
       <div className="mx-auto w-full max-w-5xl px-6 py-6">
-        <IssueBreadcrumbs project={project} issue={issue} />
+        <IssueBreadcrumbs project={project} />
 
         <div className="mt-6 flex gap-8">
           {/* Main content */}

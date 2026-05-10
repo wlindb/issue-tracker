@@ -18,12 +18,7 @@ export function ProjectCard({ project }: ProjectCardProps) {
     <Link to={`/projects/${project.id}`} className="block">
       <Card className="flex h-full flex-col transition-colors hover:bg-muted/40">
         <CardHeader className="pb-2">
-          <div className="flex items-center gap-2">
-            <CardTitle className="text-sm font-semibold">{project.name}</CardTitle>
-            <Badge variant="outline" className="ml-auto font-mono text-xs">
-              {project.identifier}
-            </Badge>
-          </div>
+          <CardTitle className="text-sm font-semibold">{project.name}</CardTitle>
         </CardHeader>
         <CardContent className="pb-3">
           <p className="line-clamp-2 text-sm text-muted-foreground">

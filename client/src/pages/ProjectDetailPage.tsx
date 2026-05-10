@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { PlusCircle } from 'lucide-react'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { IssueGroupSection } from '@/components/IssueGroupSection'
 import { CreateIssueForm } from '@/components/CreateIssueForm'
@@ -62,12 +61,7 @@ export function ProjectDetailPage() {
     <div className="flex flex-col">
       <div className="flex items-start justify-between border-b border-border px-6 py-4">
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-lg font-semibold">{project.name}</h1>
-            <Badge variant="outline" className="font-mono text-xs">
-              {project.identifier}
-            </Badge>
-          </div>
+          <h1 className="text-lg font-semibold">{project.name}</h1>
           <p className="mt-1 text-sm text-muted-foreground">{project.description}</p>
         </div>
         <Button
