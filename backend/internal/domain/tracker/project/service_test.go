@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/wlindb/issue-tracker/internal/domain/tracker/project"
+	"github.com/wlindb/issue-tracker/internal/pkg/domain/event"
 )
 
 type mockProjectRepository struct {
@@ -134,5 +135,54 @@ func Test_List_RepoError_ReturnsError(t *testing.T) {
 	_, err := service.List(context.Background(), query)
 	require.Error(t, err)
 	assert.ErrorIs(t, err, repoErr)
+	repository.AssertExpectations(t)
+}
+
+func Test_Create_SuccessfulPersistence_PublishesProjectCreatedEvent(t *testing.T) {
+	repository := &mockProjectRepository{}
+	service := project.NewProjectService(repository)
+
+	ownerID := uuid.New()
+	command := project.CreateProjectCommand{Name: "My Project", OwnerID: ownerID}
+	expected := project.Project{ID: uuid.New(), Identifier: "my-project", OwnerID: ownerID, Name: "My Project"}
+
+	var published []project.ProjectCreatedEvent
+	ctx := event.WithPublisher[project.ProjectCreatedEvent](context.Background(), func(_ context.Context, e project.ProjectCreatedEvent) error {
+		published = append(published, e)
+		return nil
+	})
+
+	repository.On("Create", mock.Anything, mock.MatchedBy(func(p project.Project) bool {
+		return p.Name == command.Name && p.OwnerID == command.OwnerID && p.Identifier != ""
+	})).Return(expected, nil)
+
+	actual, err := service.Create(ctx, command)
+	require.NoError(t, err)
+
+	require.Len(t, published, 1)
+	assert.Equal(t, expected, actual)
+	assert.Equal(t, expected, published[0].Payload)
+	repository.AssertExpectations(t)
+}
+
+func Test_Create_PublisherError_StillReturnsProject(t *testing.T) {
+	repository := &mockProjectRepository{}
+	service := project.NewProjectService(repository)
+
+	ownerID := uuid.New()
+	command := project.CreateProjectCommand{Name: "My Project", OwnerID: ownerID}
+	expected := project.Project{ID: uuid.New(), Identifier: "my-project", OwnerID: ownerID, Name: "My Project"}
+
+	ctx := event.WithPublisher[project.ProjectCreatedEvent](context.Background(), func(_ context.Context, _ project.ProjectCreatedEvent) error {
+		return errors.New("nats down")
+	})
+
+	repository.On("Create", mock.Anything, mock.MatchedBy(func(p project.Project) bool {
+		return p.Name == command.Name && p.OwnerID == command.OwnerID
+	})).Return(expected, nil)
+
+	actual, err := service.Create(ctx, command)
+	require.NoError(t, err)
+	assert.Equal(t, expected, actual)
 	repository.AssertExpectations(t)
 }
