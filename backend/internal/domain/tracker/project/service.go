@@ -3,6 +3,7 @@ package project
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
 	"github.com/google/uuid"
 )
@@ -23,6 +24,9 @@ func (s *ProjectService) Create(ctx context.Context, command CreateProjectComman
 	result, err := s.repository.Create(ctx, project)
 	if err != nil {
 		return Project{}, fmt.Errorf("create project: %w", err)
+	}
+	if err := result.EmitCreated(ctx); err != nil {
+		slog.Error("publish project created event", "error", err)
 	}
 	return result, nil
 }

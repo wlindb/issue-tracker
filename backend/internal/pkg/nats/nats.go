@@ -30,6 +30,12 @@ var IssueCreatedSubject = WorkspaceSubject{subject: "workspaces.%s.issues.create
 // IssueCreatedSubjectAll is the wildcard subject for internal consumers.
 const IssueCreatedSubjectAll = "workspaces.*.issues.created"
 
+// ProjectCreatedSubject is the workspace-scoped subject pattern for project created events.
+var ProjectCreatedSubject = WorkspaceSubject{subject: "workspaces.%s.projects.created"}
+
+// ProjectCreatedSubjectAll is the wildcard subject for internal consumers.
+const ProjectCreatedSubjectAll = "workspaces.*.projects.created"
+
 // ServerOption is a functional option applied to the embedded NATS server configuration.
 type ServerOption func(*natsserver.Options) error
 
