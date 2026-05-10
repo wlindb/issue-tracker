@@ -8,7 +8,7 @@ import (
 
 type ProjectCreatedEvent struct {
 	OccurredAt time.Time `json:"occurred_at"`
-	Payload    Project
+	Payload    Project   `json:"payload"`
 }
 
 var Created = event.New[ProjectCreatedEvent]()
