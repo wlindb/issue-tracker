@@ -7,6 +7,10 @@ import { NatsContext } from '@/context/NatsContext'
 
 const natsWsUrl = import.meta.env.VITE_NATS_WS_URL as string | undefined
 
+if (!natsWsUrl) {
+  console.warn('[NATS] VITE_NATS_WS_URL is not set — WebSocket connection disabled')
+}
+
 interface NatsProviderProps {
   children: React.ReactNode
 }
@@ -15,6 +19,7 @@ export function NatsProvider({ children }: NatsProviderProps) {
   const { keycloak } = useKeycloak()
   const { activeWorkspace } = useWorkspace()
   const [connection, setConnection] = useState<NatsConnection | null>(null)
+  const [error, setError] = useState<Error | null>(null)
   const connectionRef = useRef<NatsConnection | null>(null)
 
   useEffect(() => {
@@ -31,6 +36,9 @@ export function NatsProvider({ children }: NatsProviderProps) {
 
     const runConnection = async () => {
       try {
+        setError(null)
+        console.log('[NATS] connecting', { url: natsWsUrl, workspace: activeWorkspace.id })
+
         const nc = await connect({
           servers: natsWsUrl,
           user: activeWorkspace.id,
@@ -44,17 +52,26 @@ export function NatsProvider({ children }: NatsProviderProps) {
 
         connectionRef.current = nc
         setConnection(nc)
-        console.log('connected to ', nc.info)
+        console.log('[NATS] connected', nc.info)
 
-        // When the server closes the connection, clear state
-        await nc.closed()
+        const closeErr = await nc.closed()
         if (connectionRef.current === nc) {
           connectionRef.current = null
           setConnection(null)
         }
+        if (closeErr) {
+          console.error('[NATS] connection closed with error', closeErr)
+          if (!cancelled) {
+            setError(closeErr instanceof Error ? closeErr : new Error(String(closeErr)))
+          }
+        } else {
+          console.log('[NATS] connection closed cleanly')
+        }
       } catch (err: unknown) {
         if (!cancelled) {
-          console.error('NATS WebSocket connection failed', err)
+          const message = err instanceof Error ? err.message : String(err)
+          console.error('[NATS] connection failed', { url: natsWsUrl, workspace: activeWorkspace.id, error: message })
+          setError(err instanceof Error ? err : new Error(message))
         }
       }
     }
@@ -72,5 +89,5 @@ export function NatsProvider({ children }: NatsProviderProps) {
     }
   }, [activeWorkspace, keycloak.token])
 
-  return <NatsContext.Provider value={{ connection }}>{children}</NatsContext.Provider>
+  return <NatsContext.Provider value={{ connection, error }}>{children}</NatsContext.Provider>
 }
