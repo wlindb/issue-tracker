@@ -7,24 +7,27 @@ import { MyIssuesPage } from './pages/MyIssuesPage'
 import { ProjectDetailPage } from './pages/ProjectDetailPage'
 import { ProjectsPage } from './pages/ProjectsPage'
 import { WorkspaceProvider } from './context/WorkspaceProvider'
+import { NatsProvider } from './context/NatsProvider'
 import { WorkspaceGuard } from './layout/WorkspaceGuard'
 
 function App() {
   return (
     <WorkspaceProvider>
-      <Routes>
-        <Route path="/create-workspace" element={<CreateWorkspacePage />} />
-        <Route element={<WorkspaceGuard />}>
-          <Route element={<AppLayout />}>
-            <Route index element={<Navigate to="/my-issues" replace />} />
-            <Route path="/my-issues" element={<MyIssuesPage />} />
-            <Route path="/all-issues" element={<AllIssuesPage />} />
-            <Route path="/projects" element={<ProjectsPage />} />
-            <Route path="/projects/:projectId" element={<ProjectDetailPage />} />
-            <Route path="/issues/:issueId" element={<IssueDetailPage />} />
+      <NatsProvider>
+        <Routes>
+          <Route path="/create-workspace" element={<CreateWorkspacePage />} />
+          <Route element={<WorkspaceGuard />}>
+            <Route element={<AppLayout />}>
+              <Route index element={<Navigate to="/my-issues" replace />} />
+              <Route path="/my-issues" element={<MyIssuesPage />} />
+              <Route path="/all-issues" element={<AllIssuesPage />} />
+              <Route path="/projects" element={<ProjectsPage />} />
+              <Route path="/projects/:projectId" element={<ProjectDetailPage />} />
+              <Route path="/issues/:issueId" element={<IssueDetailPage />} />
+            </Route>
           </Route>
-        </Route>
-      </Routes>
+        </Routes>
+      </NatsProvider>
     </WorkspaceProvider>
   )
 }

@@ -8,6 +8,7 @@ import { useIssueSearch } from '@/hooks/useIssueSearch'
 import { cn } from '@/lib/utils'
 import { listProjects, listIssues, type Issue, type Project } from '@/api/generated/issueTrackerAPI'
 import { useWorkspace } from '@/context/WorkspaceContext'
+import { useIssueCreatedEvents } from '@/hooks/useIssueCreatedEvents'
 
 export function AllIssuesPage() {
   const [issues, setIssues] = useState<Issue[]>([])
@@ -18,6 +19,10 @@ export function AllIssuesPage() {
   const { activeWorkspace } = useWorkspace()
 
   const { results, isPending } = useIssueSearch(issues, query)
+
+  useIssueCreatedEvents((event) => {
+    console.log('issue created event:', event)
+  })
 
   useEffect(() => {
     if (!activeWorkspace) return

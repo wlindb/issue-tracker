@@ -82,7 +82,7 @@ func run() error {
 
 	tracer := otel.Tracer(cfg.OTELServiceName)
 
-	setup, err := newNATSConnection(cfg.NATSPort)
+	setup, err := newNATSConnection(cfg.NATSPort, cfg.NATSWebSocketPort)
 	if err != nil {
 		return fmt.Errorf("create nats connection: %w", err)
 	}
@@ -149,7 +149,7 @@ type natsSetup struct {
 	closer        func()
 }
 
-func newNATSConnection(natsPort int) (natsSetup, error) {
+func newNATSConnection(natsPort int, natsWebSocketPort int) (natsSetup, error) {
 	var zero natsSetup
 
 	issuerKeyPair, err := nkeys.CreateAccount()
@@ -173,6 +173,9 @@ func newNATSConnection(natsPort int) (natsSetup, error) {
 	}
 	if natsPort > 0 {
 		serverOptions = append(serverOptions, embeddednats.WithExternalPort(natsPort))
+	}
+	if natsWebSocketPort > 0 {
+		serverOptions = append(serverOptions, embeddednats.WithWebSocketPort(natsWebSocketPort))
 	}
 
 	natsServer, err := embeddednats.StartEmbeddedServer(serverOptions...)

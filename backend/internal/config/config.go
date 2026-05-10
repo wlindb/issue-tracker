@@ -14,6 +14,9 @@ type Config struct {
 	// NATSPort is the port the embedded NATS server listens on for external clients.
 	// 0 means loopback-only on a random port (internal use only).
 	NATSPort int
+	// NATSWebSocketPort is the port the embedded NATS server listens on for WebSocket clients.
+	// 0 means WebSocket is disabled.
+	NATSWebSocketPort int
 }
 
 func Load() (*Config, error) {
@@ -46,11 +49,21 @@ func Load() (*Config, error) {
 		natsPort = parsed
 	}
 
+	natsWebSocketPort := 0
+	if raw := os.Getenv("NATS_WEBSOCKET_PORT"); raw != "" {
+		parsed, err := strconv.Atoi(raw)
+		if err != nil {
+			return nil, fmt.Errorf("NATS_WEBSOCKET_PORT must be a valid integer: %w", err)
+		}
+		natsWebSocketPort = parsed
+	}
+
 	return &Config{
-		DatabaseURL:     databaseURL,
-		ServerAddr:      serverAddr,
-		JWKSUrl:         jwksURL,
-		OTELServiceName: serviceName,
-		NATSPort:        natsPort,
+		DatabaseURL:       databaseURL,
+		ServerAddr:        serverAddr,
+		JWKSUrl:           jwksURL,
+		OTELServiceName:   serviceName,
+		NATSPort:          natsPort,
+		NATSWebSocketPort: natsWebSocketPort,
 	}, nil
 }

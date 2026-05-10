@@ -91,6 +91,16 @@ func buildTestAuthRequest(t *testing.T, username, password string) (requestJWT s
 	return token, userPublicKey
 }
 
+// subscribeHandler subscribes to subject and flushes to guarantee the server has registered
+// the subscription before any requests are sent, preventing the "no responders" race.
+func subscribeHandler(t *testing.T, conn *natsgo.Conn, subject string, h func(*natsgo.Msg)) {
+	t.Helper()
+	subscription, err := conn.Subscribe(subject, h)
+	require.NoError(t, err)
+	require.NoError(t, conn.FlushTimeout(2*time.Second))
+	t.Cleanup(func() { _ = subscription.Unsubscribe() })
+}
+
 // sendAuthRequest publishes a raw auth request to subject and waits for the response.
 func sendAuthRequest(t *testing.T, connection *natsgo.Conn, subject string, requestJWT string) *natsgo.Msg {
 	t.Helper()
@@ -128,9 +138,7 @@ func Test_AuthCalloutHandler_Handle_ValidCredentials_RespondsWithSignedJWT(t *te
 	senderConn := connectToServer(t, server)
 
 	const testSubject = "test.auth.callout"
-	subscription, err := handlerConn.Subscribe(testSubject, handler.Handle)
-	require.NoError(t, err)
-	t.Cleanup(func() { _ = subscription.Unsubscribe() })
+	subscribeHandler(t, handlerConn, testSubject, handler.Handle)
 
 	requestJWT, userNKey := buildTestAuthRequest(t, workspaceID.String(), keycloakToken)
 	response := sendAuthRequest(t, senderConn, testSubject, requestJWT)
@@ -157,9 +165,7 @@ func Test_AuthCalloutHandler_Handle_InvalidWorkspaceID_RespondsWithError(t *test
 	senderConn := connectToServer(t, server)
 
 	const testSubject = "test.auth.callout"
-	subscription, err := handlerConn.Subscribe(testSubject, handler.Handle)
-	require.NoError(t, err)
-	t.Cleanup(func() { _ = subscription.Unsubscribe() })
+	subscribeHandler(t, handlerConn, testSubject, handler.Handle)
 
 	requestJWT, _ := buildTestAuthRequest(t, "not-a-uuid", "some.token")
 	response := sendAuthRequest(t, senderConn, testSubject, requestJWT)
@@ -178,9 +184,7 @@ func Test_AuthCalloutHandler_Handle_EmptyPassword_RespondsWithError(t *testing.T
 	senderConn := connectToServer(t, server)
 
 	const testSubject = "test.auth.callout"
-	subscription, err := handlerConn.Subscribe(testSubject, handler.Handle)
-	require.NoError(t, err)
-	t.Cleanup(func() { _ = subscription.Unsubscribe() })
+	subscribeHandler(t, handlerConn, testSubject, handler.Handle)
 
 	requestJWT, _ := buildTestAuthRequest(t, uuid.New().String(), "")
 	response := sendAuthRequest(t, senderConn, testSubject, requestJWT)
@@ -202,9 +206,7 @@ func Test_AuthCalloutHandler_Handle_InvalidJWT_RespondsWithError(t *testing.T) {
 	senderConn := connectToServer(t, server)
 
 	const testSubject = "test.auth.callout"
-	subscription, err := handlerConn.Subscribe(testSubject, handler.Handle)
-	require.NoError(t, err)
-	t.Cleanup(func() { _ = subscription.Unsubscribe() })
+	subscribeHandler(t, handlerConn, testSubject, handler.Handle)
 
 	requestJWT, _ := buildTestAuthRequest(t, uuid.New().String(), "bad.token")
 	response := sendAuthRequest(t, senderConn, testSubject, requestJWT)
@@ -233,9 +235,7 @@ func Test_AuthCalloutHandler_Handle_NotMember_RespondsWithError(t *testing.T) {
 	senderConn := connectToServer(t, server)
 
 	const testSubject = "test.auth.callout"
-	subscription, err := handlerConn.Subscribe(testSubject, handler.Handle)
-	require.NoError(t, err)
-	t.Cleanup(func() { _ = subscription.Unsubscribe() })
+	subscribeHandler(t, handlerConn, testSubject, handler.Handle)
 
 	requestJWT, _ := buildTestAuthRequest(t, workspaceID.String(), keycloakToken)
 	response := sendAuthRequest(t, senderConn, testSubject, requestJWT)
@@ -264,9 +264,7 @@ func Test_AuthCalloutHandler_Handle_MembershipCheckError_RespondsWithError(t *te
 	senderConn := connectToServer(t, server)
 
 	const testSubject = "test.auth.callout"
-	subscription, err := handlerConn.Subscribe(testSubject, handler.Handle)
-	require.NoError(t, err)
-	t.Cleanup(func() { _ = subscription.Unsubscribe() })
+	subscribeHandler(t, handlerConn, testSubject, handler.Handle)
 
 	requestJWT, _ := buildTestAuthRequest(t, workspaceID.String(), keycloakToken)
 	response := sendAuthRequest(t, senderConn, testSubject, requestJWT)
@@ -285,12 +283,10 @@ func Test_AuthCalloutHandler_Handle_MalformedAuthRequest_NoResponse(t *testing.T
 	senderConn := connectToServer(t, server)
 
 	const testSubject = "test.auth.callout"
-	subscription, err := handlerConn.Subscribe(testSubject, handler.Handle)
-	require.NoError(t, err)
-	t.Cleanup(func() { _ = subscription.Unsubscribe() })
+	subscribeHandler(t, handlerConn, testSubject, handler.Handle)
 
 	// Publish bad data (not a valid JWT) — handler must not panic; no response expected.
-	err = senderConn.Publish(testSubject, []byte("not-a-jwt"))
+	err := senderConn.Publish(testSubject, []byte("not-a-jwt"))
 	require.NoError(t, err)
 
 	// Give the handler time to process and ensure no panic.

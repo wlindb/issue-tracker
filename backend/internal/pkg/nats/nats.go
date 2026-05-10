@@ -65,6 +65,18 @@ func WithExternalPort(port int) ServerOption {
 	}
 }
 
+// WithWebSocketPort enables the WebSocket listener on all interfaces on the
+// given port. NoTLS is set to true so the listener accepts plain ws:// connections
+// (suitable for development or when TLS is terminated upstream).
+func WithWebSocketPort(port int) ServerOption {
+	return func(options *natsserver.Options) error {
+		options.Websocket.Host = "0.0.0.0"
+		options.Websocket.Port = port
+		options.Websocket.NoTLS = true
+		return nil
+	}
+}
+
 // WithInternalUser adds a named user to the server that can connect without
 // going through the auth callout. Use this together with WithAuthCallout by
 // listing the same username in AuthCalloutConfig.AuthUsers.
