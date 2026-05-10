@@ -45,6 +45,11 @@ type IssueCommentSubject struct {
 func (s IssueCommentSubject) Subject(workspaceID, issueID uuid.UUID) string {
 	return fmt.Sprintf(s.subject, workspaceID, issueID)
 }
+// ProjectCreatedSubject is the workspace-scoped subject pattern for project created events.
+var ProjectCreatedSubject = WorkspaceSubject{subject: "workspaces.%s.projects.created"}
+
+// ProjectCreatedSubjectAll is the wildcard subject for internal consumers.
+const ProjectCreatedSubjectAll = "workspaces.*.projects.created"
 
 // ServerOption is a functional option applied to the embedded NATS server configuration.
 type ServerOption func(*natsserver.Options) error

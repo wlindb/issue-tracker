@@ -10,6 +10,7 @@ import (
 	"github.com/wlindb/issue-tracker/internal/domain/tracker/comment"
 	"github.com/wlindb/issue-tracker/internal/domain/tracker/issue"
 	key "github.com/wlindb/issue-tracker/internal/pkg/context"
+	"github.com/wlindb/issue-tracker/internal/domain/tracker/project"
 	embeddednats "github.com/wlindb/issue-tracker/internal/pkg/nats"
 )
 
@@ -28,6 +29,13 @@ func NewEventPublisher(connection *nats.Conn) error {
 	)
 	if err := comment.Created.AddPublisher(commentPublisher.Publisher); err != nil {
 		return fmt.Errorf("comment created event publisher: %w", err)
+	}
+	projectPublisher := embeddednats.NewNATSEventPublisher[project.ProjectCreatedEvent](
+		connection,
+		embeddednats.ProjectCreatedSubject,
+	)
+	if err := project.Created.AddPublisher(projectPublisher.Publisher); err != nil {
+		return fmt.Errorf("project created event publisher: %w", err)
 	}
 
 	return nil
