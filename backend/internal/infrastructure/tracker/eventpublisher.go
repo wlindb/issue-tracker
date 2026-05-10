@@ -3,6 +3,7 @@ package tracker
 import (
 	"fmt"
 
+	"github.com/google/uuid"
 	"github.com/nats-io/nats.go"
 
 	"github.com/wlindb/issue-tracker/internal/domain/tracker/comment"
@@ -19,9 +20,10 @@ func NewEventPublisher(connection *nats.Conn) error {
 		return fmt.Errorf("issue created event publisher: %w", err)
 	}
 
-	commentPublisher := embeddednats.NewNATSEventPublisher[comment.CommentCreatedEvent](
+	commentPublisher := embeddednats.NewNATSIssueEventPublisher[comment.CommentCreatedEvent](
 		connection,
 		embeddednats.CommentCreatedSubject,
+		func(evt comment.CommentCreatedEvent) uuid.UUID { return evt.Payload.IssueID },
 	)
 	if err := comment.Created.AddPublisher(commentPublisher.Publisher); err != nil {
 		return fmt.Errorf("comment created event publisher: %w", err)
