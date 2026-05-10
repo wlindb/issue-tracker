@@ -1,21 +1,6 @@
-import Keycloak from 'keycloak-js'
-import { createContext, useContext, useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { keycloak } from '../keycloak'
-
-interface KeycloakContextValue {
-  keycloak: Keycloak
-  authenticated: boolean
-}
-
-const KeycloakContext = createContext<KeycloakContextValue | null>(null)
-
-export function useKeycloak(): KeycloakContextValue {
-  const context = useContext(KeycloakContext)
-  if (context === null) {
-    throw new Error('useKeycloak must be used within a KeycloakProvider')
-  }
-  return context
-}
+import { KeycloakContext } from './KeycloakContext'
 
 interface KeycloakProviderProps {
   children: React.ReactNode

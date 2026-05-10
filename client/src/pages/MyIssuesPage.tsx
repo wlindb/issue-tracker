@@ -3,7 +3,7 @@ import { IssueGroupSection } from '@/components/IssueGroupSection'
 import { groupIssuesByStatus } from '@/lib/groupIssuesByStatus'
 import { listProjects, listIssues, type Issue } from '@/api/generated/issueTrackerAPI'
 import { useWorkspace } from '@/context/WorkspaceContext'
-import { useKeycloak } from '@/auth/KeycloakProvider'
+import { useKeycloak } from '@/auth/useKeycloak'
 
 export function MyIssuesPage() {
   const [issues, setIssues] = useState<Issue[]>([])

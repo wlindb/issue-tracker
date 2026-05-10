@@ -20,7 +20,7 @@ import {
 } from '@/components/ui/sidebar'
 import { useTheme } from '@/context/ThemeContext'
 import { useWorkspace } from '@/context/WorkspaceContext'
-import { useKeycloak } from '@/auth/KeycloakProvider'
+import { useKeycloak } from '@/auth/useKeycloak'
 
 const navItems = [
   { to: '/my-issues', label: 'My Issues', icon: UserIcon },

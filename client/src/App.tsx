@@ -6,7 +6,7 @@ import { IssueDetailPage } from './pages/IssueDetailPage'
 import { MyIssuesPage } from './pages/MyIssuesPage'
 import { ProjectDetailPage } from './pages/ProjectDetailPage'
 import { ProjectsPage } from './pages/ProjectsPage'
-import { WorkspaceProvider } from './context/WorkspaceContext'
+import { WorkspaceProvider } from './context/WorkspaceProvider'
 import { WorkspaceGuard } from './layout/WorkspaceGuard'
 
 function App() {
