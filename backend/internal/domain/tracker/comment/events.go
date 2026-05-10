@@ -8,7 +8,7 @@ import (
 
 type CommentCreatedEvent struct {
 	OccurredAt time.Time `json:"occurred_at"`
-	Payload    Comment
+	Payload    Comment   `json:"payload"`
 }
 
 var Created = event.New[CommentCreatedEvent]()
