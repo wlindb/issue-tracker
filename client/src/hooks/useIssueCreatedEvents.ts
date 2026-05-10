@@ -38,7 +38,11 @@ export function useIssueCreatedEvents(onIssueCreated: (event: IssueCreatedEvent)
 
     const listen = async () => {
       for await (const msg of sub) {
-        onIssueCreatedRef.current(msg.json<IssueCreatedEvent>())
+        try {
+          onIssueCreatedRef.current(msg.json<IssueCreatedEvent>())
+        } catch (err) {
+          console.error('[NATS] failed to process issue.created message', err)
+        }
       }
     }
     void listen()

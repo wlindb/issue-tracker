@@ -3,6 +3,7 @@ import { createContext, useContext } from 'react'
 
 export interface NatsContextValue {
   connection: NatsConnection | null
+  error: Error | null
 }
 
 export const NatsContext = createContext<NatsContextValue | null>(null)
