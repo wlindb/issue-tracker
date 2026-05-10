@@ -43,24 +43,8 @@ func publish[T any](connection *natsgo.Conn, workspaceSubject WorkspaceSubject) 
 			span.SetStatus(codes.Error, "workspace ID missing from context")
 			return err
 		}
-		subject := workspaceSubject.Subject(workspaceID)
 
-		payload, err := json.Marshal(evt)
-		if err != nil {
-			span.RecordError(err)
-			span.SetStatus(codes.Error, "failed to marshal event")
-			return fmt.Errorf("publish to %s marshal: %w", subject, err)
-		}
-
-		msg := &natsgo.Msg{Subject: subject, Data: payload, Header: natsgo.Header{}}
-		otel.GetTextMapPropagator().Inject(ctx, natsHeaderCarrier(msg.Header))
-		if err := connection.PublishMsg(msg); err != nil {
-			span.RecordError(err)
-			span.SetStatus(codes.Error, "publish failed")
-			return fmt.Errorf("publish to %s publish: %w", subject, err)
-		}
-
-		return nil
+		return publishMsg(ctx, span, connection, workspaceSubject.Subject(workspaceID), evt)
 	}
 }
 
@@ -77,23 +61,26 @@ func publishIssueScoped[T any](connection *natsgo.Conn, issueSubject IssueCommen
 			span.SetStatus(codes.Error, "workspace ID missing from context")
 			return err
 		}
-		subject := issueSubject.Subject(workspaceID, extractIssueID(evt))
 
-		payload, err := json.Marshal(evt)
-		if err != nil {
-			span.RecordError(err)
-			span.SetStatus(codes.Error, "failed to marshal event")
-			return fmt.Errorf("publish to %s marshal: %w", subject, err)
-		}
-
-		msg := &natsgo.Msg{Subject: subject, Data: payload, Header: natsgo.Header{}}
-		otel.GetTextMapPropagator().Inject(ctx, natsHeaderCarrier(msg.Header))
-		if err := connection.PublishMsg(msg); err != nil {
-			span.RecordError(err)
-			span.SetStatus(codes.Error, "publish failed")
-			return fmt.Errorf("publish to %s publish: %w", subject, err)
-		}
-
-		return nil
+		return publishMsg(ctx, span, connection, issueSubject.Subject(workspaceID, extractIssueID(evt)), evt)
 	}
+}
+
+func publishMsg[T any](ctx context.Context, span trace.Span, connection *natsgo.Conn, subject string, evt T) error {
+	payload, err := json.Marshal(evt)
+	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to marshal event")
+		return fmt.Errorf("publish to %s marshal: %w", subject, err)
+	}
+
+	msg := &natsgo.Msg{Subject: subject, Data: payload, Header: natsgo.Header{}}
+	otel.GetTextMapPropagator().Inject(ctx, natsHeaderCarrier(msg.Header))
+	if err := connection.PublishMsg(msg); err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "publish failed")
+		return fmt.Errorf("publish to %s publish: %w", subject, err)
+	}
+
+	return nil
 }
