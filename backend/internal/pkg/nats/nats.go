@@ -30,11 +30,21 @@ var IssueCreatedSubject = WorkspaceSubject{subject: "workspaces.%s.issues.create
 // IssueCreatedSubjectAll is the wildcard subject for internal consumers.
 const IssueCreatedSubjectAll = "workspaces.*.issues.created"
 
-// CommentCreatedSubject is the workspace-scoped subject pattern for comment created events.
-var CommentCreatedSubject = WorkspaceSubject{subject: "workspaces.%s.comments.created"}
+// CommentCreatedSubject is the workspace-and-issue-scoped subject pattern for comment created events.
+var CommentCreatedSubject = IssueCommentSubject{subject: "workspaces.%s.issues.%s.comments.created"}
 
 // CommentCreatedSubjectAll is the wildcard subject for internal consumers.
-const CommentCreatedSubjectAll = "workspaces.*.comments.created"
+const CommentCreatedSubjectAll = "workspaces.*.issues.*.comments.created"
+
+// IssueCommentSubject builds workspace-and-issue-scoped NATS subjects from a format pattern.
+type IssueCommentSubject struct {
+	subject string
+}
+
+// Subject formats the NATS subject string for the given workspace and issue IDs.
+func (s IssueCommentSubject) Subject(workspaceID, issueID uuid.UUID) string {
+	return fmt.Sprintf(s.subject, workspaceID, issueID)
+}
 
 // ServerOption is a functional option applied to the embedded NATS server configuration.
 type ServerOption func(*natsserver.Options) error
