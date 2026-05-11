@@ -5,7 +5,7 @@ import { useKeycloak } from '@/auth/useKeycloak'
 import { useWorkspace } from '@/context/WorkspaceContext'
 import { NatsContext } from '@/context/NatsContext'
 
-const natsWsUrl = import.meta.env.VITE_NATS_WS_URL as string | undefined
+const natsWsUrl = import.meta.env.VITE_NATS_WS_URL ?? "ws://issuetracker-backend-tfakhm:4233"
 
 if (!natsWsUrl) {
   console.warn('[NATS] VITE_NATS_WS_URL is not set — WebSocket connection disabled')
