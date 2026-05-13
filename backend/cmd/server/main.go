@@ -182,6 +182,9 @@ func newNATSConnection(natsPort int, natsWebSocketPort int) (natsSetup, error) {
 	if err != nil {
 		return zero, fmt.Errorf("embedded nats: %w", err)
 	}
+	if natsWebSocketPort > 0 {
+		log.Printf("NATS WebSocket ready at %s", natsServer.WebsocketURL())
+	}
 
 	natsConnection, err := embeddednats.Connect(natsServer, nats.UserInfo(internalUser, internalPassword))
 	if err != nil {
