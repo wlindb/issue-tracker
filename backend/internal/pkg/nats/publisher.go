@@ -26,12 +26,12 @@ func NewNATSEventPublisher[T any](connection *natsgo.Conn, subject WorkspaceSubj
 
 // NewNATSIssueEventPublisher creates a publisher for events scoped to both a workspace and an issue.
 // extractIssueID is called on each event to obtain the issue ID used in the NATS subject.
-func NewNATSIssueEventPublisher[T any](connection *natsgo.Conn, subject IssueCommentSubject, extractIssueID func(T) uuid.UUID) *NATSEventPublisher[T] {
-	return &NATSEventPublisher[T]{connection: connection, Publisher: publishIssueScoped[T](connection, subject, extractIssueID)}
+func NewNATSIssueEventPublisher[T any](connection *natsgo.Conn, subjectResolver func(ctx context.Context, event T) (string, error)) *NATSEventPublisher[T] {
+	return &NATSEventPublisher[T]{connection: connection, Publisher: publishIssueScoped(connection, subjectResolver)}
 }
 
 func publish[T any](connection *natsgo.Conn, workspaceSubject WorkspaceSubject) event.Publisher[T] {
-	return func(ctx context.Context, evt T) error {
+	return func(ctx context.Context, event T) error {
 		tracer := otel.Tracer("nats-publisher")
 		ctx, span := tracer.Start(ctx, workspaceSubject.subject, trace.WithSpanKind(trace.SpanKindProducer))
 		defer span.End()
@@ -44,25 +44,25 @@ func publish[T any](connection *natsgo.Conn, workspaceSubject WorkspaceSubject) 
 			return err
 		}
 
-		return publishMsg(ctx, span, connection, workspaceSubject.Subject(workspaceID), evt)
+		return publishMsg(ctx, span, connection, workspaceSubject.Subject(workspaceID), event)
 	}
 }
 
-func publishIssueScoped[T any](connection *natsgo.Conn, issueSubject IssueCommentSubject, extractIssueID func(T) uuid.UUID) event.Publisher[T] {
-	return func(ctx context.Context, evt T) error {
+func publishIssueScoped[T any](connection *natsgo.Conn, subjectResolver func(ctx context.Context, event T) (string, error)) event.Publisher[T] {
+	return func(ctx context.Context, event T) error {
 		tracer := otel.Tracer("nats-publisher")
-		ctx, span := tracer.Start(ctx, issueSubject.subject, trace.WithSpanKind(trace.SpanKindProducer))
+		ctx, span := tracer.Start(ctx, "nats-publisher", trace.WithSpanKind(trace.SpanKindProducer))
 		defer span.End()
 
-		workspaceID, ok := ctx.Value(key.WorkspaceID).(uuid.UUID)
-		if !ok {
+		subject, err := subjectResolver(ctx, event)
+		if err != nil {
 			err := fmt.Errorf("publish: workspace ID missing from context")
 			span.RecordError(err)
 			span.SetStatus(codes.Error, "workspace ID missing from context")
 			return err
 		}
 
-		return publishMsg(ctx, span, connection, issueSubject.Subject(workspaceID, extractIssueID(evt)), evt)
+		return publishMsg(ctx, span, connection, subject, event)
 	}
 }
 

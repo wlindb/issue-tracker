@@ -80,8 +80,8 @@ var (
 
 // EmitCreated publishes a CommentCreatedEvent for this comment.
 func (c Comment) EmitCreated(ctx context.Context) error {
-	evt := CommentCreatedEvent{OccurredAt: time.Now().UTC(), Payload: c}
-	if err := Created.Publish(ctx, evt); err != nil {
+	event := CommentCreatedEvent{OccurredAt: time.Now().UTC(), Payload: c}
+	if err := Created.Publish(ctx, event); err != nil {
 		return fmt.Errorf("comment emit created: %w", err)
 	}
 	return nil
