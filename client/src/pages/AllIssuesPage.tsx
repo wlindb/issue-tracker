@@ -19,13 +19,20 @@ export function AllIssuesPage() {
   const { activeWorkspace } = useWorkspace()
 
   const { results, isPending } = useIssueSearch(issues, query)
-  const prependIfMissing = (nextIssue: Issue) =>
-    setIssues((previous) =>
-      previous.some((existing) => existing.id === nextIssue.id) ? previous : [nextIssue, ...previous]
-    )
+  const upsertIssue = (nextIssue: Issue) =>
+    setIssues((previous) => {
+      const existingIndex = previous.findIndex((existing) => existing.id === nextIssue.id)
+      if (existingIndex === -1) {
+        return [nextIssue, ...previous]
+      }
+
+      const updated = [...previous]
+      updated[existingIndex] = nextIssue
+      return updated
+    })
 
   useIssueCreatedEvents((event) => {
-    prependIfMissing(event.Payload)
+    upsertIssue(event.Payload)
   })
 
   useEffect(() => {
@@ -44,7 +51,7 @@ export function AllIssuesPage() {
   }, [activeWorkspace])
 
   function handleSave(issue: Issue) {
-    prependIfMissing(issue)
+    upsertIssue(issue)
     setCreating(false)
   }
 
