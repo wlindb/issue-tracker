@@ -1,21 +1,7 @@
 import { useEffect, useRef } from 'react'
+import { type Issue } from '@/api/generated/issueTrackerAPI'
 import { useNats } from '@/context/NatsContext'
 import { useWorkspace } from '@/context/WorkspaceContext'
-
-interface Issue {
-  ID: string
-  Identifier: string
-  Title: string
-  Description: string | null
-  Status: string
-  Priority: string
-  Labels: string[]
-  AssigneeID: string | null
-  ProjectID: string
-  ReporterID: string
-  CreatedAt: string
-  UpdatedAt: string
-}
 
 export interface IssueCreatedEvent {
   occurred_at: string

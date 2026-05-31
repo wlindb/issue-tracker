@@ -25,21 +25,7 @@ export function AllIssuesPage() {
     )
 
   useIssueCreatedEvents((event) => {
-    const issue: Issue = {
-      id: event.Payload.ID,
-      identifier: event.Payload.Identifier,
-      projectId: event.Payload.ProjectID,
-      title: event.Payload.Title,
-      description: event.Payload.Description,
-      status: event.Payload.Status as Issue['status'],
-      priority: event.Payload.Priority as Issue['priority'],
-      labels: event.Payload.Labels,
-      assigneeId: event.Payload.AssigneeID,
-      reporterId: event.Payload.ReporterID,
-      createdAt: event.Payload.CreatedAt,
-      updatedAt: event.Payload.UpdatedAt,
-    }
-    prependIfMissing(issue)
+    prependIfMissing(event.Payload)
   })
 
   useEffect(() => {
