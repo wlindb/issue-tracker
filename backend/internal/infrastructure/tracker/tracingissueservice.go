@@ -19,6 +19,7 @@ type issueServicer interface {
 	GetIssue(ctx context.Context, issueID uuid.UUID) (issuedomain.Issue, error)
 	UpdateIssueStatus(ctx context.Context, issueID uuid.UUID, status issuedomain.Status) (issuedomain.Issue, error)
 	UpdateIssueDescription(ctx context.Context, issueID uuid.UUID, description *string) (issuedomain.Issue, error)
+	UpdateIssueTitle(ctx context.Context, issueID uuid.UUID, title string) (issuedomain.Issue, error)
 	UpdateIssuePriority(ctx context.Context, issueID uuid.UUID, priority issuedomain.Priority) (issuedomain.Issue, error)
 	UpdateIssueAssignee(ctx context.Context, issueID uuid.UUID, assigneeID *uuid.UUID) (issuedomain.Issue, error)
 }
@@ -69,6 +70,19 @@ func (s *TracingIssueService) UpdateIssueDescription(ctx context.Context, issueI
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
 		return issuedomain.Issue{}, fmt.Errorf("update issue description: %w", err)
+	}
+	return issue, nil
+}
+
+func (s *TracingIssueService) UpdateIssueTitle(ctx context.Context, issueID uuid.UUID, title string) (issuedomain.Issue, error) {
+	ctx, span := s.tracer.Start(ctx, "tracker.IssueService.UpdateIssueTitle")
+	defer span.End()
+
+	issue, err := s.inner.UpdateIssueTitle(ctx, issueID, title)
+	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+		return issuedomain.Issue{}, fmt.Errorf("update issue title: %w", err)
 	}
 	return issue, nil
 }

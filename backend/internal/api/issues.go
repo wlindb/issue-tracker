@@ -25,6 +25,7 @@ type IssueService interface {
 	GetIssue(ctx context.Context, issueID uuid.UUID) (issuedomain.Issue, error)
 	UpdateIssueStatus(ctx context.Context, issueID uuid.UUID, status issuedomain.Status) (issuedomain.Issue, error)
 	UpdateIssueDescription(ctx context.Context, issueID uuid.UUID, description *string) (issuedomain.Issue, error)
+	UpdateIssueTitle(ctx context.Context, issueID uuid.UUID, title string) (issuedomain.Issue, error)
 	UpdateIssuePriority(ctx context.Context, issueID uuid.UUID, priority issuedomain.Priority) (issuedomain.Issue, error)
 	UpdateIssueAssignee(ctx context.Context, issueID uuid.UUID, assigneeID *uuid.UUID) (issuedomain.Issue, error)
 }
@@ -117,8 +118,27 @@ func (h *Handler) GetIssue(ctx context.Context, req model.GetIssueRequestObject)
 	return model.GetIssue200JSONResponse(issueFromDomain(issue)), nil
 }
 
-func (h *Handler) UpdateIssueTitle(_ context.Context, _ model.UpdateIssueTitleRequestObject) (model.UpdateIssueTitleResponseObject, error) {
-	return model.UpdateIssueTitle500JSONResponse{InternalServerErrorJSONResponse: model.InternalServerErrorJSONResponse(notImplemented())}, nil
+func (h *Handler) UpdateIssueTitle(ctx context.Context, req model.UpdateIssueTitleRequestObject) (model.UpdateIssueTitleResponseObject, error) {
+	if _, err := UserIDFromContext(ctx); err != nil {
+		return model.UpdateIssueTitle401JSONResponse{
+			UnauthorizedJSONResponse: newUnauthorized("unauthorized", "authentication required"),
+		}, nil
+	}
+	if req.Body == nil || req.Body.Title == "" {
+		return model.UpdateIssueTitle400JSONResponse{
+			BadRequestJSONResponse: newBadRequest("invalid_input", "title is required"),
+		}, nil
+	}
+	issue, err := h.IssueHandler.service.UpdateIssueTitle(ctx, req.IssueId, req.Body.Title)
+	if errors.Is(err, ErrIssueNotFound) {
+		return model.UpdateIssueTitle404JSONResponse{
+			NotFoundJSONResponse: newNotFound("not_found", "issue not found"),
+		}, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("update issue title: %w", err)
+	}
+	return model.UpdateIssueTitle200JSONResponse(issueFromDomain(issue)), nil
 }
 
 func (h *Handler) UpdateIssueDescription(ctx context.Context, req model.UpdateIssueDescriptionRequestObject) (model.UpdateIssueDescriptionResponseObject, error) {

@@ -20,7 +20,8 @@ WHERE id = @id
 
 -- name: UpdateIssue :one
 UPDATE issues
-SET description = @description,
+SET title       = @title,
+    description = @description,
     status      = @status,
     priority    = @priority,
     assignee_id = @assignee_id,

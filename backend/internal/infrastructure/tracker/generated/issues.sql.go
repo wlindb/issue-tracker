@@ -149,17 +149,19 @@ func (q *Queries) ListIssues(ctx context.Context, arg ListIssuesParams) ([]Issue
 
 const updateIssue = `-- name: UpdateIssue :one
 UPDATE issues
-SET description = $1,
-    status      = $2,
-    priority    = $3,
-    assignee_id = $4,
+SET title       = $1,
+    description = $2,
+    status      = $3,
+    priority    = $4,
+    assignee_id = $5,
     updated_at  = NOW()
-WHERE id = $5
-  AND updated_at = $6
+WHERE id = $6
+  AND updated_at = $7
 RETURNING id, identifier, title, description, status, priority, labels, assignee_id, project_id, reporter_id, created_at, updated_at, workspace_id
 `
 
 type UpdateIssueParams struct {
+	Title       string
 	Description pgtype.Text
 	Status      string
 	Priority    string
@@ -170,6 +172,7 @@ type UpdateIssueParams struct {
 
 func (q *Queries) UpdateIssue(ctx context.Context, arg UpdateIssueParams) (Issue, error) {
 	row := q.db.QueryRow(ctx, updateIssue,
+		arg.Title,
 		arg.Description,
 		arg.Status,
 		arg.Priority,
