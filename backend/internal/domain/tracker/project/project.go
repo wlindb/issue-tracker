@@ -3,6 +3,7 @@ package project
 import (
 	"context"
 	"errors"
+	"fmt"
 	"regexp"
 	"strings"
 	"time"
@@ -106,3 +107,12 @@ var (
 	ErrProjectNotFound = errors.New("project not found")
 	ErrInvalidProject  = errors.New("invalid project")
 )
+
+// EmitCreated publishes a ProjectCreatedEvent for this project.
+func (p Project) EmitCreated(ctx context.Context) error {
+	event := ProjectCreatedEvent{OccurredAt: time.Now().UTC(), Payload: p}
+	if err := Created.Publish(ctx, event); err != nil {
+		return fmt.Errorf("project emit created: %w", err)
+	}
+	return nil
+}
