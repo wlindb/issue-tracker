@@ -118,6 +118,20 @@ func Test_UpdateIssueDescription_Integration_Returns200(t *testing.T) {
 	assert.Equal(t, "updated via integration test", *actual.Description)
 }
 
+func Test_UpdateIssueDescription_Integration_IssueNotFound_Returns422(t *testing.T) {
+	f := setupIssueFixture(t)
+	e := newIssueIntegrationServer(t, f)
+
+	nonExistentID := uuid.New()
+	body := `{"description":"should not work"}`
+	req := httptest.NewRequest(http.MethodPut, wsPath("/issues/"+nonExistentID.String()+"/description"), strings.NewReader(body))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusUnprocessableEntity, rec.Code)
+}
+
 // — UpdateIssueTitle integration —
 
 func Test_UpdateIssueTitle_Integration_Returns200(t *testing.T) {
