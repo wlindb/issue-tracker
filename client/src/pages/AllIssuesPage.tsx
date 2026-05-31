@@ -19,6 +19,10 @@ export function AllIssuesPage() {
   const { activeWorkspace } = useWorkspace()
 
   const { results, isPending } = useIssueSearch(issues, query)
+  const prependIfMissing = (nextIssue: Issue) =>
+    setIssues((previous) =>
+      previous.some((existing) => existing.id === nextIssue.id) ? previous : [nextIssue, ...previous]
+    )
 
   useIssueCreatedEvents((event) => {
     const issue: Issue = {
@@ -35,7 +39,7 @@ export function AllIssuesPage() {
       createdAt: event.Payload.CreatedAt,
       updatedAt: event.Payload.UpdatedAt,
     }
-    setIssues((previous) => (previous.some((existing) => existing.id === issue.id) ? previous : [issue, ...previous]))
+    prependIfMissing(issue)
   })
 
   useEffect(() => {
@@ -54,7 +58,7 @@ export function AllIssuesPage() {
   }, [activeWorkspace])
 
   function handleSave(issue: Issue) {
-    setIssues((previous) => (previous.some((existing) => existing.id === issue.id) ? previous : [issue, ...previous]))
+    prependIfMissing(issue)
     setCreating(false)
   }
 
