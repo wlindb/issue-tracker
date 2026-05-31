@@ -3,6 +3,7 @@ package comment
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
 	"github.com/google/uuid"
 )
@@ -22,6 +23,9 @@ func (s *CommentService) Create(ctx context.Context, comment Comment) (*Comment,
 	result, err := s.repository.Create(ctx, comment)
 	if err != nil {
 		return nil, fmt.Errorf("create comment: %w", err)
+	}
+	if err := result.EmitCreated(ctx); err != nil {
+		slog.Error("publish comment created event", "error", err)
 	}
 	return &result, nil
 }

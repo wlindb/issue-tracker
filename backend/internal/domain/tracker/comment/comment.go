@@ -3,6 +3,7 @@ package comment
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -76,3 +77,12 @@ var (
 	ErrIssueNotFound  = errors.New("issue not found")
 	ErrInvalidComment = errors.New("invalid comment")
 )
+
+// EmitCreated publishes a CommentCreatedEvent for this comment.
+func (c Comment) EmitCreated(ctx context.Context) error {
+	event := CommentCreatedEvent{OccurredAt: time.Now().UTC(), Payload: c}
+	if err := Created.Publish(ctx, event); err != nil {
+		return fmt.Errorf("comment emit created: %w", err)
+	}
+	return nil
+}

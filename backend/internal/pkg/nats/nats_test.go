@@ -2,6 +2,7 @@ package embeddednats_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"testing"
 	"time"
@@ -43,7 +44,7 @@ func Test_NATSEventPublisher_Publish_WorkspaceIDInContext_PublishesToWorkspaceSc
 	})
 	require.NoError(t, err)
 
-	publisher := embeddednats.NewNATSEventPublisher[testEvent](connection, embeddednats.IssueCreatedSubject)
+	publisher := embeddednats.NewNATSEventPublisher(connection, workspaceReturningSubjectResolver{})
 	ctx := context.WithValue(context.Background(), key.WorkspaceID, workspaceID)
 
 	err = publisher.Publisher(ctx, testEvent{Name: "test"})
@@ -66,7 +67,7 @@ func Test_NATSEventPublisher_Publish_MissingWorkspaceID_ReturnsError(t *testing.
 	require.NoError(t, err)
 	t.Cleanup(connection.Close)
 
-	publisher := embeddednats.NewNATSEventPublisher[testEvent](connection, embeddednats.IssueCreatedSubject)
+	publisher := embeddednats.NewNATSEventPublisher(connection, workspaceMissingSubjectResolver{})
 
 	err = publisher.Publisher(context.Background(), testEvent{Name: "test"})
 
@@ -75,4 +76,25 @@ func Test_NATSEventPublisher_Publish_MissingWorkspaceID_ReturnsError(t *testing.
 
 type testEvent struct {
 	Name string `json:"name"`
+}
+
+func workspaceID(ctx context.Context) (uuid.UUID, error) {
+	workspaceID, ok := ctx.Value(key.WorkspaceID).(uuid.UUID)
+	if !ok {
+		return uuid.UUID{}, fmt.Errorf("workspace ID missing from context")
+	}
+	return workspaceID, nil
+}
+
+type workspaceReturningSubjectResolver struct{}
+
+func (workspaceReturningSubjectResolver) Resolve(ctx context.Context, _ testEvent) (string, error) {
+	workspaceID, err := workspaceID(ctx)
+	return embeddednats.IssueCreatedSubject.Subject(workspaceID), err
+}
+
+type workspaceMissingSubjectResolver struct{}
+
+func (workspaceMissingSubjectResolver) Resolve(_ context.Context, _ testEvent) (string, error) {
+	return "", errors.New("mocked workspace ID missing from context")
 }
