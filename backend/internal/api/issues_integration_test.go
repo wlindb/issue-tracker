@@ -165,6 +165,20 @@ func Test_UpdateIssueTitle_Integration_EmptyTitle_Returns400(t *testing.T) {
 	require.Equal(t, http.StatusBadRequest, rec.Code)
 }
 
+func Test_UpdateIssueTitle_Integration_IssueNotFound_Returns404(t *testing.T) {
+	f := setupIssueFixture(t)
+	e := newIssueIntegrationServer(t, f)
+
+	nonExistentID := uuid.New()
+	body := `{"title":"should not work"}`
+	req := httptest.NewRequest(http.MethodPut, wsPath("/issues/"+nonExistentID.String()+"/title"), strings.NewReader(body))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusNotFound, rec.Code)
+}
+
 // — UpdateIssuePriority integration —
 
 func Test_UpdateIssuePriority_Integration_Returns200(t *testing.T) {

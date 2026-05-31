@@ -11,16 +11,14 @@ import (
 	issuedomain "github.com/wlindb/issue-tracker/internal/domain/tracker/issue"
 )
 
-// isIssueNotFound returns true when the error chain contains either the API-level
-// or domain-level "issue not found" sentinel.
+// isIssueNotFound returns true when the error chain contains the domain "issue not found" sentinel.
 func isIssueNotFound(err error) bool {
-	return errors.Is(err, ErrIssueNotFound) || errors.Is(err, issuedomain.ErrIssueNotFound)
+	return errors.Is(err, issuedomain.ErrIssueNotFound)
 }
 
 // Sentinel errors returned by IssueService implementations.
 var (
 	ErrIssueProjectNotFound = errors.New("issue: project not found")
-	ErrIssueNotFound        = errors.New("issue: not found")
 	ErrIssueUnprocessable   = errors.New("issue: unprocessable entity")
 )
 

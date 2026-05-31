@@ -561,7 +561,7 @@ func Test_UpdateIssueStatus_IssueNotFound_Returns422(t *testing.T) {
 	issueID := uuid.New()
 
 	service.On("UpdateIssueStatus", mock.Anything, issueID, issuedomain.StatusInProgress).
-		Return(nil, api.ErrIssueNotFound)
+		Return(nil, issuedomain.ErrIssueNotFound)
 
 	e := newIssueTestServer(t, service)
 	e.Use(injectUser(uuid.New()))
@@ -688,7 +688,7 @@ func Test_UpdateIssueDescription_IssueNotFound_Returns422(t *testing.T) {
 	issueID := uuid.New()
 
 	service.On("UpdateIssueDescription", mock.Anything, issueID, mock.Anything).
-		Return(nil, api.ErrIssueNotFound)
+		Return(nil, issuedomain.ErrIssueNotFound)
 
 	e := newIssueTestServer(t, service)
 	e.Use(injectUser(uuid.New()))
@@ -815,7 +815,7 @@ func Test_UpdateIssueTitle_IssueNotFound_Returns404(t *testing.T) {
 	issueID := uuid.New()
 
 	service.On("UpdateIssueTitle", mock.Anything, issueID, "updated title").
-		Return(nil, api.ErrIssueNotFound)
+		Return(nil, issuedomain.ErrIssueNotFound)
 
 	e := newIssueTestServer(t, service)
 	e.Use(injectUser(uuid.New()))
@@ -936,7 +936,7 @@ func Test_UpdateIssuePriority_IssueNotFound_Returns422(t *testing.T) {
 	issueID := uuid.New()
 
 	service.On("UpdateIssuePriority", mock.Anything, issueID, issuedomain.PriorityLow).
-		Return(issuedomain.Issue{}, api.ErrIssueNotFound)
+		Return(issuedomain.Issue{}, issuedomain.ErrIssueNotFound)
 
 	e := newIssueTestServer(t, service)
 	e.Use(injectUser(uuid.New()))
@@ -992,7 +992,7 @@ func Test_GetIssue_IssueNotFound_Returns404(t *testing.T) {
 	issueID := uuid.New()
 
 	service.On("GetIssue", mock.Anything, issueID).
-		Return(nil, api.ErrIssueNotFound)
+		Return(nil, issuedomain.ErrIssueNotFound)
 
 	e := newIssueTestServer(t, service)
 	e.Use(injectUser(uuid.New()))
@@ -1167,7 +1167,7 @@ func Test_UpdateIssueAssignee_IssueNotFound_Returns422(t *testing.T) {
 	issueID := uuid.New()
 	assigneeID := uuid.New()
 
-	service.On("UpdateIssueAssignee", mock.Anything, issueID, &assigneeID).Return(nil, api.ErrIssueNotFound)
+	service.On("UpdateIssueAssignee", mock.Anything, issueID, &assigneeID).Return(nil, issuedomain.ErrIssueNotFound)
 
 	e := newIssueTestServer(t, service)
 	e.Use(injectUser(uuid.New()))
