@@ -110,8 +110,8 @@ var (
 
 // EmitCreated publishes a ProjectCreatedEvent for this project.
 func (p Project) EmitCreated(ctx context.Context) error {
-	e := ProjectCreatedEvent{OccurredAt: time.Now().UTC(), Payload: p}
-	if err := Created.Publish(ctx, e); err != nil {
+	event := ProjectCreatedEvent{OccurredAt: time.Now().UTC(), Payload: p}
+	if err := Created.Publish(ctx, event); err != nil {
 		return fmt.Errorf("project emit created: %w", err)
 	}
 	return nil

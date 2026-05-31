@@ -45,6 +45,7 @@ type IssueCommentSubject struct {
 func (s IssueCommentSubject) Subject(workspaceID, issueID uuid.UUID) string {
 	return fmt.Sprintf(s.subject, workspaceID, issueID)
 }
+
 // ProjectCreatedSubject is the workspace-scoped subject pattern for project created events.
 var ProjectCreatedSubject = WorkspaceSubject{subject: "workspaces.%s.projects.created"}
 

@@ -9,8 +9,8 @@ import (
 
 	"github.com/wlindb/issue-tracker/internal/domain/tracker/comment"
 	"github.com/wlindb/issue-tracker/internal/domain/tracker/issue"
-	key "github.com/wlindb/issue-tracker/internal/pkg/context"
 	"github.com/wlindb/issue-tracker/internal/domain/tracker/project"
+	key "github.com/wlindb/issue-tracker/internal/pkg/context"
 	embeddednats "github.com/wlindb/issue-tracker/internal/pkg/nats"
 )
 
@@ -30,9 +30,10 @@ func NewEventPublisher(connection *nats.Conn) error {
 	if err := comment.Created.AddPublisher(commentPublisher.Publisher); err != nil {
 		return fmt.Errorf("comment created event publisher: %w", err)
 	}
-	projectPublisher := embeddednats.NewNATSEventPublisher[project.ProjectCreatedEvent](
+
+	projectPublisher := embeddednats.NewNATSEventPublisher(
 		connection,
-		embeddednats.ProjectCreatedSubject,
+		ProjectCreatedSubjectResolver{},
 	)
 	if err := project.Created.AddPublisher(projectPublisher.Publisher); err != nil {
 		return fmt.Errorf("project created event publisher: %w", err)
@@ -61,6 +62,17 @@ func (CommentCreatedSubjectResolver) Resolve(ctx context.Context, event comment.
 	}
 
 	return embeddednats.CommentCreatedSubject.Subject(workspaceID, event.Payload.IssueID), nil
+}
+
+type ProjectCreatedSubjectResolver struct{}
+
+func (ProjectCreatedSubjectResolver) Resolve(ctx context.Context, _ project.ProjectCreatedEvent) (string, error) {
+	workspaceID, err := workspaceID(ctx)
+	if err != nil {
+		return "", fmt.Errorf("issue created subject resolver: %w", err)
+	}
+
+	return embeddednats.ProjectCreatedSubject.Subject(workspaceID), nil
 }
 
 func workspaceID(ctx context.Context) (uuid.UUID, error) {
