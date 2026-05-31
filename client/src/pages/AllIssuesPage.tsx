@@ -21,7 +21,21 @@ export function AllIssuesPage() {
   const { results, isPending } = useIssueSearch(issues, query)
 
   useIssueCreatedEvents((event) => {
-    console.log('issue created event:', event)
+    const issue: Issue = {
+      id: event.Payload.ID,
+      identifier: event.Payload.Identifier,
+      projectId: event.Payload.ProjectID,
+      title: event.Payload.Title,
+      description: event.Payload.Description,
+      status: event.Payload.Status as Issue['status'],
+      priority: event.Payload.Priority as Issue['priority'],
+      labels: event.Payload.Labels,
+      assigneeId: event.Payload.AssigneeID,
+      reporterId: event.Payload.ReporterID,
+      createdAt: event.Payload.CreatedAt,
+      updatedAt: event.Payload.UpdatedAt,
+    }
+    setIssues((previous) => (previous.some((existing) => existing.id === issue.id) ? previous : [issue, ...previous]))
   })
 
   useEffect(() => {
@@ -40,7 +54,7 @@ export function AllIssuesPage() {
   }, [activeWorkspace])
 
   function handleSave(issue: Issue) {
-    setIssues([issue, ...issues])
+    setIssues((previous) => (previous.some((existing) => existing.id === issue.id) ? previous : [issue, ...previous]))
     setCreating(false)
   }
 
