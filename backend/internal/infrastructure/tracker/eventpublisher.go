@@ -14,28 +14,51 @@ import (
 )
 
 func NewEventPublisher(connection *nats.Conn) error {
-	issuePublisher := embeddednats.NewNATSEventPublisher[issue.IssueCreatedEvent](
+	issuePublisher := embeddednats.NewNATSEventPublisher(
 		connection,
-		embeddednats.IssueCreatedSubject,
+		IssueCreatedSubjectResolver{},
 	)
 	if err := issue.Created.AddPublisher(issuePublisher.Publisher); err != nil {
 		return fmt.Errorf("issue created event publisher: %w", err)
 	}
 
-	commentPublisher := embeddednats.NewNATSIssueEventPublisher(
+	commentPublisher := embeddednats.NewNATSEventPublisher(
 		connection,
-		func(ctx context.Context, event comment.CommentCreatedEvent) (string, error) {
-			workspaceID, ok := ctx.Value(key.WorkspaceID).(uuid.UUID)
-			if !ok {
-				return "", fmt.Errorf("comment created subject: workspace ID missing from context")
-			}
-
-			return embeddednats.CommentCreatedSubject.Subject(workspaceID, event.Payload.IssueID), nil
-		},
+		CommentCreatedSubjectResolver{},
 	)
 	if err := comment.Created.AddPublisher(commentPublisher.Publisher); err != nil {
 		return fmt.Errorf("comment created event publisher: %w", err)
 	}
 
 	return nil
+}
+
+type IssueCreatedSubjectResolver struct{}
+
+func (IssueCreatedSubjectResolver) Resolve(ctx context.Context, _ issue.IssueCreatedEvent) (string, error) {
+	workspaceID, err := workspaceID(ctx)
+	if err != nil {
+		return "", fmt.Errorf("issue created subject resolver: %w", err)
+	}
+
+	return embeddednats.IssueCreatedSubject.Subject(workspaceID), nil
+}
+
+type CommentCreatedSubjectResolver struct{}
+
+func (CommentCreatedSubjectResolver) Resolve(ctx context.Context, event comment.CommentCreatedEvent) (string, error) {
+	workspaceID, err := workspaceID(ctx)
+	if err != nil {
+		return "", fmt.Errorf("comment publisher subject resolver: %w", err)
+	}
+
+	return embeddednats.CommentCreatedSubject.Subject(workspaceID, event.Payload.IssueID), nil
+}
+
+func workspaceID(ctx context.Context) (uuid.UUID, error) {
+	workspaceID, ok := ctx.Value(key.WorkspaceID).(uuid.UUID)
+	if !ok {
+		return uuid.UUID{}, fmt.Errorf("workspace ID missing from context")
+	}
+	return workspaceID, nil
 }
