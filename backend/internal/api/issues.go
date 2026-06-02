@@ -11,7 +11,6 @@ import (
 	issuedomain "github.com/wlindb/issue-tracker/internal/domain/tracker/issue"
 )
 
-
 // Sentinel errors returned by IssueService implementations.
 var (
 	ErrIssueProjectNotFound = errors.New("issue: project not found")
