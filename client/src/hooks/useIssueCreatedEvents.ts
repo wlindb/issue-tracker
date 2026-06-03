@@ -3,9 +3,46 @@ import { type Issue } from '@/api/generated/issueTrackerAPI'
 import { useNats } from '@/context/NatsContext'
 import { useWorkspace } from '@/context/WorkspaceContext'
 
+interface EventIssue {
+  ID: string
+  Identifier: string
+  Title: string
+  Description: string | null
+  Status: string
+  Priority: string
+  Labels: string[]
+  AssigneeID: string | null
+  ProjectID: string
+  ReporterID: string
+  CreatedAt: string
+  UpdatedAt: string
+}
+
 export interface IssueCreatedEvent {
   occurred_at: string
   Payload: Issue
+}
+
+export interface ApiIssueCreatedEvent {
+  occurred_at: string
+  Payload: EventIssue
+}
+
+function toIssue(raw: EventIssue): Issue {
+  return {
+    id: raw.ID,
+    identifier: raw.Identifier,
+    title: raw.Title,
+    description: raw.Description,
+    status: raw.Status as Issue['status'],
+    priority: raw.Priority as Issue['priority'],
+    labels: raw.Labels,
+    assigneeId: raw.AssigneeID,
+    projectId: raw.ProjectID,
+    reporterId: raw.ReporterID,
+    createdAt: raw.CreatedAt,
+    updatedAt: raw.UpdatedAt,
+  }
 }
 
 export function useIssueCreatedEvents(onIssueCreated: (event: IssueCreatedEvent) => void) {
@@ -25,7 +62,8 @@ export function useIssueCreatedEvents(onIssueCreated: (event: IssueCreatedEvent)
     const listen = async () => {
       for await (const msg of sub) {
         try {
-          onIssueCreatedRef.current(msg.json<IssueCreatedEvent>())
+          const raw = msg.json<ApiIssueCreatedEvent>()
+          onIssueCreatedRef.current({ occurred_at: raw.occurred_at, Payload: toIssue(raw.Payload) })
         } catch (err) {
           console.error('[NATS] failed to process issue.created message', err)
         }
