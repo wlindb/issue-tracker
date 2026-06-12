@@ -111,6 +111,7 @@ func updateIssueParamsFromDomain(issue issuedomain.Issue) trackerdb.UpdateIssueP
 
 	return trackerdb.UpdateIssueParams{
 		ID:          issue.ID,
+		Title:       issue.Title,
 		Description: description,
 		Status:      string(issue.Status),
 		Priority:    string(issue.Priority),

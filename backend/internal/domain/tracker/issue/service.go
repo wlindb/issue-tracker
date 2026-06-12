@@ -87,6 +87,23 @@ func (s *IssueService) UpdateIssueDescription(ctx context.Context, issueID uuid.
 	return result, nil
 }
 
+// UpdateIssueTitle updates the title of an issue.
+func (s *IssueService) UpdateIssueTitle(ctx context.Context, issueID uuid.UUID, title string) (Issue, error) {
+	current, err := s.repository.GetIssue(ctx, issueID)
+	if err != nil {
+		return Issue{}, fmt.Errorf("update issue title: %w", err)
+	}
+	updated, err := current.UpdateTitle(title)
+	if err != nil {
+		return Issue{}, fmt.Errorf("update issue title: %w", err)
+	}
+	result, err := s.repository.Update(ctx, updated)
+	if err != nil {
+		return Issue{}, fmt.Errorf("update issue title: %w", err)
+	}
+	return result, nil
+}
+
 // UpdateIssuePriority updates the priority of an issue.
 func (s *IssueService) UpdateIssuePriority(ctx context.Context, issueID uuid.UUID, priority Priority) (Issue, error) {
 	current, err := s.repository.GetIssue(ctx, issueID)

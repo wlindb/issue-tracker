@@ -387,3 +387,58 @@ func Test_CreateCommentParamsFromDomain_MapsCorrectly(t *testing.T) {
 	assert.Equal(t, authorID, actual.AuthorID)
 	assert.Equal(t, issueID, actual.IssueID)
 }
+
+// — UpdateIssueParamsFromDomain tests —
+
+func Test_UpdateIssueParamsFromDomain_NoOptionalFields_MapsCorrectly(t *testing.T) {
+	issueID := uuid.New()
+	now := time.Now().UTC()
+	domainIssue := issuedomain.Issue{
+		ID:        issueID,
+		Title:     "Test issue",
+		Status:    issuedomain.StatusInProgress,
+		Priority:  issuedomain.PriorityHigh,
+		Labels:    []string{},
+		UpdatedAt: now,
+	}
+
+	actual := updateIssueParamsFromDomain(domainIssue)
+
+	assert.Equal(t, issueID, actual.ID)
+	assert.Equal(t, "Test issue", actual.Title)
+	assert.False(t, actual.Description.Valid)
+	assert.Equal(t, "in_progress", actual.Status)
+	assert.Equal(t, "high", actual.Priority)
+	assert.False(t, actual.AssigneeID.Valid)
+	assert.Equal(t, now, actual.UpdatedAt.Time)
+	assert.True(t, actual.UpdatedAt.Valid)
+}
+
+func Test_UpdateIssueParamsFromDomain_WithOptionalFields_MapsCorrectly(t *testing.T) {
+	issueID := uuid.New()
+	assigneeID := uuid.New()
+	description := "updated description"
+	now := time.Now().UTC()
+	domainIssue := issuedomain.Issue{
+		ID:          issueID,
+		Title:       "Updated title",
+		Description: &description,
+		Status:      issuedomain.StatusDone,
+		Priority:    issuedomain.PriorityUrgent,
+		Labels:      []string{"backend"},
+		AssigneeID:  &assigneeID,
+		UpdatedAt:   now,
+	}
+
+	actual := updateIssueParamsFromDomain(domainIssue)
+
+	assert.Equal(t, issueID, actual.ID)
+	assert.Equal(t, "Updated title", actual.Title)
+	assert.True(t, actual.Description.Valid)
+	assert.Equal(t, description, actual.Description.String)
+	assert.Equal(t, "done", actual.Status)
+	assert.Equal(t, "urgent", actual.Priority)
+	assert.True(t, actual.AssigneeID.Valid)
+	assert.Equal(t, assigneeID, uuid.UUID(actual.AssigneeID.Bytes))
+	assert.Equal(t, now, actual.UpdatedAt.Time)
+}

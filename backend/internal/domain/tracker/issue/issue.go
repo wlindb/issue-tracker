@@ -141,6 +141,16 @@ func (i Issue) UpdateDescription(description *string) (Issue, error) {
 	return i, nil
 }
 
+// UpdateTitle returns a copy of the issue with the title set to the given value.
+// Returns ErrInvalidIssue if the title is empty.
+func (i Issue) UpdateTitle(title string) (Issue, error) {
+	if title == "" {
+		return Issue{}, fmt.Errorf("%w: title must not be empty", ErrInvalidIssue)
+	}
+	i.Title = title
+	return i, nil
+}
+
 // UpdatePriority returns a copy of the issue with the priority set to the given value.
 // Returns ErrInvalidIssue if priority is not a known value.
 func (i Issue) UpdatePriority(priority Priority) (Issue, error) {

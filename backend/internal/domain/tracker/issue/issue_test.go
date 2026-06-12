@@ -139,6 +139,36 @@ func Test_Priority_Valid_UnknownValue_ReturnFalse(t *testing.T) {
 
 // — Issue.UpdateDescription —
 
+// — Issue.UpdateTitle —
+
+func Test_UpdateTitle_ValidTitle_SetsTitle(t *testing.T) {
+	base := baseIssue()
+
+	actual, err := base.UpdateTitle("new title")
+
+	require.NoError(t, err)
+	assert.Equal(t, "new title", actual.Title)
+}
+
+func Test_UpdateTitle_EmptyTitle_ReturnsError(t *testing.T) {
+	base := baseIssue()
+
+	_, err := base.UpdateTitle("")
+
+	require.Error(t, err)
+	assert.ErrorIs(t, err, issue.ErrInvalidIssue)
+}
+
+func Test_UpdateTitle_ValidTitle_OriginalUnchanged(t *testing.T) {
+	base := baseIssue()
+	originalTitle := base.Title
+
+	_, err := base.UpdateTitle("changed title")
+
+	require.NoError(t, err)
+	assert.Equal(t, originalTitle, base.Title)
+}
+
 func Test_UpdateDescription_NonNilValue_SetsDescription(t *testing.T) {
 	base := baseIssue()
 	desc := "new description"

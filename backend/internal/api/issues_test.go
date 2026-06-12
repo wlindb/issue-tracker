@@ -53,6 +53,14 @@ func (m *mockIssueService) UpdateIssueDescription(ctx context.Context, issueID u
 	return issuedomain.Issue{}, args.Error(1)
 }
 
+func (m *mockIssueService) UpdateIssueTitle(ctx context.Context, issueID uuid.UUID, title string) (issuedomain.Issue, error) {
+	args := m.Called(ctx, issueID, title)
+	if issue, ok := args.Get(0).(issuedomain.Issue); ok {
+		return issue, args.Error(1)
+	}
+	return issuedomain.Issue{}, args.Error(1)
+}
+
 func (m *mockIssueService) GetIssue(ctx context.Context, issueID uuid.UUID) (issuedomain.Issue, error) {
 	args := m.Called(ctx, issueID)
 	if issue, ok := args.Get(0).(issuedomain.Issue); ok {
@@ -553,7 +561,7 @@ func Test_UpdateIssueStatus_IssueNotFound_Returns422(t *testing.T) {
 	issueID := uuid.New()
 
 	service.On("UpdateIssueStatus", mock.Anything, issueID, issuedomain.StatusInProgress).
-		Return(nil, api.ErrIssueNotFound)
+		Return(nil, issuedomain.ErrIssueNotFound)
 
 	e := newIssueTestServer(t, service)
 	e.Use(injectUser(uuid.New()))
@@ -680,7 +688,7 @@ func Test_UpdateIssueDescription_IssueNotFound_Returns422(t *testing.T) {
 	issueID := uuid.New()
 
 	service.On("UpdateIssueDescription", mock.Anything, issueID, mock.Anything).
-		Return(nil, api.ErrIssueNotFound)
+		Return(nil, issuedomain.ErrIssueNotFound)
 
 	e := newIssueTestServer(t, service)
 	e.Use(injectUser(uuid.New()))
@@ -729,6 +737,133 @@ func Test_UpdateIssueDescription_MissingBody_Returns400(t *testing.T) {
 
 	require.Equal(t, http.StatusBadRequest, rec.Code)
 	service.AssertNotCalled(t, "UpdateIssueDescription")
+}
+
+// — UpdateIssueTitle —
+
+func Test_UpdateIssueTitle_NoUserID_Returns401(t *testing.T) {
+	service := &mockIssueService{}
+	issueID := uuid.New()
+
+	e := newIssueTestServer(t, service)
+
+	body := `{"title":"updated title"}`
+	req := httptest.NewRequest(http.MethodPut, wsPath("/issues/"+issueID.String()+"/title"), strings.NewReader(body))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusUnauthorized, rec.Code)
+	service.AssertNotCalled(t, "UpdateIssueTitle")
+}
+
+func Test_UpdateIssueTitle_ValidRequest_Returns200(t *testing.T) {
+	service := &mockIssueService{}
+	issueID := uuid.New()
+	title := "updated title"
+	now := time.Now().UTC()
+
+	service.On("UpdateIssueTitle", mock.Anything, issueID, title).
+		Return(issuedomain.Issue{
+			ID:         issueID,
+			Identifier: "PROJ-1",
+			Title:      title,
+			Status:     issuedomain.StatusTodo,
+			Priority:   issuedomain.PriorityNone,
+			Labels:     []string{},
+			ProjectID:  uuid.New(),
+			ReporterID: uuid.New(),
+			CreatedAt:  now,
+			UpdatedAt:  now,
+		}, nil)
+
+	e := newIssueTestServer(t, service)
+	e.Use(injectUser(uuid.New()))
+
+	body := fmt.Sprintf(`{"title":"%s"}`, title)
+	req := httptest.NewRequest(http.MethodPut, wsPath("/issues/"+issueID.String()+"/title"), strings.NewReader(body))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusOK, rec.Code)
+	var actual model.Issue
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &actual))
+	assert.Equal(t, title, actual.Title)
+	service.AssertExpectations(t)
+}
+
+func Test_UpdateIssueTitle_EmptyTitle_Returns400(t *testing.T) {
+	service := &mockIssueService{}
+	issueID := uuid.New()
+
+	e := newIssueTestServer(t, service)
+	e.Use(injectUser(uuid.New()))
+
+	body := `{"title":""}`
+	req := httptest.NewRequest(http.MethodPut, wsPath("/issues/"+issueID.String()+"/title"), strings.NewReader(body))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusBadRequest, rec.Code)
+	service.AssertNotCalled(t, "UpdateIssueTitle")
+}
+
+func Test_UpdateIssueTitle_IssueNotFound_Returns404(t *testing.T) {
+	service := &mockIssueService{}
+	issueID := uuid.New()
+
+	service.On("UpdateIssueTitle", mock.Anything, issueID, "updated title").
+		Return(nil, issuedomain.ErrIssueNotFound)
+
+	e := newIssueTestServer(t, service)
+	e.Use(injectUser(uuid.New()))
+
+	body := `{"title":"updated title"}`
+	req := httptest.NewRequest(http.MethodPut, wsPath("/issues/"+issueID.String()+"/title"), strings.NewReader(body))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusNotFound, rec.Code)
+	service.AssertExpectations(t)
+}
+
+func Test_UpdateIssueTitle_ServiceError_Returns500(t *testing.T) {
+	service := &mockIssueService{}
+	issueID := uuid.New()
+
+	service.On("UpdateIssueTitle", mock.Anything, issueID, "updated title").
+		Return(nil, errors.New("db down"))
+
+	e := newIssueTestServer(t, service)
+	e.Use(injectUser(uuid.New()))
+
+	body := `{"title":"updated title"}`
+	req := httptest.NewRequest(http.MethodPut, wsPath("/issues/"+issueID.String()+"/title"), strings.NewReader(body))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusInternalServerError, rec.Code)
+	service.AssertExpectations(t)
+}
+
+func Test_UpdateIssueTitle_MissingBody_Returns400(t *testing.T) {
+	service := &mockIssueService{}
+	issueID := uuid.New()
+
+	e := newIssueTestServer(t, service)
+	e.Use(injectUser(uuid.New()))
+
+	req := httptest.NewRequest(http.MethodPut, wsPath("/issues/"+issueID.String()+"/title"), strings.NewReader(`not valid json`))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusBadRequest, rec.Code)
+	service.AssertNotCalled(t, "UpdateIssueTitle")
 }
 
 // — UpdateIssuePriority —
@@ -801,7 +936,7 @@ func Test_UpdateIssuePriority_IssueNotFound_Returns422(t *testing.T) {
 	issueID := uuid.New()
 
 	service.On("UpdateIssuePriority", mock.Anything, issueID, issuedomain.PriorityLow).
-		Return(issuedomain.Issue{}, api.ErrIssueNotFound)
+		Return(issuedomain.Issue{}, issuedomain.ErrIssueNotFound)
 
 	e := newIssueTestServer(t, service)
 	e.Use(injectUser(uuid.New()))
@@ -857,7 +992,7 @@ func Test_GetIssue_IssueNotFound_Returns404(t *testing.T) {
 	issueID := uuid.New()
 
 	service.On("GetIssue", mock.Anything, issueID).
-		Return(nil, api.ErrIssueNotFound)
+		Return(nil, issuedomain.ErrIssueNotFound)
 
 	e := newIssueTestServer(t, service)
 	e.Use(injectUser(uuid.New()))
@@ -1032,7 +1167,7 @@ func Test_UpdateIssueAssignee_IssueNotFound_Returns422(t *testing.T) {
 	issueID := uuid.New()
 	assigneeID := uuid.New()
 
-	service.On("UpdateIssueAssignee", mock.Anything, issueID, &assigneeID).Return(nil, api.ErrIssueNotFound)
+	service.On("UpdateIssueAssignee", mock.Anything, issueID, &assigneeID).Return(nil, issuedomain.ErrIssueNotFound)
 
 	e := newIssueTestServer(t, service)
 	e.Use(injectUser(uuid.New()))

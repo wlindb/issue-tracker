@@ -14,7 +14,6 @@ import (
 // Sentinel errors returned by IssueService implementations.
 var (
 	ErrIssueProjectNotFound = errors.New("issue: project not found")
-	ErrIssueNotFound        = errors.New("issue: not found")
 	ErrIssueUnprocessable   = errors.New("issue: unprocessable entity")
 )
 
@@ -25,6 +24,7 @@ type IssueService interface {
 	GetIssue(ctx context.Context, issueID uuid.UUID) (issuedomain.Issue, error)
 	UpdateIssueStatus(ctx context.Context, issueID uuid.UUID, status issuedomain.Status) (issuedomain.Issue, error)
 	UpdateIssueDescription(ctx context.Context, issueID uuid.UUID, description *string) (issuedomain.Issue, error)
+	UpdateIssueTitle(ctx context.Context, issueID uuid.UUID, title string) (issuedomain.Issue, error)
 	UpdateIssuePriority(ctx context.Context, issueID uuid.UUID, priority issuedomain.Priority) (issuedomain.Issue, error)
 	UpdateIssueAssignee(ctx context.Context, issueID uuid.UUID, assigneeID *uuid.UUID) (issuedomain.Issue, error)
 }
@@ -106,7 +106,7 @@ func (h *Handler) GetIssue(ctx context.Context, req model.GetIssueRequestObject)
 		}, nil
 	}
 	issue, err := h.IssueHandler.service.GetIssue(ctx, req.IssueId)
-	if errors.Is(err, ErrIssueNotFound) {
+	if errors.Is(err, issuedomain.ErrIssueNotFound) {
 		return model.GetIssue404JSONResponse{
 			NotFoundJSONResponse: newNotFound("not_found", "issue not found"),
 		}, nil
@@ -117,8 +117,27 @@ func (h *Handler) GetIssue(ctx context.Context, req model.GetIssueRequestObject)
 	return model.GetIssue200JSONResponse(issueFromDomain(issue)), nil
 }
 
-func (h *Handler) UpdateIssueTitle(_ context.Context, _ model.UpdateIssueTitleRequestObject) (model.UpdateIssueTitleResponseObject, error) {
-	return model.UpdateIssueTitle500JSONResponse{InternalServerErrorJSONResponse: model.InternalServerErrorJSONResponse(notImplemented())}, nil
+func (h *Handler) UpdateIssueTitle(ctx context.Context, req model.UpdateIssueTitleRequestObject) (model.UpdateIssueTitleResponseObject, error) {
+	if _, err := UserIDFromContext(ctx); err != nil {
+		return model.UpdateIssueTitle401JSONResponse{
+			UnauthorizedJSONResponse: newUnauthorized("unauthorized", "authentication required"),
+		}, nil
+	}
+	if req.Body == nil || req.Body.Title == "" {
+		return model.UpdateIssueTitle400JSONResponse{
+			BadRequestJSONResponse: newBadRequest("invalid_input", "title is required"),
+		}, nil
+	}
+	issue, err := h.IssueHandler.service.UpdateIssueTitle(ctx, req.IssueId, req.Body.Title)
+	if errors.Is(err, issuedomain.ErrIssueNotFound) {
+		return model.UpdateIssueTitle404JSONResponse{
+			NotFoundJSONResponse: newNotFound("not_found", "issue not found"),
+		}, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("update issue title: %w", err)
+	}
+	return model.UpdateIssueTitle200JSONResponse(issueFromDomain(issue)), nil
 }
 
 func (h *Handler) UpdateIssueDescription(ctx context.Context, req model.UpdateIssueDescriptionRequestObject) (model.UpdateIssueDescriptionResponseObject, error) {
@@ -128,7 +147,7 @@ func (h *Handler) UpdateIssueDescription(ctx context.Context, req model.UpdateIs
 		}, nil
 	}
 	issue, err := h.IssueHandler.service.UpdateIssueDescription(ctx, req.IssueId, req.Body.Description)
-	if errors.Is(err, ErrIssueNotFound) {
+	if errors.Is(err, issuedomain.ErrIssueNotFound) {
 		return model.UpdateIssueDescription422JSONResponse{
 			UnprocessableEntityJSONResponse: newUnprocessable("unprocessable_entity", "issue not found"),
 		}, nil
@@ -151,7 +170,7 @@ func (h *Handler) UpdateIssueStatus(ctx context.Context, req model.UpdateIssueSt
 		}, nil
 	}
 	issue, err := h.IssueHandler.service.UpdateIssueStatus(ctx, req.IssueId, issuedomain.Status(req.Body.Status))
-	if errors.Is(err, ErrIssueNotFound) {
+	if errors.Is(err, issuedomain.ErrIssueNotFound) {
 		return model.UpdateIssueStatus422JSONResponse{
 			UnprocessableEntityJSONResponse: newUnprocessable("not_found", "issue not found"),
 		}, nil
@@ -174,7 +193,7 @@ func (h *Handler) UpdateIssuePriority(ctx context.Context, req model.UpdateIssue
 		}, nil
 	}
 	issue, err := h.IssueHandler.service.UpdateIssuePriority(ctx, req.IssueId, issuedomain.Priority(req.Body.Priority))
-	if errors.Is(err, ErrIssueNotFound) {
+	if errors.Is(err, issuedomain.ErrIssueNotFound) {
 		return model.UpdateIssuePriority422JSONResponse{
 			UnprocessableEntityJSONResponse: newUnprocessable("unprocessable_entity", "issue not found"),
 		}, nil
@@ -192,7 +211,7 @@ func (h *Handler) UpdateIssueAssignee(ctx context.Context, req model.UpdateIssue
 		}, nil
 	}
 	issue, err := h.IssueHandler.service.UpdateIssueAssignee(ctx, req.IssueId, req.Body.AssigneeId)
-	if errors.Is(err, ErrIssueNotFound) {
+	if errors.Is(err, issuedomain.ErrIssueNotFound) {
 		return model.UpdateIssueAssignee422JSONResponse{
 			UnprocessableEntityJSONResponse: newUnprocessable("unprocessable_entity", "issue not found"),
 		}, nil
