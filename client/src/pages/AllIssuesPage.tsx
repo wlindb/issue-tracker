@@ -19,9 +19,20 @@ export function AllIssuesPage() {
   const { activeWorkspace } = useWorkspace()
 
   const { results, isPending } = useIssueSearch(issues, query)
+  const upsertIssue = (nextIssue: Issue) =>
+    setIssues((previous) => {
+      const existingIndex = previous.findIndex((existing) => existing.id === nextIssue.id)
+      if (existingIndex === -1) {
+        return [nextIssue, ...previous]
+      }
+
+      const updated = [...previous]
+      updated[existingIndex] = nextIssue
+      return updated
+    })
 
   useIssueCreatedEvents((event) => {
-    console.log('issue created event:', event)
+    upsertIssue(event.Payload)
   })
 
   useEffect(() => {
@@ -40,7 +51,7 @@ export function AllIssuesPage() {
   }, [activeWorkspace])
 
   function handleSave(issue: Issue) {
-    setIssues([issue, ...issues])
+    upsertIssue(issue)
     setCreating(false)
   }
 
