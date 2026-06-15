@@ -67,6 +67,9 @@ func (s *IssueService) UpdateIssueAssignee(ctx context.Context, issueID uuid.UUI
 	if err != nil {
 		return Issue{}, fmt.Errorf("update issue assignee: %w", err)
 	}
+	if err := result.EmitAssigneeUpdated(ctx); err != nil {
+		slog.Error("publish issue assignee updated event", "error", err)
+	}
 	return result, nil
 }
 

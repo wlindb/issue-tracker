@@ -751,3 +751,67 @@ func Test_UpdateIssueStatus_PublisherError_StillReturnsIssue(t *testing.T) {
 	assert.Equal(t, returned, actual)
 	repository.AssertExpectations(t)
 }
+
+func Test_UpdateIssueAssignee_SuccessfulUpdate_PublishesIssueAssigneeUpdatedEvent(t *testing.T) {
+	repository := &mockIssueRepository{}
+	service := issue.NewIssueService(repository)
+
+	issueID := uuid.New()
+	assigneeID := uuid.New()
+	existing := issue.Issue{
+		ID:       issueID,
+		Title:    "Test issue",
+		Status:   issue.StatusTodo,
+		Priority: issue.PriorityNone,
+		Labels:   []string{},
+	}
+	returned := existing
+	returned.AssigneeID = &assigneeID
+
+	var published []issue.IssueAssigneeUpdatedEvent
+	ctx := event.WithPublisher[issue.IssueAssigneeUpdatedEvent](context.Background(), func(_ context.Context, e issue.IssueAssigneeUpdatedEvent) error {
+		published = append(published, e)
+		return nil
+	})
+
+	repository.On("GetIssue", mock.Anything, issueID).Return(existing, nil)
+	repository.On("Update", mock.Anything, mock.MatchedBy(func(i issue.Issue) bool {
+		return i.ID == issueID && i.AssigneeID != nil && *i.AssigneeID == assigneeID
+	})).Return(returned, nil)
+
+	actual, err := service.UpdateIssueAssignee(ctx, issueID, &assigneeID)
+	require.NoError(t, err)
+	require.Len(t, published, 1)
+	assert.Equal(t, returned, actual)
+	assert.Equal(t, returned, published[0].Payload)
+	repository.AssertExpectations(t)
+}
+
+func Test_UpdateIssueAssignee_PublisherError_StillReturnsIssue(t *testing.T) {
+	repository := &mockIssueRepository{}
+	service := issue.NewIssueService(repository)
+
+	issueID := uuid.New()
+	assigneeID := uuid.New()
+	existing := issue.Issue{
+		ID:       issueID,
+		Title:    "Test issue",
+		Status:   issue.StatusTodo,
+		Priority: issue.PriorityNone,
+		Labels:   []string{},
+	}
+	returned := existing
+	returned.AssigneeID = &assigneeID
+
+	ctx := event.WithPublisher[issue.IssueAssigneeUpdatedEvent](context.Background(), func(_ context.Context, _ issue.IssueAssigneeUpdatedEvent) error {
+		return errors.New("nats down")
+	})
+
+	repository.On("GetIssue", mock.Anything, issueID).Return(existing, nil)
+	repository.On("Update", mock.Anything, mock.Anything).Return(returned, nil)
+
+	actual, err := service.UpdateIssueAssignee(ctx, issueID, &assigneeID)
+	require.NoError(t, err)
+	assert.Equal(t, returned, actual)
+	repository.AssertExpectations(t)
+}

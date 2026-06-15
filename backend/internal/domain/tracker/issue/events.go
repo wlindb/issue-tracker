@@ -19,3 +19,10 @@ type IssueStatusUpdatedEvent struct {
 }
 
 var StatusUpdated = event.New[IssueStatusUpdatedEvent]()
+
+type IssueAssigneeUpdatedEvent struct {
+	OccurredAt time.Time `json:"occurred_at"`
+	Payload    Issue
+}
+
+var AssigneeUpdated = event.New[IssueAssigneeUpdatedEvent]()
