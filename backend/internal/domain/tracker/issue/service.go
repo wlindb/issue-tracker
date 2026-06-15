@@ -85,11 +85,23 @@ func (s *IssueService) UpdateIssueAssignee(ctx context.Context, issueID uuid.UUI
 	} else {
 		updated = current.Unassign()
 	}
-	result, err := s.repository.Update(ctx, updated)
-	if err != nil {
-		return Issue{}, fmt.Errorf("update issue assignee: %w", err)
+
+	var issue Issue
+	if err := s.unitOfWork.RunInTx(ctx, func(tx Repositories) error {
+		var err error
+		issue, err = tx.Issues.Update(ctx, updated)
+		if err != nil {
+			return fmt.Errorf("update issue assignee: %w", err)
+		}
+		if err := issue.EmitAssigneeUpdated(ctx); err != nil {
+			return fmt.Errorf("emit assignee updated: %w", err)
+		}
+
+		return nil
+	}); err != nil {
+		return Issue{}, fmt.Errorf("run in tx: %w", err)
 	}
-	return result, nil
+	return issue, nil
 }
 
 // UpdateIssueDescription updates the description of an issue.
