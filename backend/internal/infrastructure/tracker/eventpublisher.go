@@ -31,6 +31,14 @@ func NewEventPublisher(connection *nats.Conn) error {
 		return fmt.Errorf("issue status updated event publisher: %w", err)
 	}
 
+	titleUpdatedPublisher := embeddednats.NewNATSEventPublisher(
+		connection,
+		IssueTitleUpdatedSubjectResolver{},
+	)
+	if err := issue.TitleUpdated.AddPublisher(titleUpdatedPublisher.Publisher); err != nil {
+		return fmt.Errorf("issue title updated event publisher: %w", err)
+	}
+
 	commentPublisher := embeddednats.NewNATSEventPublisher(
 		connection,
 		CommentCreatedSubjectResolver{},
@@ -69,6 +77,16 @@ func (IssueStatusUpdatedSubjectResolver) Resolve(ctx context.Context, _ issue.Is
 		return "", fmt.Errorf("issue status updated subject resolver: %w", err)
 	}
 	return embeddednats.IssueStatusUpdatedSubject.Subject(workspaceID), nil
+}
+
+type IssueTitleUpdatedSubjectResolver struct{}
+
+func (IssueTitleUpdatedSubjectResolver) Resolve(ctx context.Context, _ issue.IssueTitleUpdatedEvent) (string, error) {
+	workspaceID, err := workspaceID(ctx)
+	if err != nil {
+		return "", fmt.Errorf("issue title updated subject resolver: %w", err)
+	}
+	return embeddednats.IssueTitleUpdatedSubject.Subject(workspaceID), nil
 }
 
 type CommentCreatedSubjectResolver struct{}

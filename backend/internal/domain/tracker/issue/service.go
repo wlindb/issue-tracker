@@ -101,6 +101,9 @@ func (s *IssueService) UpdateIssueTitle(ctx context.Context, issueID uuid.UUID, 
 	if err != nil {
 		return Issue{}, fmt.Errorf("update issue title: %w", err)
 	}
+	if err := result.EmitTitleUpdated(ctx); err != nil {
+		slog.Error("publish issue title updated event", "error", err)
+	}
 	return result, nil
 }
 
