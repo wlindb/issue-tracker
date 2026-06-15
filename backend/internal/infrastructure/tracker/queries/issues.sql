@@ -1,6 +1,6 @@
 -- name: CreateIssue :one
-INSERT INTO issues (id, identifier, title, description, status, priority, labels, assignee_id, project_id, reporter_id, workspace_id, created_at, updated_at)
-VALUES (@id, @identifier, @title, @description, @status, @priority, @labels, @assignee_id, @project_id, @reporter_id, current_setting('app.workspace_id')::uuid, NOW(), NOW())
+INSERT INTO issues (id, identifier, title, description, status, priority, assignee_id, project_id, reporter_id, workspace_id, created_at, updated_at)
+VALUES (@id, @identifier, @title, @description, @status, @priority, @assignee_id, @project_id, @reporter_id, current_setting('app.workspace_id')::uuid, NOW(), NOW())
 RETURNING *;
 
 -- name: ListIssues :many

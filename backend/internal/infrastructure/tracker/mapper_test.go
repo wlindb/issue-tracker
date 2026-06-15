@@ -109,7 +109,6 @@ func Test_IssueToDomain_NilOptionalFields_SetsNils(t *testing.T) {
 		Description: pgtype.Text{Valid: false},
 		Status:      "backlog",
 		Priority:    "none",
-		Labels:      []string{},
 		AssigneeID:  pgtype.UUID{Valid: false},
 		ProjectID:   projectID,
 		ReporterID:  reporterID,
@@ -117,7 +116,7 @@ func Test_IssueToDomain_NilOptionalFields_SetsNils(t *testing.T) {
 		UpdatedAt:   pgtype.Timestamptz{Time: now, Valid: true},
 	}
 
-	actual := issueToDomain(row)
+	actual := issueToDomain(row, []issuedomain.Label{})
 
 	require.NotNil(t, actual)
 	assert.Equal(t, issueID, actual.ID)
@@ -136,6 +135,7 @@ func Test_IssueToDomain_NilOptionalFields_SetsNils(t *testing.T) {
 
 func Test_IssueToDomain_WithOptionalFields_SetsValues(t *testing.T) {
 	assigneeID := uuid.New()
+	labelID := uuid.New()
 	description := "detailed description"
 	now := time.Now().UTC()
 	row := trackerdb.Issue{
@@ -145,15 +145,15 @@ func Test_IssueToDomain_WithOptionalFields_SetsValues(t *testing.T) {
 		Description: pgtype.Text{String: description, Valid: true},
 		Status:      "todo",
 		Priority:    "high",
-		Labels:      []string{"frontend", "urgent"},
 		AssigneeID:  pgtype.UUID{Bytes: assigneeID, Valid: true},
 		ProjectID:   uuid.New(),
 		ReporterID:  uuid.New(),
 		CreatedAt:   pgtype.Timestamptz{Time: now, Valid: true},
 		UpdatedAt:   pgtype.Timestamptz{Time: now, Valid: true},
 	}
+	labels := []issuedomain.Label{{ID: labelID, Name: "frontend"}}
 
-	actual := issueToDomain(row)
+	actual := issueToDomain(row, labels)
 
 	require.NotNil(t, actual.Description)
 	assert.Equal(t, description, *actual.Description)
@@ -161,53 +161,68 @@ func Test_IssueToDomain_WithOptionalFields_SetsValues(t *testing.T) {
 	assert.Equal(t, assigneeID, *actual.AssigneeID)
 	assert.Equal(t, issuedomain.StatusTodo, actual.Status)
 	assert.Equal(t, issuedomain.PriorityHigh, actual.Priority)
-	assert.Equal(t, []string{"frontend", "urgent"}, actual.Labels)
+	require.Len(t, actual.Labels, 1)
+	assert.Equal(t, labelID, actual.Labels[0].ID)
+	assert.Equal(t, "frontend", actual.Labels[0].Name)
 }
 
-func Test_IssuesToDomain_Empty_ReturnsEmptySlice(t *testing.T) {
-	actual := issuesToDomain([]trackerdb.Issue{})
-
-	assert.NotNil(t, actual)
-	assert.Empty(t, actual)
-}
-
-func Test_IssuesToDomain_MultipleRows_ReturnsMappedIssues(t *testing.T) {
+func Test_IssueToDomain_NilLabels_ReturnsEmptyLabels(t *testing.T) {
 	now := time.Now().UTC()
-	firstID, secondID := uuid.New(), uuid.New()
-	rows := []trackerdb.Issue{
-		{
-			ID:         firstID,
-			Identifier: "issue-a",
-			Title:      "Issue A",
-			Status:     "backlog",
-			Priority:   "low",
-			Labels:     []string{},
-			ProjectID:  uuid.New(),
-			ReporterID: uuid.New(),
-			CreatedAt:  pgtype.Timestamptz{Time: now, Valid: true},
-			UpdatedAt:  pgtype.Timestamptz{Time: now, Valid: true},
-		},
-		{
-			ID:         secondID,
-			Identifier: "issue-b",
-			Title:      "Issue B",
-			Status:     "done",
-			Priority:   "urgent",
-			Labels:     []string{"backend"},
-			ProjectID:  uuid.New(),
-			ReporterID: uuid.New(),
-			CreatedAt:  pgtype.Timestamptz{Time: now, Valid: true},
-			UpdatedAt:  pgtype.Timestamptz{Time: now, Valid: true},
-		},
+	row := trackerdb.Issue{
+		ID:         uuid.New(),
+		Status:     "todo",
+		Priority:   "none",
+		ProjectID:  uuid.New(),
+		ReporterID: uuid.New(),
+		CreatedAt:  pgtype.Timestamptz{Time: now, Valid: true},
+		UpdatedAt:  pgtype.Timestamptz{Time: now, Valid: true},
 	}
 
-	actual := issuesToDomain(rows)
+	actual := issueToDomain(row, nil)
+
+	assert.NotNil(t, actual.Labels)
+	assert.Empty(t, actual.Labels)
+}
+
+func Test_LabelsByIssueFromDB_GroupsByIssueID(t *testing.T) {
+	issueID1 := uuid.New()
+	issueID2 := uuid.New()
+	labelID1 := uuid.New()
+	labelID2 := uuid.New()
+	labelID3 := uuid.New()
+
+	rows := []trackerdb.ListLabelsByIssueIDsRow{
+		{IssueID: issueID1, ID: labelID1, Name: "bug"},
+		{IssueID: issueID1, ID: labelID2, Name: "frontend"},
+		{IssueID: issueID2, ID: labelID3, Name: "backend"},
+	}
+
+	actual := labelsByIssueFromDB(rows)
+
+	require.Len(t, actual[issueID1], 2)
+	assert.Equal(t, labelID1, actual[issueID1][0].ID)
+	assert.Equal(t, "bug", actual[issueID1][0].Name)
+	assert.Equal(t, labelID2, actual[issueID1][1].ID)
+	assert.Equal(t, "frontend", actual[issueID1][1].Name)
+	require.Len(t, actual[issueID2], 1)
+	assert.Equal(t, labelID3, actual[issueID2][0].ID)
+	assert.Equal(t, "backend", actual[issueID2][0].Name)
+}
+
+func Test_LabelsFromDB_MapsToLabelSlice(t *testing.T) {
+	id1, id2 := uuid.New(), uuid.New()
+	rows := []trackerdb.GetLabelsByIDsRow{
+		{ID: id1, Name: "bug"},
+		{ID: id2, Name: "feature"},
+	}
+
+	actual := labelsFromDB(rows)
 
 	require.Len(t, actual, 2)
-	assert.Equal(t, firstID, actual[0].ID)
-	assert.Equal(t, "Issue A", actual[0].Title)
-	assert.Equal(t, secondID, actual[1].ID)
-	assert.Equal(t, "Issue B", actual[1].Title)
+	assert.Equal(t, id1, actual[0].ID)
+	assert.Equal(t, "bug", actual[0].Name)
+	assert.Equal(t, id2, actual[1].ID)
+	assert.Equal(t, "feature", actual[1].Name)
 }
 
 // — CreateIssueParamsFromDomain tests —
@@ -222,7 +237,7 @@ func Test_CreateIssueParamsFromDomain_NoOptionalFields_MapsCorrectly(t *testing.
 		Title:      "Test issue",
 		Status:     issuedomain.StatusBacklog,
 		Priority:   issuedomain.PriorityNone,
-		Labels:     []string{},
+		Labels:     []issuedomain.Label{},
 		ProjectID:  projectID,
 		ReporterID: reporterID,
 	}
@@ -235,7 +250,6 @@ func Test_CreateIssueParamsFromDomain_NoOptionalFields_MapsCorrectly(t *testing.
 	assert.False(t, actual.Description.Valid)
 	assert.Equal(t, "backlog", actual.Status)
 	assert.Equal(t, "none", actual.Priority)
-	assert.Equal(t, []string{}, actual.Labels)
 	assert.False(t, actual.AssigneeID.Valid)
 	assert.Equal(t, projectID, actual.ProjectID)
 	assert.Equal(t, reporterID, actual.ReporterID)
@@ -252,7 +266,7 @@ func Test_CreateIssueParamsFromDomain_WithOptionalFields_MapsCorrectly(t *testin
 		Description: &description,
 		Status:      issuedomain.StatusInProgress,
 		Priority:    issuedomain.PriorityHigh,
-		Labels:      []string{"backend", "urgent"},
+		Labels:      []issuedomain.Label{{ID: uuid.New(), Name: "backend"}},
 		AssigneeID:  &assigneeID,
 		ProjectID:   uuid.New(),
 		ReporterID:  uuid.New(),
@@ -266,7 +280,6 @@ func Test_CreateIssueParamsFromDomain_WithOptionalFields_MapsCorrectly(t *testin
 	assert.Equal(t, assigneeID, uuid.UUID(actual.AssigneeID.Bytes))
 	assert.Equal(t, "in_progress", actual.Status)
 	assert.Equal(t, "high", actual.Priority)
-	assert.Equal(t, []string{"backend", "urgent"}, actual.Labels)
 }
 
 // — ListIssuesParamsFromDomain tests —
@@ -398,7 +411,7 @@ func Test_UpdateIssueParamsFromDomain_NoOptionalFields_MapsCorrectly(t *testing.
 		Title:     "Test issue",
 		Status:    issuedomain.StatusInProgress,
 		Priority:  issuedomain.PriorityHigh,
-		Labels:    []string{},
+		Labels:    []issuedomain.Label{},
 		UpdatedAt: now,
 	}
 
@@ -425,7 +438,7 @@ func Test_UpdateIssueParamsFromDomain_WithOptionalFields_MapsCorrectly(t *testin
 		Description: &description,
 		Status:      issuedomain.StatusDone,
 		Priority:    issuedomain.PriorityUrgent,
-		Labels:      []string{"backend"},
+		Labels:      []issuedomain.Label{{ID: uuid.New(), Name: "backend"}},
 		AssigneeID:  &assigneeID,
 		UpdatedAt:   now,
 	}
