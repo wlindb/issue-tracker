@@ -199,3 +199,11 @@ func (i Issue) EmitStatusUpdated(ctx context.Context) error {
 	}
 	return nil
 }
+
+func (i Issue) EmitDescriptionUpdated(ctx context.Context) error {
+	event := IssueDescriptionUpdatedEvent{OccurredAt: time.Now().UTC(), Payload: i}
+	if err := DescriptionUpdated.Publish(ctx, event); err != nil {
+		return fmt.Errorf("issue emit description updated: %w", err)
+	}
+	return nil
+}

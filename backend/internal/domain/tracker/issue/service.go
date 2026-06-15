@@ -84,6 +84,9 @@ func (s *IssueService) UpdateIssueDescription(ctx context.Context, issueID uuid.
 	if err != nil {
 		return Issue{}, fmt.Errorf("update issue description: %w", err)
 	}
+	if err := result.EmitDescriptionUpdated(ctx); err != nil {
+		slog.Error("publish issue description updated event", "error", err)
+	}
 	return result, nil
 }
 
