@@ -30,6 +30,12 @@ var IssueCreatedSubject = WorkspaceSubject{subject: "workspaces.%s.issues.create
 // IssueCreatedSubjectAll is the wildcard subject for internal consumers.
 const IssueCreatedSubjectAll = "workspaces.*.issues.created"
 
+// IssueStatusUpdatedSubject is the workspace-scoped subject pattern for issue status updated events.
+var IssueStatusUpdatedSubject = WorkspaceSubject{subject: "workspaces.%s.issues.status_updated"}
+
+// IssueStatusUpdatedSubjectAll is the wildcard subject for internal consumers.
+const IssueStatusUpdatedSubjectAll = "workspaces.*.issues.status_updated"
+
 // CommentCreatedSubject is the workspace-and-issue-scoped subject pattern for comment created events.
 var CommentCreatedSubject = IssueCommentSubject{subject: "workspaces.%s.issues.%s.comments.created"}
 

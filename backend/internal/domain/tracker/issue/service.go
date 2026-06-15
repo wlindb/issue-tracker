@@ -135,5 +135,8 @@ func (s *IssueService) UpdateIssueStatus(ctx context.Context, issueID uuid.UUID,
 	if err != nil {
 		return Issue{}, fmt.Errorf("update issue status: %w", err)
 	}
+	if err := result.EmitStatusUpdated(ctx); err != nil {
+		slog.Error("publish issue status updated event", "error", err)
+	}
 	return result, nil
 }
