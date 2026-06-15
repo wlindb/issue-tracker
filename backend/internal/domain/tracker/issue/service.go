@@ -118,6 +118,9 @@ func (s *IssueService) UpdateIssuePriority(ctx context.Context, issueID uuid.UUI
 	if err != nil {
 		return Issue{}, fmt.Errorf("update issue priority: %w", err)
 	}
+	if err := result.EmitPriorityUpdated(ctx); err != nil {
+		slog.Error("publish issue priority updated event", "error", err)
+	}
 	return result, nil
 }
 
