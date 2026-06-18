@@ -18,7 +18,23 @@ CREATE POLICY workspace_isolation ON issue_labels
 
 GRANT SELECT, INSERT, DELETE ON issue_labels TO appuser;
 
+CREATE OR REPLACE VIEW issue_with_labels
+WITH (security_invoker = on)
+AS
+SELECT
+    i.*,
+    COALESCE(lbl.labels, '[]'::jsonb) AS labels
+FROM issues i
+LEFT JOIN LATERAL (
+    SELECT jsonb_agg(l) AS labels
+    FROM issue_labels il
+    JOIN labels l
+      ON l.id = il.label_id
+    WHERE il.issue_id = i.id
+) lbl on true;
+
 -- +goose Down
 DROP POLICY IF EXISTS workspace_isolation ON issue_labels;
 ALTER TABLE issue_labels DISABLE ROW LEVEL SECURITY;
 DROP TABLE IF EXISTS issue_labels;
+DROP VIEW IF EXISTS issue_with_labels;

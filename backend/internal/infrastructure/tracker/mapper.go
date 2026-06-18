@@ -155,22 +155,6 @@ func issuesToDomain(rows []trackerdb.Issue) []issuedomain.Issue {
 	return issues
 }
 
-func labelsFromDB(rows []trackerdb.GetLabelsByIDsRow) []issuedomain.Label {
-	labels := make([]issuedomain.Label, len(rows))
-	for i, row := range rows {
-		labels[i] = issuedomain.Label{ID: row.ID, Name: row.Name}
-	}
-	return labels
-}
-
-func labelsByIssueFromDB(rows []trackerdb.ListLabelsByIssueIDsRow) map[uuid.UUID][]issuedomain.Label {
-	result := make(map[uuid.UUID][]issuedomain.Label)
-	for _, row := range rows {
-		result[row.IssueID] = append(result[row.IssueID], issuedomain.Label{ID: row.ID, Name: row.Name})
-	}
-	return result
-}
-
 func workspaceToDomain(row trackerdb.Workspace) workspacedomain.Workspace {
 	return workspacedomain.Workspace{
 		ID:        row.ID,

@@ -142,6 +142,46 @@ func (q *Queries) ListIssues(ctx context.Context, arg ListIssuesParams) ([]Issue
 	return items, nil
 }
 
+const listIssuesWithLabels = `-- name: ListIssuesWithLabels :many
+SELECT id, identifier, title, description, status, priority, assignee_id, project_id, reporter_id, created_at, updated_at, workspace_id, labels from issue_with_labels
+ORDER BY created_at DESC
+LIMIT 100
+`
+
+func (q *Queries) ListIssuesWithLabels(ctx context.Context) ([]IssueWithLabel, error) {
+	rows, err := q.db.Query(ctx, listIssuesWithLabels)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []IssueWithLabel
+	for rows.Next() {
+		var i IssueWithLabel
+		if err := rows.Scan(
+			&i.ID,
+			&i.Identifier,
+			&i.Title,
+			&i.Description,
+			&i.Status,
+			&i.Priority,
+			&i.AssigneeID,
+			&i.ProjectID,
+			&i.ReporterID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.WorkspaceID,
+			&i.Labels,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const updateIssue = `-- name: UpdateIssue :one
 UPDATE issues
 SET title       = $1,

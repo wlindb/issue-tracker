@@ -39,6 +39,22 @@ type IssueLabel struct {
 	LabelID uuid.UUID
 }
 
+type IssueWithLabel struct {
+	ID          uuid.UUID
+	Identifier  string
+	Title       string
+	Description pgtype.Text
+	Status      string
+	Priority    string
+	AssigneeID  pgtype.UUID
+	ProjectID   uuid.UUID
+	ReporterID  uuid.UUID
+	CreatedAt   pgtype.Timestamptz
+	UpdatedAt   pgtype.Timestamptz
+	WorkspaceID uuid.UUID
+	Labels      []Label
+}
+
 type Label struct {
 	ID          uuid.UUID
 	WorkspaceID uuid.UUID

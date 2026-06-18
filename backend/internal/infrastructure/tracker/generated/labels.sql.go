@@ -11,38 +11,27 @@ import (
 	"github.com/google/uuid"
 )
 
-const getLabelsByIDs = `-- name: GetLabelsByIDs :many
-SELECT id, name FROM labels
-WHERE id = ANY($1::uuid[])
+const getLabel = `-- name: GetLabel :one
+SELECT id, workspace_id, name, created_at FROM labels
+WHERE id = $1
+  AND workspace_id = current_setting('app.workspace_id')::uuid
 `
 
-type GetLabelsByIDsRow struct {
-	ID   uuid.UUID
-	Name string
-}
-
-func (q *Queries) GetLabelsByIDs(ctx context.Context, ids []uuid.UUID) ([]GetLabelsByIDsRow, error) {
-	rows, err := q.db.Query(ctx, getLabelsByIDs, ids)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []GetLabelsByIDsRow
-	for rows.Next() {
-		var i GetLabelsByIDsRow
-		if err := rows.Scan(&i.ID, &i.Name); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
+func (q *Queries) GetLabel(ctx context.Context, id uuid.UUID) (Label, error) {
+	row := q.db.QueryRow(ctx, getLabel, id)
+	var i Label
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.Name,
+		&i.CreatedAt,
+	)
+	return i, err
 }
 
 const insertIssueLabel = `-- name: InsertIssueLabel :exec
 INSERT INTO issue_labels (issue_id, label_id) VALUES ($1, $2)
+RETURNING issue_id, label_id
 `
 
 type InsertIssueLabelParams struct {
@@ -53,38 +42,4 @@ type InsertIssueLabelParams struct {
 func (q *Queries) InsertIssueLabel(ctx context.Context, arg InsertIssueLabelParams) error {
 	_, err := q.db.Exec(ctx, insertIssueLabel, arg.IssueID, arg.LabelID)
 	return err
-}
-
-const listLabelsByIssueIDs = `-- name: ListLabelsByIssueIDs :many
-SELECT il.issue_id, l.id, l.name
-FROM issue_labels il
-JOIN labels l ON l.id = il.label_id
-WHERE il.issue_id = ANY($1::uuid[])
-ORDER BY l.name ASC
-`
-
-type ListLabelsByIssueIDsRow struct {
-	IssueID uuid.UUID
-	ID      uuid.UUID
-	Name    string
-}
-
-func (q *Queries) ListLabelsByIssueIDs(ctx context.Context, issueIds []uuid.UUID) ([]ListLabelsByIssueIDsRow, error) {
-	rows, err := q.db.Query(ctx, listLabelsByIssueIDs, issueIds)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []ListLabelsByIssueIDsRow
-	for rows.Next() {
-		var i ListLabelsByIssueIDsRow
-		if err := rows.Scan(&i.IssueID, &i.ID, &i.Name); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
 }

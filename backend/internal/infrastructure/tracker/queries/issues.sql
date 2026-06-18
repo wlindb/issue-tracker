@@ -29,3 +29,8 @@ SET title       = @title,
 WHERE id = @id
   AND updated_at = @updated_at
 RETURNING *;
+
+-- name: ListIssuesWithLabels :many
+SELECT * from issue_with_labels
+ORDER BY created_at DESC
+LIMIT 100;
