@@ -57,7 +57,7 @@ func setupCommentFixture(t *testing.T) commentIntegrationFixture {
 		Title:      "Comment Test Issue",
 		Status:     issuedomain.StatusBacklog,
 		Priority:   issuedomain.PriorityNone,
-		Labels:     []string{},
+		Labels:     []issuedomain.Label{},
 		ProjectID:  projectID,
 		ReporterID: ownerID,
 	}
