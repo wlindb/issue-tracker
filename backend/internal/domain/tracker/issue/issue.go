@@ -134,7 +134,6 @@ type IssueRepository interface {
 	ListIssues(ctx context.Context, projectID uuid.UUID, query ListIssueQuery) (IssuePage, error)
 	CreateIssue(ctx context.Context, issue Issue) (Issue, error)
 	Update(ctx context.Context, issue Issue) (Issue, error)
-	GetLabelsByIDs(ctx context.Context, ids []uuid.UUID) ([]Label, error)
 }
 
 var (

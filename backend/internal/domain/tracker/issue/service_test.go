@@ -52,14 +52,6 @@ func (m *mockIssueRepository) Update(ctx context.Context, i issue.Issue) (issue.
 	return issue.Issue{}, args.Error(1)
 }
 
-func (m *mockIssueRepository) GetLabelsByIDs(ctx context.Context, ids []uuid.UUID) ([]issue.Label, error) {
-	args := m.Called(ctx, ids)
-	if result, ok := args.Get(0).([]issue.Label); ok {
-		return result, args.Error(1)
-	}
-	return []issue.Label{}, args.Error(1)
-}
-
 func Test_ListIssues_WithIssues_ReturnsPage(t *testing.T) {
 	repository := &mockIssueRepository{}
 	service := issue.NewIssueService(repository)
@@ -168,7 +160,6 @@ func Test_CreateIssue_ValidCommand_ReturnsCreatedIssue(t *testing.T) {
 		Priority:   issue.PriorityMedium,
 	}
 
-	repository.On("GetLabelsByIDs", mock.Anything, []uuid.UUID(nil)).Return([]issue.Label{}, nil)
 	repository.On("CreateIssue", mock.Anything, mock.Anything).Return(returned, nil)
 
 	got, err := service.CreateIssue(context.Background(), command)
@@ -190,7 +181,6 @@ func Test_CreateIssue_RepositoryError_ReturnsError(t *testing.T) {
 	}
 	repositoryErr := errors.New("db error")
 
-	repository.On("GetLabelsByIDs", mock.Anything, []uuid.UUID(nil)).Return([]issue.Label{}, nil)
 	repository.On("CreateIssue", mock.Anything, mock.Anything).Return(nil, repositoryErr)
 
 	_, err := service.CreateIssue(context.Background(), command)
@@ -662,7 +652,6 @@ func Test_CreateIssue_SuccessfulPersistence_PublishesIssueCreatedEvent(t *testin
 		return nil
 	})
 
-	repository.On("GetLabelsByIDs", mock.Anything, []uuid.UUID(nil)).Return([]issue.Label{}, nil)
 	repository.On("CreateIssue", mock.Anything, mock.Anything).Return(expected, nil)
 	actual, err := service.CreateIssue(ctx, command)
 	require.NoError(t, err)
@@ -693,7 +682,6 @@ func Test_CreateIssue_PublisherError_StillReturnsIssue(t *testing.T) {
 		return errors.New("nats down")
 	})
 
-	repository.On("GetLabelsByIDs", mock.Anything, []uuid.UUID(nil)).Return([]issue.Label{}, nil)
 	repository.On("CreateIssue", mock.Anything, mock.Anything).Return(returned, nil)
 
 	actual, err := service.CreateIssue(ctx, command)

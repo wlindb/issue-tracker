@@ -54,6 +54,7 @@ func Test_CreateIssue_Success_ReturnsDomainIssue(t *testing.T) {
 	projectID := uuid.New()
 	reporterID := uuid.New()
 	now := time.Now().UTC()
+	labelID := uuid.New()
 
 	domainIssue := issuedomain.Issue{
 		ID:         uuid.New(),
@@ -61,7 +62,7 @@ func Test_CreateIssue_Success_ReturnsDomainIssue(t *testing.T) {
 		Title:      "Test issue",
 		Status:     issuedomain.StatusTodo,
 		Priority:   issuedomain.PriorityMedium,
-		Labels:     []string{"backend"},
+		Labels:     []issuedomain.Label{{ID: labelID, Name: "backend"}},
 		ProjectID:  projectID,
 		ReporterID: reporterID,
 	}
@@ -72,7 +73,6 @@ func Test_CreateIssue_Success_ReturnsDomainIssue(t *testing.T) {
 		Title:      domainIssue.Title,
 		Status:     "todo",
 		Priority:   "medium",
-		Labels:     []string{"backend"},
 		ProjectID:  projectID,
 		ReporterID: reporterID,
 		CreatedAt:  pgtype.Timestamptz{Time: now, Valid: true},
@@ -103,7 +103,7 @@ func Test_CreateIssue_QueryError_ReturnsWrappedError(t *testing.T) {
 		Title:      "Error test",
 		Status:     issuedomain.StatusBacklog,
 		Priority:   issuedomain.PriorityNone,
-		Labels:     []string{},
+		Labels:     []issuedomain.Label{},
 		ProjectID:  uuid.New(),
 		ReporterID: uuid.New(),
 	})
@@ -130,7 +130,6 @@ func Test_ListIssues_Success_ReturnsDomainPage(t *testing.T) {
 			Title:      "First issue",
 			Status:     "backlog",
 			Priority:   "none",
-			Labels:     []string{},
 			ProjectID:  projectID,
 			ReporterID: uuid.New(),
 			CreatedAt:  pgtype.Timestamptz{Time: now, Valid: true},
@@ -226,7 +225,7 @@ func Test_Update_Success_ReturnsDomainIssue(t *testing.T) {
 		Description: &description,
 		Status:      issuedomain.StatusInProgress,
 		Priority:    issuedomain.PriorityHigh,
-		Labels:      []string{},
+		Labels:      []issuedomain.Label{},
 		ProjectID:   projectID,
 		ReporterID:  reporterID,
 	}
@@ -238,7 +237,6 @@ func Test_Update_Success_ReturnsDomainIssue(t *testing.T) {
 		Description: pgtype.Text{String: description, Valid: true},
 		Status:      "in_progress",
 		Priority:    "high",
-		Labels:      []string{},
 		ProjectID:   projectID,
 		ReporterID:  reporterID,
 		CreatedAt:   pgtype.Timestamptz{Time: now, Valid: true},
@@ -269,7 +267,7 @@ func Test_Update_QueryError_ReturnsWrappedError(t *testing.T) {
 		ID:       uuid.New(),
 		Status:   issuedomain.StatusDone,
 		Priority: issuedomain.PriorityNone,
-		Labels:   []string{},
+		Labels:   []issuedomain.Label{},
 	})
 
 	require.Error(t, err)

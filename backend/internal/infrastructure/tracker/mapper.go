@@ -147,6 +147,14 @@ func issueToDomain(row trackerdb.Issue, labels []issuedomain.Label) issuedomain.
 	return issue
 }
 
+func issuesToDomain(rows []trackerdb.Issue) []issuedomain.Issue {
+	issues := make([]issuedomain.Issue, len(rows))
+	for idx, row := range rows {
+		issues[idx] = issueToDomain(row, []issuedomain.Label{})
+	}
+	return issues
+}
+
 func labelsFromDB(rows []trackerdb.GetLabelsByIDsRow) []issuedomain.Label {
 	labels := make([]issuedomain.Label, len(rows))
 	for i, row := range rows {

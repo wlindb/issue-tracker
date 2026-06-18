@@ -38,11 +38,7 @@ func (s *IssueService) GetIssue(ctx context.Context, issueID uuid.UUID) (Issue, 
 
 // CreateIssue creates a new issue from the given command.
 func (s *IssueService) CreateIssue(ctx context.Context, command CreateIssueCommand) (Issue, error) {
-	labels, err := s.repository.GetLabelsByIDs(ctx, command.LabelIDs)
-	if err != nil {
-		return Issue{}, fmt.Errorf("create issue resolve labels: %w", err)
-	}
-	issue, err := s.repository.CreateIssue(ctx, command.ToIssue(uuid.New(), command.Slugify, labels))
+	issue, err := s.repository.CreateIssue(ctx, command.ToIssue(uuid.New(), command.Slugify, []Label{}))
 	if err != nil {
 		return Issue{}, fmt.Errorf("create issue: %w", err)
 	}

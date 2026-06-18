@@ -40,7 +40,7 @@ func (r *IssueRepository) CreateIssue(ctx context.Context, issue issuedomain.Iss
 	if err != nil {
 		return issuedomain.Issue{}, fmt.Errorf("create issue: %w", err)
 	}
-	return issueToDomain(row), nil
+	return issueToDomain(row, []issuedomain.Label{}), nil
 }
 
 // GetIssue retrieves a single issue by its ID, or ErrIssueNotFound if it does not exist.
@@ -52,7 +52,7 @@ func (r *IssueRepository) GetIssue(ctx context.Context, id uuid.UUID) (issuedoma
 		}
 		return issuedomain.Issue{}, fmt.Errorf("get issue: %w", err)
 	}
-	return issueToDomain(row), nil
+	return issueToDomain(row, []issuedomain.Label{}), nil
 }
 
 // Update persists mutable fields of an existing issue and returns the updated domain model.
@@ -65,7 +65,7 @@ func (r *IssueRepository) Update(ctx context.Context, issue issuedomain.Issue) (
 		}
 		return issuedomain.Issue{}, fmt.Errorf("update issue: %w", err)
 	}
-	return issueToDomain(row), nil
+	return issueToDomain(row, []issuedomain.Label{}), nil
 }
 
 // ListIssues returns a filtered list of issues for the given project.
