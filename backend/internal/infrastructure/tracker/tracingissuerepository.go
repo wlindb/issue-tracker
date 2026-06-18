@@ -75,16 +75,3 @@ func (r *TracingIssueRepository) Update(ctx context.Context, issue issuedomain.I
 	}
 	return result, nil
 }
-
-func (r *TracingIssueRepository) GetLabelsByIDs(ctx context.Context, ids []uuid.UUID) ([]issuedomain.Label, error) {
-	ctx, span := r.tracer.Start(ctx, "tracker.IssueRepository.GetLabelsByIDs")
-	defer span.End()
-
-	result, err := r.inner.GetLabelsByIDs(ctx, ids)
-	if err != nil {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, err.Error())
-		return nil, fmt.Errorf("get labels by IDs: %w", err)
-	}
-	return result, nil
-}

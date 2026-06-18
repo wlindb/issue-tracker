@@ -45,20 +45,73 @@ func (m *mockIssueQuerier) UpdateIssue(ctx context.Context, arg trackerdb.Update
 	return args.Get(0).(trackerdb.Issue), args.Error(1)
 }
 
-func (m *mockIssueQuerier) ListLabelsByIssueIDs(ctx context.Context, issueIDs []uuid.UUID) ([]trackerdb.ListLabelsByIssueIDsRow, error) {
-	args := m.Called(ctx, issueIDs)
-	if result, ok := args.Get(0).([]trackerdb.ListLabelsByIssueIDsRow); ok {
-		return result, args.Error(1)
+// — CreateIssue unit tests —
+
+func Test_CreateIssue_Success_ReturnsDomainIssue(t *testing.T) {
+	querier := &mockIssueQuerier{}
+	repository := &IssueRepository{queries: querier}
+
+	projectID := uuid.New()
+	reporterID := uuid.New()
+	now := time.Now().UTC()
+
+	domainIssue := issuedomain.Issue{
+		ID:         uuid.New(),
+		Identifier: "test-issue-abc",
+		Title:      "Test issue",
+		Status:     issuedomain.StatusTodo,
+		Priority:   issuedomain.PriorityMedium,
+		Labels:     []string{"backend"},
+		ProjectID:  projectID,
+		ReporterID: reporterID,
 	}
-	return []trackerdb.ListLabelsByIssueIDsRow{}, args.Error(1)
+
+	returnedRow := trackerdb.Issue{
+		ID:         domainIssue.ID,
+		Identifier: domainIssue.Identifier,
+		Title:      domainIssue.Title,
+		Status:     "todo",
+		Priority:   "medium",
+		Labels:     []string{"backend"},
+		ProjectID:  projectID,
+		ReporterID: reporterID,
+		CreatedAt:  pgtype.Timestamptz{Time: now, Valid: true},
+		UpdatedAt:  pgtype.Timestamptz{Time: now, Valid: true},
+	}
+
+	querier.On("CreateIssue", mock.Anything, mock.Anything).Return(returnedRow, nil)
+
+	actual, err := repository.CreateIssue(context.Background(), domainIssue)
+
+	require.NoError(t, err)
+	assert.Equal(t, domainIssue.ID, actual.ID)
+	assert.Equal(t, domainIssue.Title, actual.Title)
+	assert.Equal(t, issuedomain.StatusTodo, actual.Status)
+	querier.AssertExpectations(t)
 }
 
-func (m *mockIssueQuerier) GetLabelsByIDs(ctx context.Context, ids []uuid.UUID) ([]trackerdb.GetLabelsByIDsRow, error) {
-	args := m.Called(ctx, ids)
-	if result, ok := args.Get(0).([]trackerdb.GetLabelsByIDsRow); ok {
-		return result, args.Error(1)
-	}
-	return []trackerdb.GetLabelsByIDsRow{}, args.Error(1)
+func Test_CreateIssue_QueryError_ReturnsWrappedError(t *testing.T) {
+	querier := &mockIssueQuerier{}
+	repository := &IssueRepository{queries: querier}
+
+	dbErr := errors.New("unique constraint violation")
+	querier.On("CreateIssue", mock.Anything, mock.Anything).Return(trackerdb.Issue{}, dbErr)
+
+	_, err := repository.CreateIssue(context.Background(), issuedomain.Issue{
+		ID:         uuid.New(),
+		Identifier: "err-test",
+		Title:      "Error test",
+		Status:     issuedomain.StatusBacklog,
+		Priority:   issuedomain.PriorityNone,
+		Labels:     []string{},
+		ProjectID:  uuid.New(),
+		ReporterID: uuid.New(),
+	})
+
+	require.Error(t, err)
+	assert.ErrorIs(t, err, dbErr)
+	assert.Contains(t, err.Error(), "create issue")
+	querier.AssertExpectations(t)
 }
 
 // — ListIssues unit tests —
@@ -68,29 +121,24 @@ func Test_ListIssues_Success_ReturnsDomainPage(t *testing.T) {
 	repository := &IssueRepository{queries: querier}
 
 	projectID := uuid.New()
-	issueID := uuid.New()
-	labelID := uuid.New()
 	now := time.Now().UTC()
 
 	returnedRows := []trackerdb.Issue{
 		{
-			ID:         issueID,
+			ID:         uuid.New(),
 			Identifier: "issue-1",
 			Title:      "First issue",
 			Status:     "backlog",
 			Priority:   "none",
+			Labels:     []string{},
 			ProjectID:  projectID,
 			ReporterID: uuid.New(),
 			CreatedAt:  pgtype.Timestamptz{Time: now, Valid: true},
 			UpdatedAt:  pgtype.Timestamptz{Time: now, Valid: true},
 		},
 	}
-	returnedLabelRows := []trackerdb.ListLabelsByIssueIDsRow{
-		{IssueID: issueID, ID: labelID, Name: "backend"},
-	}
 
 	querier.On("ListIssues", mock.Anything, mock.Anything).Return(returnedRows, nil)
-	querier.On("ListLabelsByIssueIDs", mock.Anything, []uuid.UUID{issueID}).Return(returnedLabelRows, nil)
 
 	query := issuedomain.ListIssueQuery{}
 	actual, err := repository.ListIssues(context.Background(), projectID, query)
@@ -99,9 +147,6 @@ func Test_ListIssues_Success_ReturnsDomainPage(t *testing.T) {
 	require.Len(t, actual.Items, 1)
 	assert.Equal(t, "First issue", actual.Items[0].Title)
 	assert.Equal(t, issuedomain.StatusBacklog, actual.Items[0].Status)
-	require.Len(t, actual.Items[0].Labels, 1)
-	assert.Equal(t, labelID, actual.Items[0].Labels[0].ID)
-	assert.Equal(t, "backend", actual.Items[0].Labels[0].Name)
 	querier.AssertExpectations(t)
 }
 
@@ -163,45 +208,6 @@ func Test_ListIssues_WithFilters_PassesCorrectParams(t *testing.T) {
 	querier.AssertExpectations(t)
 }
 
-// — GetIssue unit tests —
-
-func Test_GetIssue_Success_ReturnsDomainIssue(t *testing.T) {
-	querier := &mockIssueQuerier{}
-	repository := &IssueRepository{queries: querier}
-
-	issueID := uuid.New()
-	labelID := uuid.New()
-	now := time.Now().UTC()
-
-	returnedRow := trackerdb.Issue{
-		ID:         issueID,
-		Identifier: "issue-1",
-		Title:      "Test issue",
-		Status:     "todo",
-		Priority:   "medium",
-		ProjectID:  uuid.New(),
-		ReporterID: uuid.New(),
-		CreatedAt:  pgtype.Timestamptz{Time: now, Valid: true},
-		UpdatedAt:  pgtype.Timestamptz{Time: now, Valid: true},
-	}
-	returnedLabelRows := []trackerdb.ListLabelsByIssueIDsRow{
-		{IssueID: issueID, ID: labelID, Name: "frontend"},
-	}
-
-	querier.On("GetIssue", mock.Anything, issueID).Return(returnedRow, nil)
-	querier.On("ListLabelsByIssueIDs", mock.Anything, []uuid.UUID{issueID}).Return(returnedLabelRows, nil)
-
-	actual, err := repository.GetIssue(context.Background(), issueID)
-
-	require.NoError(t, err)
-	assert.Equal(t, issueID, actual.ID)
-	assert.Equal(t, "Test issue", actual.Title)
-	require.Len(t, actual.Labels, 1)
-	assert.Equal(t, labelID, actual.Labels[0].ID)
-	assert.Equal(t, "frontend", actual.Labels[0].Name)
-	querier.AssertExpectations(t)
-}
-
 // — Update unit tests —
 
 func Test_Update_Success_ReturnsDomainIssue(t *testing.T) {
@@ -212,7 +218,6 @@ func Test_Update_Success_ReturnsDomainIssue(t *testing.T) {
 	reporterID := uuid.New()
 	description := "updated desc"
 	now := time.Now().UTC()
-	labelID := uuid.New()
 
 	domainIssue := issuedomain.Issue{
 		ID:          uuid.New(),
@@ -221,7 +226,7 @@ func Test_Update_Success_ReturnsDomainIssue(t *testing.T) {
 		Description: &description,
 		Status:      issuedomain.StatusInProgress,
 		Priority:    issuedomain.PriorityHigh,
-		Labels:      []issuedomain.Label{{ID: labelID, Name: "backend"}},
+		Labels:      []string{},
 		ProjectID:   projectID,
 		ReporterID:  reporterID,
 	}
@@ -233,6 +238,7 @@ func Test_Update_Success_ReturnsDomainIssue(t *testing.T) {
 		Description: pgtype.Text{String: description, Valid: true},
 		Status:      "in_progress",
 		Priority:    "high",
+		Labels:      []string{},
 		ProjectID:   projectID,
 		ReporterID:  reporterID,
 		CreatedAt:   pgtype.Timestamptz{Time: now, Valid: true},
@@ -249,8 +255,6 @@ func Test_Update_Success_ReturnsDomainIssue(t *testing.T) {
 	assert.Equal(t, issuedomain.PriorityHigh, actual.Priority)
 	require.NotNil(t, actual.Description)
 	assert.Equal(t, description, *actual.Description)
-	require.Len(t, actual.Labels, 1)
-	assert.Equal(t, labelID, actual.Labels[0].ID)
 	querier.AssertExpectations(t)
 }
 
@@ -265,47 +269,11 @@ func Test_Update_QueryError_ReturnsWrappedError(t *testing.T) {
 		ID:       uuid.New(),
 		Status:   issuedomain.StatusDone,
 		Priority: issuedomain.PriorityNone,
-		Labels:   []issuedomain.Label{},
+		Labels:   []string{},
 	})
 
 	require.Error(t, err)
 	assert.ErrorIs(t, err, dbErr)
 	assert.Contains(t, err.Error(), "update issue")
-	querier.AssertExpectations(t)
-}
-
-// — GetLabelsByIDs unit tests —
-
-func Test_GetLabelsByIDs_EmptyIDs_ReturnsEmptySlice(t *testing.T) {
-	querier := &mockIssueQuerier{}
-	repository := &IssueRepository{queries: querier}
-
-	actual, err := repository.GetLabelsByIDs(context.Background(), []uuid.UUID{})
-
-	require.NoError(t, err)
-	assert.Empty(t, actual)
-	querier.AssertNotCalled(t, "GetLabelsByIDs")
-}
-
-func Test_GetLabelsByIDs_ValidIDs_ReturnsDomainLabels(t *testing.T) {
-	querier := &mockIssueQuerier{}
-	repository := &IssueRepository{queries: querier}
-
-	id1, id2 := uuid.New(), uuid.New()
-	returnedRows := []trackerdb.GetLabelsByIDsRow{
-		{ID: id1, Name: "bug"},
-		{ID: id2, Name: "feature"},
-	}
-
-	querier.On("GetLabelsByIDs", mock.Anything, []uuid.UUID{id1, id2}).Return(returnedRows, nil)
-
-	actual, err := repository.GetLabelsByIDs(context.Background(), []uuid.UUID{id1, id2})
-
-	require.NoError(t, err)
-	require.Len(t, actual, 2)
-	assert.Equal(t, id1, actual[0].ID)
-	assert.Equal(t, "bug", actual[0].Name)
-	assert.Equal(t, id2, actual[1].ID)
-	assert.Equal(t, "feature", actual[1].Name)
 	querier.AssertExpectations(t)
 }
