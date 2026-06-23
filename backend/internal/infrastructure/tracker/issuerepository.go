@@ -13,14 +13,6 @@ import (
 	trackerdb "github.com/wlindb/issue-tracker/internal/infrastructure/tracker/generated"
 )
 
-// issueQuerier defines the query methods used by IssueRepository.
-type issueQuerier interface {
-	GetIssue(ctx context.Context, id uuid.UUID) (trackerdb.Issue, error)
-	CreateIssue(ctx context.Context, arg trackerdb.CreateIssueParams) (trackerdb.Issue, error)
-	ListIssues(ctx context.Context, arg trackerdb.ListIssuesParams) ([]trackerdb.Issue, error)
-	UpdateIssue(ctx context.Context, arg trackerdb.UpdateIssueParams) (trackerdb.Issue, error)
-}
-
 // Compile-time: *IssueRepository must satisfy domain interface.
 var _ issuedomain.IssueRepository = (*IssueRepository)(nil)
 
@@ -42,7 +34,7 @@ func (r *IssueRepository) Tx(ctx context.Context, fn func(issuedomain.IssueRepos
 
 	tx, err := pool.Begin(ctx)
 	if err != nil {
-		return err
+		return fmt.Errorf("begin tx: %w", err)
 	}
 	defer func() {
 		_ = tx.Rollback(ctx)
@@ -52,7 +44,10 @@ func (r *IssueRepository) Tx(ctx context.Context, fn func(issuedomain.IssueRepos
 		return err
 	}
 
-	return tx.Commit(ctx)
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("commit tx: %w", err)
+	}
+	return nil
 }
 
 // CreateIssue inserts a new issue row and returns the domain model.
