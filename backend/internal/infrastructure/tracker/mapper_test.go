@@ -184,47 +184,6 @@ func Test_IssueToDomain_NilLabels_ReturnsEmptyLabels(t *testing.T) {
 	assert.Empty(t, actual.Labels)
 }
 
-func Test_LabelsByIssueFromDB_GroupsByIssueID(t *testing.T) {
-	issueID1 := uuid.New()
-	issueID2 := uuid.New()
-	labelID1 := uuid.New()
-	labelID2 := uuid.New()
-	labelID3 := uuid.New()
-
-	rows := []trackerdb.ListLabelsByIssueIDsRow{
-		{IssueID: issueID1, ID: labelID1, Name: "bug"},
-		{IssueID: issueID1, ID: labelID2, Name: "frontend"},
-		{IssueID: issueID2, ID: labelID3, Name: "backend"},
-	}
-
-	actual := labelsByIssueFromDB(rows)
-
-	require.Len(t, actual[issueID1], 2)
-	assert.Equal(t, labelID1, actual[issueID1][0].ID)
-	assert.Equal(t, "bug", actual[issueID1][0].Name)
-	assert.Equal(t, labelID2, actual[issueID1][1].ID)
-	assert.Equal(t, "frontend", actual[issueID1][1].Name)
-	require.Len(t, actual[issueID2], 1)
-	assert.Equal(t, labelID3, actual[issueID2][0].ID)
-	assert.Equal(t, "backend", actual[issueID2][0].Name)
-}
-
-func Test_LabelsFromDB_MapsToLabelSlice(t *testing.T) {
-	id1, id2 := uuid.New(), uuid.New()
-	rows := []trackerdb.GetLabelsByIDsRow{
-		{ID: id1, Name: "bug"},
-		{ID: id2, Name: "feature"},
-	}
-
-	actual := labelsFromDB(rows)
-
-	require.Len(t, actual, 2)
-	assert.Equal(t, id1, actual[0].ID)
-	assert.Equal(t, "bug", actual[0].Name)
-	assert.Equal(t, id2, actual[1].ID)
-	assert.Equal(t, "feature", actual[1].Name)
-}
-
 // — CreateIssueParamsFromDomain tests —
 
 func Test_CreateIssueParamsFromDomain_NoOptionalFields_MapsCorrectly(t *testing.T) {

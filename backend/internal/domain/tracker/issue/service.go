@@ -38,13 +38,24 @@ func (s *IssueService) GetIssue(ctx context.Context, issueID uuid.UUID) (Issue, 
 
 // CreateIssue creates a new issue from the given command.
 func (s *IssueService) CreateIssue(ctx context.Context, command CreateIssueCommand) (Issue, error) {
-	issue, err := s.repository.CreateIssue(ctx, command.ToIssue(uuid.New(), command.Slugify, []Label{}))
-	if err != nil {
+	var issue Issue
+
+	if err := s.repository.Tx(ctx, func(tx IssueRepository) error {
+		var err error
+		issue, err = tx.CreateIssue(ctx, command.ToIssue(uuid.New(), command.Slugify, []Label{}))
+		if err != nil {
+			return fmt.Errorf("store issue: %w", err)
+		}
+
+		if err := issue.EmitCreated(ctx); err != nil {
+			return fmt.Errorf("emit issue created: %w", err)
+		}
+
+		return nil
+	}); err != nil {
 		return Issue{}, fmt.Errorf("create issue: %w", err)
 	}
-	if err := issue.EmitCreated(ctx); err != nil {
-		slog.Error("publish issue created event", "error", err)
-	}
+
 	return issue, nil
 }
 
