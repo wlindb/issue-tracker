@@ -1,5 +1,3 @@
-//go:build !integration
-
 package issue_test
 
 import (
@@ -56,8 +54,17 @@ type mockUnitOfWork struct {
 	mock.Mock
 }
 
-func (m *mockUnitOfWork) RunInTx(_ context.Context, _ func(issue.Repositories) error) error {
-	return errors.New("not implemented")
+func (m *mockUnitOfWork) RunInTx(ctx context.Context, fn func(issue.Repositories) error) error {
+	args := m.Called(ctx, fn)
+	return args.Error(0)
+}
+
+type fakeUnitOfWork struct {
+	repositories issue.Repositories
+}
+
+func (f *fakeUnitOfWork) RunInTx(_ context.Context, fn func(issue.Repositories) error) error {
+	return fn(f.repositories)
 }
 
 func Test_ListIssues_WithIssues_ReturnsPage(t *testing.T) {
@@ -150,9 +157,9 @@ func Test_ListIssues_WithQueryFilters_PassesFiltersToRepository(t *testing.T) {
 }
 
 func Test_CreateIssue_ValidCommand_ReturnsCreatedIssue(t *testing.T) {
-	uow := &mockUnitOfWork{}
 	repository := &mockIssueRepository{}
-	service := issue.NewIssueService(uow, repository)
+	uow := &fakeUnitOfWork{repositories: issue.Repositories{Issues: repository}}
+	service := issue.NewIssueService(uow, &mockIssueRepository{})
 
 	projectID := uuid.New()
 	reporterID := uuid.New()
@@ -163,7 +170,7 @@ func Test_CreateIssue_ValidCommand_ReturnsCreatedIssue(t *testing.T) {
 		Status:     issue.StatusTodo,
 		Priority:   issue.PriorityMedium,
 	}
-	returned := issue.Issue{
+	expected := issue.Issue{
 		ID:         uuid.New(),
 		Identifier: "PROJ-1",
 		ProjectID:  projectID,
@@ -173,17 +180,25 @@ func Test_CreateIssue_ValidCommand_ReturnsCreatedIssue(t *testing.T) {
 		Priority:   issue.PriorityMedium,
 	}
 
-	repository.On("CreateIssue", mock.Anything, mock.Anything).Return(returned, nil)
+	repository.On("CreateIssue", mock.Anything, mock.Anything).Return(expected, nil)
 
-	got, err := service.CreateIssue(context.Background(), command)
+	ctxWithNoopPublisher := event.WithPublisher(context.Background(), func(_ context.Context, _ issue.IssueCreatedEvent) error {
+		return nil
+	})
+
+	actual, err := service.CreateIssue(ctxWithNoopPublisher, command)
 	require.NoError(t, err)
-	assert.Equal(t, returned, got)
+	assert.Equal(t, expected, actual)
 	repository.AssertExpectations(t)
 }
 
-func Test_CreateIssue_RepositoryError_ReturnsError(t *testing.T) {
-	uow := &mockUnitOfWork{}
+func Test_CreateIssue_RunInTxError_ReturnsError(t *testing.T) {
 	repository := &mockIssueRepository{}
+	repositoryErr := errors.New("something went wrong")
+
+	uow := &mockUnitOfWork{}
+	uow.On("RunInTx", mock.Anything, mock.Anything).Return(repositoryErr)
+
 	service := issue.NewIssueService(uow, repository)
 
 	command := issue.CreateIssueCommand{
@@ -193,14 +208,33 @@ func Test_CreateIssue_RepositoryError_ReturnsError(t *testing.T) {
 		Status:     issue.StatusTodo,
 		Priority:   issue.PriorityMedium,
 	}
-	repositoryErr := errors.New("db error")
-
-	repository.On("CreateIssue", mock.Anything, mock.Anything).Return(nil, repositoryErr)
 
 	_, err := service.CreateIssue(context.Background(), command)
 	require.Error(t, err)
 	assert.ErrorIs(t, err, repositoryErr)
 	repository.AssertExpectations(t)
+}
+
+func Test_CreateIssue_RepositoryError_ReturnsError(t *testing.T) {
+	repositoryErr := errors.New("db error")
+	txRepository := &mockIssueRepository{}
+	txRepository.On("CreateIssue", mock.Anything, mock.Anything).Return(issue.Issue{}, repositoryErr)
+
+	uow := &fakeUnitOfWork{repositories: issue.Repositories{Issues: txRepository}}
+	service := issue.NewIssueService(uow, &mockIssueRepository{})
+
+	command := issue.CreateIssueCommand{
+		ProjectID:  uuid.New(),
+		ReporterID: uuid.New(),
+		Title:      "New feature",
+		Status:     issue.StatusTodo,
+		Priority:   issue.PriorityMedium,
+	}
+
+	_, err := service.CreateIssue(context.Background(), command)
+	require.Error(t, err)
+	assert.ErrorIs(t, err, repositoryErr)
+	txRepository.AssertExpectations(t)
 }
 
 // — GetIssue —
@@ -660,9 +694,9 @@ func Test_UpdateIssueStatus_UpdateError_ReturnsError(t *testing.T) {
 }
 
 func Test_CreateIssue_SuccessfulPersistence_PublishesIssueCreatedEvent(t *testing.T) {
-	uow := &mockUnitOfWork{}
 	repository := &mockIssueRepository{}
-	service := issue.NewIssueService(uow, repository)
+	uow := &fakeUnitOfWork{repositories: issue.Repositories{Issues: repository}}
+	service := issue.NewIssueService(uow, &mockIssueRepository{})
 
 	projectID := uuid.New()
 	reporterID := uuid.New()
@@ -698,10 +732,10 @@ func Test_CreateIssue_SuccessfulPersistence_PublishesIssueCreatedEvent(t *testin
 	repository.AssertExpectations(t)
 }
 
-func Test_CreateIssue_PublisherError_StillReturnsIssue(t *testing.T) {
-	uow := &mockUnitOfWork{}
+func Test_CreateIssue_EmitCreatedError_ReturnError(t *testing.T) {
 	repository := &mockIssueRepository{}
-	service := issue.NewIssueService(uow, repository)
+	uow := &fakeUnitOfWork{repositories: issue.Repositories{Issues: repository}}
+	service := issue.NewIssueService(uow, &mockIssueRepository{})
 
 	command := issue.CreateIssueCommand{
 		ProjectID:  uuid.New(),
@@ -715,15 +749,15 @@ func Test_CreateIssue_PublisherError_StillReturnsIssue(t *testing.T) {
 		Title: "Publisher fails",
 	}
 
+	expectedError := errors.New("publisher down")
 	ctx := event.WithPublisher(context.Background(), func(_ context.Context, _ issue.IssueCreatedEvent) error {
-		return errors.New("nats down")
+		return expectedError
 	})
 
 	repository.On("CreateIssue", mock.Anything, mock.Anything).Return(returned, nil)
 
-	actual, err := service.CreateIssue(ctx, command)
-	require.NoError(t, err)
-	assert.Equal(t, returned, actual)
+	_, err := service.CreateIssue(ctx, command)
+	require.ErrorIs(t, err, expectedError)
 	repository.AssertExpectations(t)
 }
 

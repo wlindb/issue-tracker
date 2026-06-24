@@ -59,7 +59,7 @@ func (s *IssueService) CreateIssue(ctx context.Context, command CreateIssueComma
 		}
 
 		if err := issue.EmitCreated(ctx); err != nil {
-			slog.Error("publish issue created event", "error", err)
+			return fmt.Errorf("emit created: %w", err)
 		}
 
 		return nil
