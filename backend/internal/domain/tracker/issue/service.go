@@ -13,8 +13,19 @@ type IssueService struct {
 	repository IssueRepository
 }
 
+type Repositories struct {
+	Issues IssueRepository
+}
+
+type UnitOfWork interface {
+	RunInTx(ctx context.Context, fn func(Repositories) error) error
+}
+
 // NewIssueService creates an IssueService wired to the given repository and event publisher.
-func NewIssueService(repository IssueRepository) *IssueService {
+func NewIssueService(
+	unitOfWork UnitOfWork,
+	repository IssueRepository,
+) *IssueService {
 	return &IssueService{repository: repository}
 }
 
@@ -38,24 +49,13 @@ func (s *IssueService) GetIssue(ctx context.Context, issueID uuid.UUID) (Issue, 
 
 // CreateIssue creates a new issue from the given command.
 func (s *IssueService) CreateIssue(ctx context.Context, command CreateIssueCommand) (Issue, error) {
-	var issue Issue
-
-	if err := s.repository.Tx(ctx, func(tx IssueRepository) error {
-		var err error
-		issue, err = tx.CreateIssue(ctx, command.ToIssue(uuid.New(), command.Slugify, []Label{}))
-		if err != nil {
-			return fmt.Errorf("store issue: %w", err)
-		}
-
-		if err := issue.EmitCreated(ctx); err != nil {
-			return fmt.Errorf("emit issue created: %w", err)
-		}
-
-		return nil
-	}); err != nil {
+	issue, err := s.repository.CreateIssue(ctx, command.ToIssue(uuid.New(), command.Slugify, []Label{}))
+	if err != nil {
 		return Issue{}, fmt.Errorf("create issue: %w", err)
 	}
-
+	if err := issue.EmitCreated(ctx); err != nil {
+		slog.Error("publish issue created event", "error", err)
+	}
 	return issue, nil
 }
 
