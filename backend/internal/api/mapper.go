@@ -104,9 +104,9 @@ func listCommentQueryFromRequest(params model.ListCommentsParams) commentdomain.
 }
 
 func issueFromDomain(d issuedomain.Issue) model.Issue {
-	labels := d.Labels
-	if labels == nil {
-		labels = []string{}
+	labels := make([]model.Label, len(d.Labels))
+	for i, l := range d.Labels {
+		labels[i] = model.Label{Id: l.ID, Name: l.Name}
 	}
 	return model.Issue{
 		Id:          d.ID,
@@ -161,5 +161,6 @@ func createIssueCommandFromModel(projectID uuid.UUID, reporterID uuid.UUID, req 
 		Status:      issuedomain.Status(req.Status),
 		Priority:    issuedomain.Priority(req.Priority),
 		AssigneeID:  req.AssigneeId,
+		LabelIDs:    req.LabelIds,
 	}
 }

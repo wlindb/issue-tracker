@@ -27,6 +27,7 @@ import (
 	workspacedomain "github.com/wlindb/issue-tracker/internal/domain/tracker/workspace"
 	infradb "github.com/wlindb/issue-tracker/internal/infrastructure/db"
 	tracker "github.com/wlindb/issue-tracker/internal/infrastructure/tracker"
+	embeddednats "github.com/wlindb/issue-tracker/internal/pkg/nats"
 )
 
 var testPool *pgxpool.Pool
@@ -44,8 +45,30 @@ func TestMain(m *testing.M) {
 		os.Exit(1)
 	}
 
+	natsServer, err := embeddednats.StartEmbeddedServer()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "start nats: %v\n", err)
+		os.Exit(1)
+	}
+
+	natsConnection, err := embeddednats.Connect(natsServer)
+	if err != nil {
+		natsServer.Shutdown()
+		fmt.Fprintf(os.Stderr, "connect nats: %v\n", err)
+		os.Exit(1)
+	}
+
+	if err := tracker.NewEventPublisher(natsConnection); err != nil {
+		natsConnection.Close()
+		natsServer.Shutdown()
+		fmt.Fprintf(os.Stderr, "event publisher: %v\n", err)
+		os.Exit(1)
+	}
+
 	testPool = pool
 	code := m.Run()
+	natsConnection.Close()
+	natsServer.Shutdown()
 	terminate()
 	os.Exit(code)
 }
