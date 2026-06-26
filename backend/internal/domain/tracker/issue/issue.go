@@ -129,6 +129,12 @@ type IssueRepository interface {
 	Update(ctx context.Context, issue Issue) (Issue, error)
 }
 
+// UnitOfWork executes fn within a transactional boundary.
+// Implementations must roll back any writes performed by fn if fn returns an error.
+type UnitOfWork interface {
+	Run(ctx context.Context, fn func(ctx context.Context) error) error
+}
+
 var (
 	ErrIssueNotFound  = errors.New("issue not found")
 	ErrInvalidIssue   = errors.New("invalid issue")

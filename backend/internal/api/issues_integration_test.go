@@ -70,7 +70,7 @@ func setupIssueFixture(t *testing.T) issueIntegrationFixture {
 func newIssueIntegrationServer(t *testing.T, f issueIntegrationFixture) *echo.Echo {
 	t.Helper()
 	issueRepo := tracker.NewIssueRepository(testPool)
-	issueSvc := issuedomain.NewIssueService(issueRepo)
+	issueSvc := issuedomain.NewIssueService(issueRepo, tracker.NewIssueUnitOfWork())
 	projRepo := tracker.NewProjectRepository(testPool)
 	projSvc := projectdomain.NewProjectService(projRepo)
 

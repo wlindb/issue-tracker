@@ -11,11 +11,12 @@ import (
 // IssueService implements the domain logic for managing issues.
 type IssueService struct {
 	repository IssueRepository
+	unitOfWork UnitOfWork
 }
 
-// NewIssueService creates an IssueService wired to the given repository and event publisher.
-func NewIssueService(repository IssueRepository) *IssueService {
-	return &IssueService{repository: repository}
+// NewIssueService creates an IssueService wired to the given repository and unit of work.
+func NewIssueService(repository IssueRepository, unitOfWork UnitOfWork) *IssueService {
+	return &IssueService{repository: repository, unitOfWork: unitOfWork}
 }
 
 // ListIssues returns a paginated list of issues for the given project.
@@ -63,12 +64,16 @@ func (s *IssueService) UpdateIssueAssignee(ctx context.Context, issueID uuid.UUI
 	} else {
 		updated = current.Unassign()
 	}
-	result, err := s.repository.Update(ctx, updated)
-	if err != nil {
+	var result Issue
+	if err := s.unitOfWork.Run(ctx, func(ctx context.Context) error {
+		var err error
+		result, err = s.repository.Update(ctx, updated)
+		if err != nil {
+			return err
+		}
+		return result.EmitAssigneeUpdated(ctx)
+	}); err != nil {
 		return Issue{}, fmt.Errorf("update issue assignee: %w", err)
-	}
-	if err := result.EmitAssigneeUpdated(ctx); err != nil {
-		slog.Error("publish issue assignee updated event", "error", err)
 	}
 	return result, nil
 }

@@ -24,6 +24,23 @@ type issueQuerier interface {
 // Compile-time: *IssueRepository must satisfy domain interface.
 var _ issuedomain.IssueRepository = (*IssueRepository)(nil)
 
+// IssueUnitOfWork is a no-op implementation of the domain UnitOfWork interface.
+// It executes fn directly without transactional guarantees.
+var _ issuedomain.UnitOfWork = (*IssueUnitOfWork)(nil)
+
+// IssueUnitOfWork is a no-op unit of work that runs fn without a database transaction.
+type IssueUnitOfWork struct{}
+
+// NewIssueUnitOfWork returns a new IssueUnitOfWork.
+func NewIssueUnitOfWork() *IssueUnitOfWork {
+	return &IssueUnitOfWork{}
+}
+
+// Run executes fn directly, without wrapping it in a database transaction.
+func (u *IssueUnitOfWork) Run(ctx context.Context, fn func(ctx context.Context) error) error {
+	return fn(ctx)
+}
+
 // IssueRepository is a PostgreSQL-backed implementation of issuedomain.IssueRepository.
 type IssueRepository struct {
 	queries issueQuerier
