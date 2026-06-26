@@ -21,7 +21,7 @@ func Test_ToIssue_NewCommand_GeneratesNonZeroID(t *testing.T) {
 		Priority:   issue.PriorityMedium,
 	}
 
-	result := command.ToIssue(uuid.New(), command.Slugify)
+	result := command.ToIssue(uuid.New(), command.Slugify, []issue.Label{})
 
 	assert.NotEqual(t, uuid.Nil, result.ID)
 }
@@ -51,7 +51,7 @@ func Test_ToIssue_Title_GeneratesSlugIdentifier(t *testing.T) {
 				Priority:   issue.PriorityMedium,
 			}
 
-			result := command.ToIssue(fixedID, command.Slugify)
+			result := command.ToIssue(fixedID, command.Slugify, []issue.Label{})
 
 			assert.Equal(t, tt.identifier, result.Identifier)
 		})
@@ -73,7 +73,7 @@ func Test_ToIssue_FullCommand_PopulatesAllFields(t *testing.T) {
 		AssigneeID:  &assigneeID,
 	}
 
-	result := command.ToIssue(uuid.New(), command.Slugify)
+	result := command.ToIssue(uuid.New(), command.Slugify, []issue.Label{})
 
 	assert.Equal(t, projectID, result.ProjectID)
 	assert.Equal(t, reporterID, result.ReporterID)
@@ -84,7 +84,7 @@ func Test_ToIssue_FullCommand_PopulatesAllFields(t *testing.T) {
 	assert.Equal(t, &assigneeID, result.AssigneeID)
 }
 
-func Test_ToIssue_NewIssue_HasEmptyLabels(t *testing.T) {
+func Test_ToIssue_NoLabels_HasEmptyLabels(t *testing.T) {
 	command := issue.CreateIssueCommand{
 		ProjectID:  uuid.New(),
 		ReporterID: uuid.New(),
@@ -93,7 +93,7 @@ func Test_ToIssue_NewIssue_HasEmptyLabels(t *testing.T) {
 		Priority:   issue.PriorityMedium,
 	}
 
-	result := command.ToIssue(uuid.New(), command.Slugify)
+	result := command.ToIssue(uuid.New(), command.Slugify, []issue.Label{})
 
 	assert.NotNil(t, result.Labels)
 	assert.Empty(t, result.Labels)
@@ -292,7 +292,7 @@ func baseIssue() issue.Issue {
 		Title:      "Test issue",
 		Status:     issue.StatusTodo,
 		Priority:   issue.PriorityNone,
-		Labels:     []string{},
+		Labels:     []issue.Label{},
 		ProjectID:  uuid.New(),
 		ReporterID: uuid.New(),
 	}

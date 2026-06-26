@@ -13,9 +13,9 @@ import (
 )
 
 const createIssue = `-- name: CreateIssue :one
-INSERT INTO issues (id, identifier, title, description, status, priority, labels, assignee_id, project_id, reporter_id, workspace_id, created_at, updated_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, current_setting('app.workspace_id')::uuid, NOW(), NOW())
-RETURNING id, identifier, title, description, status, priority, labels, assignee_id, project_id, reporter_id, created_at, updated_at, workspace_id
+INSERT INTO issues (id, identifier, title, description, status, priority, assignee_id, project_id, reporter_id, workspace_id, created_at, updated_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, current_setting('app.workspace_id')::uuid, NOW(), NOW())
+RETURNING id, identifier, title, description, status, priority, assignee_id, project_id, reporter_id, created_at, updated_at, workspace_id
 `
 
 type CreateIssueParams struct {
@@ -25,7 +25,6 @@ type CreateIssueParams struct {
 	Description pgtype.Text
 	Status      string
 	Priority    string
-	Labels      []string
 	AssigneeID  pgtype.UUID
 	ProjectID   uuid.UUID
 	ReporterID  uuid.UUID
@@ -39,7 +38,6 @@ func (q *Queries) CreateIssue(ctx context.Context, arg CreateIssueParams) (Issue
 		arg.Description,
 		arg.Status,
 		arg.Priority,
-		arg.Labels,
 		arg.AssigneeID,
 		arg.ProjectID,
 		arg.ReporterID,
@@ -52,7 +50,6 @@ func (q *Queries) CreateIssue(ctx context.Context, arg CreateIssueParams) (Issue
 		&i.Description,
 		&i.Status,
 		&i.Priority,
-		&i.Labels,
 		&i.AssigneeID,
 		&i.ProjectID,
 		&i.ReporterID,
@@ -63,8 +60,23 @@ func (q *Queries) CreateIssue(ctx context.Context, arg CreateIssueParams) (Issue
 	return i, err
 }
 
+const createManyIssueLabels = `-- name: CreateManyIssueLabels :exec
+INSERT INTO issue_labels (issue_id, label_id)
+SELECT $1::uuid, unnest($2::uuid[])
+`
+
+type CreateManyIssueLabelsParams struct {
+	IssueID  uuid.UUID
+	LabelIds []uuid.UUID
+}
+
+func (q *Queries) CreateManyIssueLabels(ctx context.Context, arg CreateManyIssueLabelsParams) error {
+	_, err := q.db.Exec(ctx, createManyIssueLabels, arg.IssueID, arg.LabelIds)
+	return err
+}
+
 const getIssue = `-- name: GetIssue :one
-SELECT id, identifier, title, description, status, priority, labels, assignee_id, project_id, reporter_id, created_at, updated_at, workspace_id FROM issues
+SELECT id, identifier, title, description, status, priority, assignee_id, project_id, reporter_id, created_at, updated_at, workspace_id FROM issues
 WHERE id = $1
   AND workspace_id = current_setting('app.workspace_id')::uuid
 `
@@ -79,7 +91,6 @@ func (q *Queries) GetIssue(ctx context.Context, id uuid.UUID) (Issue, error) {
 		&i.Description,
 		&i.Status,
 		&i.Priority,
-		&i.Labels,
 		&i.AssigneeID,
 		&i.ProjectID,
 		&i.ReporterID,
@@ -91,7 +102,7 @@ func (q *Queries) GetIssue(ctx context.Context, id uuid.UUID) (Issue, error) {
 }
 
 const listIssues = `-- name: ListIssues :many
-SELECT id, identifier, title, description, status, priority, labels, assignee_id, project_id, reporter_id, created_at, updated_at, workspace_id FROM issues
+SELECT id, identifier, title, description, status, priority, assignee_id, project_id, reporter_id, created_at, updated_at, workspace_id FROM issues
 WHERE project_id = $1
   AND workspace_id = current_setting('app.workspace_id')::uuid
   AND ($2::text      IS NULL OR status      = $2)
@@ -129,13 +140,52 @@ func (q *Queries) ListIssues(ctx context.Context, arg ListIssuesParams) ([]Issue
 			&i.Description,
 			&i.Status,
 			&i.Priority,
-			&i.Labels,
 			&i.AssigneeID,
 			&i.ProjectID,
 			&i.ReporterID,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.WorkspaceID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listIssuesWithLabels = `-- name: ListIssuesWithLabels :many
+SELECT id, identifier, title, description, status, priority, assignee_id, project_id, reporter_id, created_at, updated_at, workspace_id, labels from issue_with_labels
+ORDER BY created_at DESC
+LIMIT 100
+`
+
+func (q *Queries) ListIssuesWithLabels(ctx context.Context) ([]IssueWithLabel, error) {
+	rows, err := q.db.Query(ctx, listIssuesWithLabels)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []IssueWithLabel
+	for rows.Next() {
+		var i IssueWithLabel
+		if err := rows.Scan(
+			&i.ID,
+			&i.Identifier,
+			&i.Title,
+			&i.Description,
+			&i.Status,
+			&i.Priority,
+			&i.AssigneeID,
+			&i.ProjectID,
+			&i.ReporterID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.WorkspaceID,
+			&i.Labels,
 		); err != nil {
 			return nil, err
 		}
@@ -157,7 +207,7 @@ SET title       = $1,
     updated_at  = NOW()
 WHERE id = $6
   AND updated_at = $7
-RETURNING id, identifier, title, description, status, priority, labels, assignee_id, project_id, reporter_id, created_at, updated_at, workspace_id
+RETURNING id, identifier, title, description, status, priority, assignee_id, project_id, reporter_id, created_at, updated_at, workspace_id
 `
 
 type UpdateIssueParams struct {
@@ -188,7 +238,6 @@ func (q *Queries) UpdateIssue(ctx context.Context, arg UpdateIssueParams) (Issue
 		&i.Description,
 		&i.Status,
 		&i.Priority,
-		&i.Labels,
 		&i.AssigneeID,
 		&i.ProjectID,
 		&i.ReporterID,

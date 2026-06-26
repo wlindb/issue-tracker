@@ -56,6 +56,12 @@ func (p Priority) Valid() bool {
 	return false
 }
 
+// Label is a workspace-scoped tag that can be attached to issues.
+type Label struct {
+	ID   uuid.UUID
+	Name string
+}
+
 // Issue is the domain representation of a tracked issue.
 type Issue struct {
 	ID          uuid.UUID
@@ -64,7 +70,7 @@ type Issue struct {
 	Description *string
 	Status      Status
 	Priority    Priority
-	Labels      []string
+	Labels      []Label
 	AssigneeID  *uuid.UUID
 	ProjectID   uuid.UUID
 	ReporterID  uuid.UUID
@@ -95,6 +101,7 @@ type CreateIssueCommand struct {
 	Status      Status
 	Priority    Priority
 	AssigneeID  *uuid.UUID
+	LabelIDs    []uuid.UUID
 }
 
 func (c CreateIssueCommand) Slugify(s string) string {
@@ -107,7 +114,7 @@ func (c CreateIssueCommand) Slugify(s string) string {
 
 type Slugifier func(s string) string
 
-func (c CreateIssueCommand) ToIssue(id uuid.UUID, slugifier Slugifier) Issue {
+func (c CreateIssueCommand) ToIssue(id uuid.UUID, slugifier Slugifier, labels []Label) Issue {
 	return Issue{
 		ID:          id,
 		Identifier:  slugifier(fmt.Sprintf("%s-%s", c.Title, id.String()[:8])),
@@ -117,7 +124,7 @@ func (c CreateIssueCommand) ToIssue(id uuid.UUID, slugifier Slugifier) Issue {
 		Description: c.Description,
 		Status:      c.Status,
 		Priority:    c.Priority,
-		Labels:      []string{},
+		Labels:      labels,
 		AssigneeID:  c.AssigneeID,
 	}
 }
