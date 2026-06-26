@@ -22,12 +22,12 @@ import (
 
 type mockDBTX struct{ mock.Mock }
 
-func (m *mockDBTX) QueryRow(ctx context.Context, sql string, args ...interface{}) pgx.Row {
+func (m *mockDBTX) QueryRow(ctx context.Context, sql string, args ...any) pgx.Row {
 	a := m.Called(ctx, sql, args)
 	return a.Get(0).(pgx.Row)
 }
 
-func (m *mockDBTX) Query(ctx context.Context, sql string, args ...interface{}) (pgx.Rows, error) {
+func (m *mockDBTX) Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error) {
 	a := m.Called(ctx, sql, args)
 	if rows, ok := a.Get(0).(pgx.Rows); ok {
 		return rows, a.Error(1)
@@ -35,7 +35,7 @@ func (m *mockDBTX) Query(ctx context.Context, sql string, args ...interface{}) (
 	return nil, a.Error(1)
 }
 
-func (m *mockDBTX) Exec(ctx context.Context, sql string, args ...interface{}) (pgconn.CommandTag, error) {
+func (m *mockDBTX) Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error) {
 	a := m.Called(ctx, sql, args)
 	return a.Get(0).(pgconn.CommandTag), a.Error(1)
 }
@@ -115,6 +115,9 @@ func Test_CreateIssue_Success_ReturnsDomainIssue(t *testing.T) {
 	mockDatabase := new(mockDBTX)
 	mockDatabase.On("QueryRow", mock.Anything, mock.Anything, mock.Anything).
 		Return(&mockRow{issue: returnedRow})
+	mockDatabase.On("Exec", mock.Anything, mock.Anything, mock.Anything).
+		Return(pgconn.CommandTag{}, nil)
+
 	repository := &IssueRepository{db: mockDatabase}
 
 	actual, err := repository.CreateIssue(context.Background(), domainIssue)
@@ -227,11 +230,11 @@ func Test_ListIssues_WithFilters_PassesCorrectParams(t *testing.T) {
 	}
 	expectedParams := listIssuesParamsFromDomain(projectID, query)
 
-	var capturedArgs []interface{}
+	var capturedArgs []any
 	mockDatabase := new(mockDBTX)
 	mockDatabase.On("Query", mock.Anything, mock.Anything, mock.Anything).
 		Run(func(args mock.Arguments) {
-			capturedArgs = args.Get(2).([]interface{})
+			capturedArgs = args.Get(2).([]any)
 		}).
 		Return(&mockRows{}, nil)
 	repository := &IssueRepository{db: mockDatabase}

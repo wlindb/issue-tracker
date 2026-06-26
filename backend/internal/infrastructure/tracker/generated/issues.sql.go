@@ -60,6 +60,21 @@ func (q *Queries) CreateIssue(ctx context.Context, arg CreateIssueParams) (Issue
 	return i, err
 }
 
+const createManyIssueLabels = `-- name: CreateManyIssueLabels :exec
+INSERT INTO issue_labels (issue_id, label_id)
+SELECT $1::uuid, unnest($2::uuid[])
+`
+
+type CreateManyIssueLabelsParams struct {
+	IssueID  uuid.UUID
+	LabelIds []uuid.UUID
+}
+
+func (q *Queries) CreateManyIssueLabels(ctx context.Context, arg CreateManyIssueLabelsParams) error {
+	_, err := q.db.Exec(ctx, createManyIssueLabels, arg.IssueID, arg.LabelIds)
+	return err
+}
+
 const getIssue = `-- name: GetIssue :one
 SELECT id, identifier, title, description, status, priority, assignee_id, project_id, reporter_id, created_at, updated_at, workspace_id FROM issues
 WHERE id = $1

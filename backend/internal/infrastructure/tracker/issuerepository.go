@@ -59,6 +59,10 @@ func (r *IssueRepository) CreateIssue(ctx context.Context, issue issuedomain.Iss
 		return issuedomain.Issue{}, fmt.Errorf("create issue: %w", err)
 	}
 
+	if err = queries.CreateManyIssueLabels(ctx, createManyIssueLabelsParamsFromDomain(issue)); err != nil {
+		return issuedomain.Issue{}, fmt.Errorf("create many issue labels: %w", err)
+	}
+
 	return issueToDomain(dbIssue, []issuedomain.Label{}), nil
 }
 

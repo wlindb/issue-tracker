@@ -73,6 +73,19 @@ func createIssueParamsFromDomain(issue issuedomain.Issue) trackerdb.CreateIssueP
 	}
 }
 
+func createManyIssueLabelsParamsFromDomain(issue issuedomain.Issue) trackerdb.CreateManyIssueLabelsParams {
+	labelIDs := make([]uuid.UUID, len(issue.Labels))
+
+	for i, label := range issue.Labels {
+		labelIDs[i] = label.ID
+	}
+
+	return trackerdb.CreateManyIssueLabelsParams{
+		IssueID:  issue.ID,
+		LabelIds: labelIDs,
+	}
+}
+
 func listIssuesParamsFromDomain(projectID uuid.UUID, query issuedomain.ListIssueQuery) trackerdb.ListIssuesParams {
 	var status pgtype.Text
 	if query.Status != nil {

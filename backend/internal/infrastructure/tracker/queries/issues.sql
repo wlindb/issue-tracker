@@ -34,3 +34,7 @@ RETURNING *;
 SELECT * from issue_with_labels
 ORDER BY created_at DESC
 LIMIT 100;
+
+-- name: CreateManyIssueLabels :exec
+INSERT INTO issue_labels (issue_id, label_id)
+SELECT @issue_id::uuid, unnest(@label_ids::uuid[]);
