@@ -15,3 +15,7 @@ sql:
               type: "UUID"
           - db_type: "pg_catalog.timestamptz"
             go_type: "time.Time"
+          - column: "issue_with_labels.labels"
+            go_type:
+              type: "Label"
+              slice: true

@@ -26,13 +26,40 @@ type Issue struct {
 	Description pgtype.Text
 	Status      string
 	Priority    string
-	Labels      []string
 	AssigneeID  pgtype.UUID
 	ProjectID   uuid.UUID
 	ReporterID  uuid.UUID
 	CreatedAt   pgtype.Timestamptz
 	UpdatedAt   pgtype.Timestamptz
 	WorkspaceID uuid.UUID
+}
+
+type IssueLabel struct {
+	IssueID uuid.UUID
+	LabelID uuid.UUID
+}
+
+type IssueWithLabel struct {
+	ID          uuid.UUID
+	Identifier  string
+	Title       string
+	Description pgtype.Text
+	Status      string
+	Priority    string
+	AssigneeID  pgtype.UUID
+	ProjectID   uuid.UUID
+	ReporterID  uuid.UUID
+	CreatedAt   pgtype.Timestamptz
+	UpdatedAt   pgtype.Timestamptz
+	WorkspaceID uuid.UUID
+	Labels      []Label
+}
+
+type Label struct {
+	ID          uuid.UUID
+	WorkspaceID uuid.UUID
+	Name        string
+	CreatedAt   pgtype.Timestamptz
 }
 
 type Project struct {

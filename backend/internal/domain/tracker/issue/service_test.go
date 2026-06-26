@@ -52,9 +52,27 @@ func (m *mockIssueRepository) Update(ctx context.Context, i issue.Issue) (issue.
 	return issue.Issue{}, args.Error(1)
 }
 
+type mockUnitOfWork struct {
+	mock.Mock
+}
+
+func (m *mockUnitOfWork) RunInTx(ctx context.Context, fn func(issue.Repositories) error) error {
+	args := m.Called(ctx, fn)
+	return args.Error(0)
+}
+
+type fakeUnitOfWork struct {
+	repositories issue.Repositories
+}
+
+func (f *fakeUnitOfWork) RunInTx(_ context.Context, fn func(issue.Repositories) error) error {
+	return fn(f.repositories)
+}
+
 func Test_ListIssues_WithIssues_ReturnsPage(t *testing.T) {
+	uow := &mockUnitOfWork{}
 	repository := &mockIssueRepository{}
-	service := issue.NewIssueService(repository)
+	service := issue.NewIssueService(uow, repository)
 
 	projectID := uuid.New()
 	query := issue.ListIssueQuery{}
@@ -74,8 +92,9 @@ func Test_ListIssues_WithIssues_ReturnsPage(t *testing.T) {
 }
 
 func Test_ListIssues_EmptyResult_ReturnsEmptyPage(t *testing.T) {
+	uow := &mockUnitOfWork{}
 	repository := &mockIssueRepository{}
-	service := issue.NewIssueService(repository)
+	service := issue.NewIssueService(uow, repository)
 
 	projectID := uuid.New()
 	query := issue.ListIssueQuery{}
@@ -90,8 +109,9 @@ func Test_ListIssues_EmptyResult_ReturnsEmptyPage(t *testing.T) {
 }
 
 func Test_ListIssues_RepositoryError_ReturnsError(t *testing.T) {
+	uow := &mockUnitOfWork{}
 	repository := &mockIssueRepository{}
-	service := issue.NewIssueService(repository)
+	service := issue.NewIssueService(uow, repository)
 
 	projectID := uuid.New()
 	query := issue.ListIssueQuery{}
@@ -106,8 +126,9 @@ func Test_ListIssues_RepositoryError_ReturnsError(t *testing.T) {
 }
 
 func Test_ListIssues_WithQueryFilters_PassesFiltersToRepository(t *testing.T) {
+	uow := &mockUnitOfWork{}
 	repository := &mockIssueRepository{}
-	service := issue.NewIssueService(repository)
+	service := issue.NewIssueService(uow, repository)
 
 	projectID := uuid.New()
 	assigneeID := uuid.New()
@@ -139,7 +160,8 @@ func Test_ListIssues_WithQueryFilters_PassesFiltersToRepository(t *testing.T) {
 
 func Test_CreateIssue_ValidCommand_ReturnsCreatedIssue(t *testing.T) {
 	repository := &mockIssueRepository{}
-	service := issue.NewIssueService(repository)
+	uow := &fakeUnitOfWork{repositories: issue.Repositories{Issues: repository}}
+	service := issue.NewIssueService(uow, &mockIssueRepository{})
 
 	projectID := uuid.New()
 	reporterID := uuid.New()
@@ -150,7 +172,7 @@ func Test_CreateIssue_ValidCommand_ReturnsCreatedIssue(t *testing.T) {
 		Status:     issue.StatusTodo,
 		Priority:   issue.PriorityMedium,
 	}
-	returned := issue.Issue{
+	expected := issue.Issue{
 		ID:         uuid.New(),
 		Identifier: "PROJ-1",
 		ProjectID:  projectID,
@@ -160,17 +182,26 @@ func Test_CreateIssue_ValidCommand_ReturnsCreatedIssue(t *testing.T) {
 		Priority:   issue.PriorityMedium,
 	}
 
-	repository.On("CreateIssue", mock.Anything, mock.Anything).Return(returned, nil)
+	repository.On("CreateIssue", mock.Anything, mock.Anything).Return(expected, nil)
 
-	got, err := service.CreateIssue(context.Background(), command)
+	ctxWithNoopPublisher := event.WithPublisher(context.Background(), func(_ context.Context, _ issue.IssueCreatedEvent) error {
+		return nil
+	})
+
+	actual, err := service.CreateIssue(ctxWithNoopPublisher, command)
 	require.NoError(t, err)
-	assert.Equal(t, returned, got)
+	assert.Equal(t, expected, actual)
 	repository.AssertExpectations(t)
 }
 
-func Test_CreateIssue_RepositoryError_ReturnsError(t *testing.T) {
+func Test_CreateIssue_RunInTxError_ReturnsError(t *testing.T) {
 	repository := &mockIssueRepository{}
-	service := issue.NewIssueService(repository)
+	repositoryErr := errors.New("something went wrong")
+
+	uow := &mockUnitOfWork{}
+	uow.On("RunInTx", mock.Anything, mock.Anything).Return(repositoryErr)
+
+	service := issue.NewIssueService(uow, repository)
 
 	command := issue.CreateIssueCommand{
 		ProjectID:  uuid.New(),
@@ -179,9 +210,6 @@ func Test_CreateIssue_RepositoryError_ReturnsError(t *testing.T) {
 		Status:     issue.StatusTodo,
 		Priority:   issue.PriorityMedium,
 	}
-	repositoryErr := errors.New("db error")
-
-	repository.On("CreateIssue", mock.Anything, mock.Anything).Return(nil, repositoryErr)
 
 	_, err := service.CreateIssue(context.Background(), command)
 	require.Error(t, err)
@@ -189,11 +217,34 @@ func Test_CreateIssue_RepositoryError_ReturnsError(t *testing.T) {
 	repository.AssertExpectations(t)
 }
 
+func Test_CreateIssue_RepositoryError_ReturnsError(t *testing.T) {
+	repositoryErr := errors.New("db error")
+	txRepository := &mockIssueRepository{}
+	txRepository.On("CreateIssue", mock.Anything, mock.Anything).Return(issue.Issue{}, repositoryErr)
+
+	uow := &fakeUnitOfWork{repositories: issue.Repositories{Issues: txRepository}}
+	service := issue.NewIssueService(uow, &mockIssueRepository{})
+
+	command := issue.CreateIssueCommand{
+		ProjectID:  uuid.New(),
+		ReporterID: uuid.New(),
+		Title:      "New feature",
+		Status:     issue.StatusTodo,
+		Priority:   issue.PriorityMedium,
+	}
+
+	_, err := service.CreateIssue(context.Background(), command)
+	require.Error(t, err)
+	assert.ErrorIs(t, err, repositoryErr)
+	txRepository.AssertExpectations(t)
+}
+
 // — GetIssue —
 
 func Test_GetIssue_Found_ReturnsIssue(t *testing.T) {
+	uow := &mockUnitOfWork{}
 	repository := &mockIssueRepository{}
-	service := issue.NewIssueService(repository)
+	service := issue.NewIssueService(uow, repository)
 
 	issueID := uuid.New()
 	expected := issue.Issue{
@@ -212,8 +263,9 @@ func Test_GetIssue_Found_ReturnsIssue(t *testing.T) {
 }
 
 func Test_GetIssue_NotFound_ReturnsError(t *testing.T) {
+	uow := &mockUnitOfWork{}
 	repository := &mockIssueRepository{}
-	service := issue.NewIssueService(repository)
+	service := issue.NewIssueService(uow, repository)
 
 	issueID := uuid.New()
 	repository.On("GetIssue", mock.Anything, issueID).Return(issue.Issue{}, issue.ErrIssueNotFound)
@@ -227,8 +279,9 @@ func Test_GetIssue_NotFound_ReturnsError(t *testing.T) {
 // — UpdateIssueAssignee —
 
 func Test_UpdateIssueAssignee_ValidAssignee_ReturnsUpdatedIssue(t *testing.T) {
+	uow := &mockUnitOfWork{}
 	repository := &mockIssueRepository{}
-	service := issue.NewIssueService(repository)
+	service := issue.NewIssueService(uow, repository)
 
 	issueID := uuid.New()
 	assigneeID := uuid.New()
@@ -237,7 +290,7 @@ func Test_UpdateIssueAssignee_ValidAssignee_ReturnsUpdatedIssue(t *testing.T) {
 		Title:    "Test issue",
 		Status:   issue.StatusTodo,
 		Priority: issue.PriorityNone,
-		Labels:   []string{},
+		Labels:   []issue.Label{},
 	}
 	returned := existing
 	returned.AssigneeID = &assigneeID
@@ -255,8 +308,9 @@ func Test_UpdateIssueAssignee_ValidAssignee_ReturnsUpdatedIssue(t *testing.T) {
 }
 
 func Test_UpdateIssueAssignee_NilAssignee_ClearsAssignee(t *testing.T) {
+	uow := &mockUnitOfWork{}
 	repository := &mockIssueRepository{}
-	service := issue.NewIssueService(repository)
+	service := issue.NewIssueService(uow, repository)
 
 	issueID := uuid.New()
 	oldAssignee := uuid.New()
@@ -265,7 +319,7 @@ func Test_UpdateIssueAssignee_NilAssignee_ClearsAssignee(t *testing.T) {
 		Title:      "Test issue",
 		Status:     issue.StatusTodo,
 		Priority:   issue.PriorityNone,
-		Labels:     []string{},
+		Labels:     []issue.Label{},
 		AssigneeID: &oldAssignee,
 	}
 	returned := existing
@@ -283,8 +337,9 @@ func Test_UpdateIssueAssignee_NilAssignee_ClearsAssignee(t *testing.T) {
 }
 
 func Test_UpdateIssueAssignee_IssueNotFound_ReturnsError(t *testing.T) {
+	uow := &mockUnitOfWork{}
 	repository := &mockIssueRepository{}
-	service := issue.NewIssueService(repository)
+	service := issue.NewIssueService(uow, repository)
 
 	issueID := uuid.New()
 	assigneeID := uuid.New()
@@ -297,12 +352,13 @@ func Test_UpdateIssueAssignee_IssueNotFound_ReturnsError(t *testing.T) {
 }
 
 func Test_UpdateIssueAssignee_UpdateError_ReturnsError(t *testing.T) {
+	uow := &mockUnitOfWork{}
 	repository := &mockIssueRepository{}
-	service := issue.NewIssueService(repository)
+	service := issue.NewIssueService(uow, repository)
 
 	issueID := uuid.New()
 	assigneeID := uuid.New()
-	existing := issue.Issue{ID: issueID, Status: issue.StatusTodo, Priority: issue.PriorityNone, Labels: []string{}}
+	existing := issue.Issue{ID: issueID, Status: issue.StatusTodo, Priority: issue.PriorityNone, Labels: []issue.Label{}}
 	updateErr := errors.New("db error")
 
 	repository.On("GetIssue", mock.Anything, issueID).Return(existing, nil)
@@ -317,8 +373,9 @@ func Test_UpdateIssueAssignee_UpdateError_ReturnsError(t *testing.T) {
 // — UpdateIssueDescription —
 
 func Test_UpdateIssueDescription_ValidDescription_ReturnsUpdatedIssue(t *testing.T) {
+	uow := &mockUnitOfWork{}
 	repository := &mockIssueRepository{}
-	service := issue.NewIssueService(repository)
+	service := issue.NewIssueService(uow, repository)
 
 	issueID := uuid.New()
 	description := "new description"
@@ -327,7 +384,7 @@ func Test_UpdateIssueDescription_ValidDescription_ReturnsUpdatedIssue(t *testing
 		Title:    "Test issue",
 		Status:   issue.StatusTodo,
 		Priority: issue.PriorityNone,
-		Labels:   []string{},
+		Labels:   []issue.Label{},
 	}
 	returned := existing
 	returned.Description = &description
@@ -345,8 +402,9 @@ func Test_UpdateIssueDescription_ValidDescription_ReturnsUpdatedIssue(t *testing
 }
 
 func Test_UpdateIssueDescription_NilDescription_ClearsDescription(t *testing.T) {
+	uow := &mockUnitOfWork{}
 	repository := &mockIssueRepository{}
-	service := issue.NewIssueService(repository)
+	service := issue.NewIssueService(uow, repository)
 
 	issueID := uuid.New()
 	oldDesc := "old description"
@@ -356,7 +414,7 @@ func Test_UpdateIssueDescription_NilDescription_ClearsDescription(t *testing.T) 
 		Description: &oldDesc,
 		Status:      issue.StatusTodo,
 		Priority:    issue.PriorityNone,
-		Labels:      []string{},
+		Labels:      []issue.Label{},
 	}
 	returned := existing
 	returned.Description = nil
@@ -373,8 +431,9 @@ func Test_UpdateIssueDescription_NilDescription_ClearsDescription(t *testing.T) 
 }
 
 func Test_UpdateIssueDescription_IssueNotFound_ReturnsError(t *testing.T) {
+	uow := &mockUnitOfWork{}
 	repository := &mockIssueRepository{}
-	service := issue.NewIssueService(repository)
+	service := issue.NewIssueService(uow, repository)
 
 	issueID := uuid.New()
 	desc := "description"
@@ -389,8 +448,9 @@ func Test_UpdateIssueDescription_IssueNotFound_ReturnsError(t *testing.T) {
 // — UpdateIssueTitle —
 
 func Test_UpdateIssueTitle_ValidTitle_ReturnsUpdatedIssue(t *testing.T) {
+	uow := &mockUnitOfWork{}
 	repository := &mockIssueRepository{}
-	service := issue.NewIssueService(repository)
+	service := issue.NewIssueService(uow, repository)
 
 	issueID := uuid.New()
 	title := "new title"
@@ -399,7 +459,7 @@ func Test_UpdateIssueTitle_ValidTitle_ReturnsUpdatedIssue(t *testing.T) {
 		Title:    "old title",
 		Status:   issue.StatusTodo,
 		Priority: issue.PriorityNone,
-		Labels:   []string{},
+		Labels:   []issue.Label{},
 	}
 	returned := existing
 	returned.Title = title
@@ -416,8 +476,9 @@ func Test_UpdateIssueTitle_ValidTitle_ReturnsUpdatedIssue(t *testing.T) {
 }
 
 func Test_UpdateIssueTitle_EmptyTitle_ReturnsError(t *testing.T) {
+	uow := &mockUnitOfWork{}
 	repository := &mockIssueRepository{}
-	service := issue.NewIssueService(repository)
+	service := issue.NewIssueService(uow, repository)
 
 	issueID := uuid.New()
 	existing := issue.Issue{
@@ -425,7 +486,7 @@ func Test_UpdateIssueTitle_EmptyTitle_ReturnsError(t *testing.T) {
 		Title:    "old title",
 		Status:   issue.StatusTodo,
 		Priority: issue.PriorityNone,
-		Labels:   []string{},
+		Labels:   []issue.Label{},
 	}
 
 	repository.On("GetIssue", mock.Anything, issueID).Return(existing, nil)
@@ -437,8 +498,9 @@ func Test_UpdateIssueTitle_EmptyTitle_ReturnsError(t *testing.T) {
 }
 
 func Test_UpdateIssueTitle_IssueNotFound_ReturnsError(t *testing.T) {
+	uow := &mockUnitOfWork{}
 	repository := &mockIssueRepository{}
-	service := issue.NewIssueService(repository)
+	service := issue.NewIssueService(uow, repository)
 
 	issueID := uuid.New()
 	repository.On("GetIssue", mock.Anything, issueID).Return(issue.Issue{}, issue.ErrIssueNotFound)
@@ -450,11 +512,12 @@ func Test_UpdateIssueTitle_IssueNotFound_ReturnsError(t *testing.T) {
 }
 
 func Test_UpdateIssueTitle_UpdateError_ReturnsError(t *testing.T) {
+	uow := &mockUnitOfWork{}
 	repository := &mockIssueRepository{}
-	service := issue.NewIssueService(repository)
+	service := issue.NewIssueService(uow, repository)
 
 	issueID := uuid.New()
-	existing := issue.Issue{ID: issueID, Title: "old title", Status: issue.StatusTodo, Priority: issue.PriorityNone, Labels: []string{}}
+	existing := issue.Issue{ID: issueID, Title: "old title", Status: issue.StatusTodo, Priority: issue.PriorityNone, Labels: []issue.Label{}}
 	updateErr := errors.New("db error")
 
 	repository.On("GetIssue", mock.Anything, issueID).Return(existing, nil)
@@ -470,7 +533,8 @@ func Test_UpdateIssueTitle_UpdateError_ReturnsError(t *testing.T) {
 
 func Test_UpdateIssuePriority_ValidPriority_ReturnsUpdatedIssue(t *testing.T) {
 	repository := &mockIssueRepository{}
-	service := issue.NewIssueService(repository)
+	uow := &fakeUnitOfWork{repositories: issue.Repositories{Issues: repository}}
+	service := issue.NewIssueService(uow, repository)
 
 	issueID := uuid.New()
 	existing := issue.Issue{
@@ -478,7 +542,7 @@ func Test_UpdateIssuePriority_ValidPriority_ReturnsUpdatedIssue(t *testing.T) {
 		Title:    "Test issue",
 		Status:   issue.StatusTodo,
 		Priority: issue.PriorityNone,
-		Labels:   []string{},
+		Labels:   []issue.Label{},
 	}
 	returned := existing
 	returned.Priority = issue.PriorityHigh
@@ -488,7 +552,10 @@ func Test_UpdateIssuePriority_ValidPriority_ReturnsUpdatedIssue(t *testing.T) {
 		return i.ID == issueID && i.Priority == issue.PriorityHigh
 	})).Return(returned, nil)
 
-	actual, err := service.UpdateIssuePriority(context.Background(), issueID, issue.PriorityHigh)
+	ctxWithNoopPublisher := event.WithPublisher(context.Background(), func(_ context.Context, _ issue.IssuePriorityUpdatedEvent) error {
+		return nil
+	})
+	actual, err := service.UpdateIssuePriority(ctxWithNoopPublisher, issueID, issue.PriorityHigh)
 	require.NoError(t, err)
 	assert.Equal(t, issue.PriorityHigh, actual.Priority)
 	repository.AssertExpectations(t)
@@ -496,7 +563,8 @@ func Test_UpdateIssuePriority_ValidPriority_ReturnsUpdatedIssue(t *testing.T) {
 
 func Test_UpdateIssuePriority_InvalidPriority_ReturnsError(t *testing.T) {
 	repository := &mockIssueRepository{}
-	service := issue.NewIssueService(repository)
+	uow := &fakeUnitOfWork{repositories: issue.Repositories{Issues: repository}}
+	service := issue.NewIssueService(uow, repository)
 
 	issueID := uuid.New()
 	existing := issue.Issue{
@@ -504,7 +572,7 @@ func Test_UpdateIssuePriority_InvalidPriority_ReturnsError(t *testing.T) {
 		Title:    "Test issue",
 		Status:   issue.StatusTodo,
 		Priority: issue.PriorityNone,
-		Labels:   []string{},
+		Labels:   []issue.Label{},
 	}
 
 	repository.On("GetIssue", mock.Anything, issueID).Return(existing, nil)
@@ -517,7 +585,8 @@ func Test_UpdateIssuePriority_InvalidPriority_ReturnsError(t *testing.T) {
 
 func Test_UpdateIssuePriority_IssueNotFound_ReturnsError(t *testing.T) {
 	repository := &mockIssueRepository{}
-	service := issue.NewIssueService(repository)
+	uow := &fakeUnitOfWork{repositories: issue.Repositories{Issues: repository}}
+	service := issue.NewIssueService(uow, repository)
 
 	issueID := uuid.New()
 	repository.On("GetIssue", mock.Anything, issueID).Return(issue.Issue{}, issue.ErrIssueNotFound)
@@ -530,10 +599,11 @@ func Test_UpdateIssuePriority_IssueNotFound_ReturnsError(t *testing.T) {
 
 func Test_UpdateIssuePriority_UpdateError_ReturnsError(t *testing.T) {
 	repository := &mockIssueRepository{}
-	service := issue.NewIssueService(repository)
+	uow := &fakeUnitOfWork{repositories: issue.Repositories{Issues: repository}}
+	service := issue.NewIssueService(uow, repository)
 
 	issueID := uuid.New()
-	existing := issue.Issue{ID: issueID, Status: issue.StatusTodo, Priority: issue.PriorityNone, Labels: []string{}}
+	existing := issue.Issue{ID: issueID, Status: issue.StatusTodo, Priority: issue.PriorityNone, Labels: []issue.Label{}}
 	updateErr := errors.New("db error")
 
 	repository.On("GetIssue", mock.Anything, issueID).Return(existing, nil)
@@ -548,8 +618,9 @@ func Test_UpdateIssuePriority_UpdateError_ReturnsError(t *testing.T) {
 // — UpdateIssueStatus —
 
 func Test_UpdateIssueStatus_ValidStatus_ReturnsUpdatedIssue(t *testing.T) {
+	uow := &mockUnitOfWork{}
 	repository := &mockIssueRepository{}
-	service := issue.NewIssueService(repository)
+	service := issue.NewIssueService(uow, repository)
 
 	issueID := uuid.New()
 	existing := issue.Issue{
@@ -557,7 +628,7 @@ func Test_UpdateIssueStatus_ValidStatus_ReturnsUpdatedIssue(t *testing.T) {
 		Title:    "Test issue",
 		Status:   issue.StatusTodo,
 		Priority: issue.PriorityNone,
-		Labels:   []string{},
+		Labels:   []issue.Label{},
 	}
 	returned := existing
 	returned.Status = issue.StatusDone
@@ -574,8 +645,9 @@ func Test_UpdateIssueStatus_ValidStatus_ReturnsUpdatedIssue(t *testing.T) {
 }
 
 func Test_UpdateIssueStatus_InvalidStatus_ReturnsError(t *testing.T) {
+	uow := &mockUnitOfWork{}
 	repository := &mockIssueRepository{}
-	service := issue.NewIssueService(repository)
+	service := issue.NewIssueService(uow, repository)
 
 	issueID := uuid.New()
 	existing := issue.Issue{
@@ -583,7 +655,7 @@ func Test_UpdateIssueStatus_InvalidStatus_ReturnsError(t *testing.T) {
 		Title:    "Test issue",
 		Status:   issue.StatusTodo,
 		Priority: issue.PriorityNone,
-		Labels:   []string{},
+		Labels:   []issue.Label{},
 	}
 
 	repository.On("GetIssue", mock.Anything, issueID).Return(existing, nil)
@@ -595,8 +667,9 @@ func Test_UpdateIssueStatus_InvalidStatus_ReturnsError(t *testing.T) {
 }
 
 func Test_UpdateIssueStatus_IssueNotFound_ReturnsError(t *testing.T) {
+	uow := &mockUnitOfWork{}
 	repository := &mockIssueRepository{}
-	service := issue.NewIssueService(repository)
+	service := issue.NewIssueService(uow, repository)
 
 	issueID := uuid.New()
 	repository.On("GetIssue", mock.Anything, issueID).Return(issue.Issue{}, issue.ErrIssueNotFound)
@@ -608,11 +681,12 @@ func Test_UpdateIssueStatus_IssueNotFound_ReturnsError(t *testing.T) {
 }
 
 func Test_UpdateIssueStatus_UpdateError_ReturnsError(t *testing.T) {
+	uow := &mockUnitOfWork{}
 	repository := &mockIssueRepository{}
-	service := issue.NewIssueService(repository)
+	service := issue.NewIssueService(uow, repository)
 
 	issueID := uuid.New()
-	existing := issue.Issue{ID: issueID, Status: issue.StatusTodo, Priority: issue.PriorityNone, Labels: []string{}}
+	existing := issue.Issue{ID: issueID, Status: issue.StatusTodo, Priority: issue.PriorityNone, Labels: []issue.Label{}}
 	updateErr := errors.New("db error")
 
 	repository.On("GetIssue", mock.Anything, issueID).Return(existing, nil)
@@ -626,7 +700,8 @@ func Test_UpdateIssueStatus_UpdateError_ReturnsError(t *testing.T) {
 
 func Test_CreateIssue_SuccessfulPersistence_PublishesIssueCreatedEvent(t *testing.T) {
 	repository := &mockIssueRepository{}
-	service := issue.NewIssueService(repository)
+	uow := &fakeUnitOfWork{repositories: issue.Repositories{Issues: repository}}
+	service := issue.NewIssueService(uow, &mockIssueRepository{})
 
 	projectID := uuid.New()
 	reporterID := uuid.New()
@@ -647,7 +722,7 @@ func Test_CreateIssue_SuccessfulPersistence_PublishesIssueCreatedEvent(t *testin
 	}
 
 	var published []issue.IssueCreatedEvent
-	ctx := event.WithPublisher[issue.IssueCreatedEvent](context.Background(), func(_ context.Context, e issue.IssueCreatedEvent) error {
+	ctx := event.WithPublisher(context.Background(), func(_ context.Context, e issue.IssueCreatedEvent) error {
 		published = append(published, e)
 		return nil
 	})
@@ -662,9 +737,10 @@ func Test_CreateIssue_SuccessfulPersistence_PublishesIssueCreatedEvent(t *testin
 	repository.AssertExpectations(t)
 }
 
-func Test_CreateIssue_PublisherError_StillReturnsIssue(t *testing.T) {
+func Test_CreateIssue_EmitCreatedError_ReturnsError(t *testing.T) {
 	repository := &mockIssueRepository{}
-	service := issue.NewIssueService(repository)
+	uow := &fakeUnitOfWork{repositories: issue.Repositories{Issues: repository}}
+	service := issue.NewIssueService(uow, &mockIssueRepository{})
 
 	command := issue.CreateIssueCommand{
 		ProjectID:  uuid.New(),
@@ -678,21 +754,22 @@ func Test_CreateIssue_PublisherError_StillReturnsIssue(t *testing.T) {
 		Title: "Publisher fails",
 	}
 
-	ctx := event.WithPublisher[issue.IssueCreatedEvent](context.Background(), func(_ context.Context, _ issue.IssueCreatedEvent) error {
-		return errors.New("nats down")
+	expectedError := errors.New("publisher down")
+	ctx := event.WithPublisher(context.Background(), func(_ context.Context, _ issue.IssueCreatedEvent) error {
+		return expectedError
 	})
 
 	repository.On("CreateIssue", mock.Anything, mock.Anything).Return(returned, nil)
 
-	actual, err := service.CreateIssue(ctx, command)
-	require.NoError(t, err)
-	assert.Equal(t, returned, actual)
+	_, err := service.CreateIssue(ctx, command)
+	require.ErrorIs(t, err, expectedError)
 	repository.AssertExpectations(t)
 }
 
 func Test_UpdateIssueStatus_SuccessfulUpdate_PublishesIssueStatusUpdatedEvent(t *testing.T) {
+	uow := &mockUnitOfWork{}
 	repository := &mockIssueRepository{}
-	service := issue.NewIssueService(repository)
+	service := issue.NewIssueService(uow, repository)
 
 	issueID := uuid.New()
 	existing := issue.Issue{
@@ -700,13 +777,13 @@ func Test_UpdateIssueStatus_SuccessfulUpdate_PublishesIssueStatusUpdatedEvent(t 
 		Title:    "Test issue",
 		Status:   issue.StatusTodo,
 		Priority: issue.PriorityNone,
-		Labels:   []string{},
+		Labels:   []issue.Label{},
 	}
 	returned := existing
 	returned.Status = issue.StatusDone
 
 	var published []issue.IssueStatusUpdatedEvent
-	ctx := event.WithPublisher[issue.IssueStatusUpdatedEvent](context.Background(), func(_ context.Context, e issue.IssueStatusUpdatedEvent) error {
+	ctx := event.WithPublisher(context.Background(), func(_ context.Context, e issue.IssueStatusUpdatedEvent) error {
 		published = append(published, e)
 		return nil
 	})
@@ -725,8 +802,9 @@ func Test_UpdateIssueStatus_SuccessfulUpdate_PublishesIssueStatusUpdatedEvent(t 
 }
 
 func Test_UpdateIssueStatus_PublisherError_StillReturnsIssue(t *testing.T) {
+	uow := &mockUnitOfWork{}
 	repository := &mockIssueRepository{}
-	service := issue.NewIssueService(repository)
+	service := issue.NewIssueService(uow, repository)
 
 	issueID := uuid.New()
 	existing := issue.Issue{
@@ -734,12 +812,12 @@ func Test_UpdateIssueStatus_PublisherError_StillReturnsIssue(t *testing.T) {
 		Title:    "Test issue",
 		Status:   issue.StatusTodo,
 		Priority: issue.PriorityNone,
-		Labels:   []string{},
+		Labels:   []issue.Label{},
 	}
 	returned := existing
 	returned.Status = issue.StatusDone
 
-	ctx := event.WithPublisher[issue.IssueStatusUpdatedEvent](context.Background(), func(_ context.Context, _ issue.IssueStatusUpdatedEvent) error {
+	ctx := event.WithPublisher(context.Background(), func(_ context.Context, _ issue.IssueStatusUpdatedEvent) error {
 		return errors.New("nats down")
 	})
 
@@ -754,7 +832,8 @@ func Test_UpdateIssueStatus_PublisherError_StillReturnsIssue(t *testing.T) {
 
 func Test_UpdateIssuePriority_SuccessfulUpdate_PublishesIssuePriorityUpdatedEvent(t *testing.T) {
 	repository := &mockIssueRepository{}
-	service := issue.NewIssueService(repository)
+	uow := &fakeUnitOfWork{repositories: issue.Repositories{Issues: repository}}
+	service := issue.NewIssueService(uow, repository)
 
 	issueID := uuid.New()
 	existing := issue.Issue{
@@ -762,7 +841,7 @@ func Test_UpdateIssuePriority_SuccessfulUpdate_PublishesIssuePriorityUpdatedEven
 		Title:    "Test issue",
 		Status:   issue.StatusTodo,
 		Priority: issue.PriorityNone,
-		Labels:   []string{},
+		Labels:   []issue.Label{},
 	}
 	returned := existing
 	returned.Priority = issue.PriorityHigh
@@ -786,9 +865,10 @@ func Test_UpdateIssuePriority_SuccessfulUpdate_PublishesIssuePriorityUpdatedEven
 	repository.AssertExpectations(t)
 }
 
-func Test_UpdateIssuePriority_PublisherError_StillReturnsIssue(t *testing.T) {
+func Test_UpdateIssuePriority_EmitPriorityUpdatedError_ReturnsError(t *testing.T) {
 	repository := &mockIssueRepository{}
-	service := issue.NewIssueService(repository)
+	uow := &fakeUnitOfWork{repositories: issue.Repositories{Issues: repository}}
+	service := issue.NewIssueService(uow, repository)
 
 	issueID := uuid.New()
 	existing := issue.Issue{
@@ -796,20 +876,20 @@ func Test_UpdateIssuePriority_PublisherError_StillReturnsIssue(t *testing.T) {
 		Title:    "Test issue",
 		Status:   issue.StatusTodo,
 		Priority: issue.PriorityNone,
-		Labels:   []string{},
+		Labels:   []issue.Label{},
 	}
 	returned := existing
 	returned.Priority = issue.PriorityHigh
 
+	expectedError := errors.New("nats down")
 	ctx := event.WithPublisher[issue.IssuePriorityUpdatedEvent](context.Background(), func(_ context.Context, _ issue.IssuePriorityUpdatedEvent) error {
-		return errors.New("nats down")
+		return expectedError
 	})
 
 	repository.On("GetIssue", mock.Anything, issueID).Return(existing, nil)
 	repository.On("Update", mock.Anything, mock.Anything).Return(returned, nil)
 
-	actual, err := service.UpdateIssuePriority(ctx, issueID, issue.PriorityHigh)
-	require.NoError(t, err)
-	assert.Equal(t, returned, actual)
+	_, err := service.UpdateIssuePriority(ctx, issueID, issue.PriorityHigh)
+	require.ErrorIs(t, err, expectedError)
 	repository.AssertExpectations(t)
 }
