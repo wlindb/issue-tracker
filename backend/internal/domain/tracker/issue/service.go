@@ -119,9 +119,19 @@ func (s *IssueService) UpdateIssueTitle(ctx context.Context, issueID uuid.UUID, 
 	if err != nil {
 		return Issue{}, fmt.Errorf("update issue title: %w", err)
 	}
-	result, err := s.repository.Update(ctx, updated)
-	if err != nil {
-		return Issue{}, fmt.Errorf("update issue title: %w", err)
+	var result Issue
+	if err := s.unitOfWork.RunInTx(ctx, func(tx Repositories) error {
+		var err error
+		result, err = tx.Issues.Update(ctx, updated)
+		if err != nil {
+			return fmt.Errorf("update issue title: %w", err)
+		}
+		if err := result.EmitTitleUpdated(ctx); err != nil {
+			return fmt.Errorf("emit title updated: %w", err)
+		}
+		return nil
+	}); err != nil {
+		return Issue{}, fmt.Errorf("run in tx: %w", err)
 	}
 	return result, nil
 }
