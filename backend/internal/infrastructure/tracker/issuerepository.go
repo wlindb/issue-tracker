@@ -7,7 +7,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 
 	issuedomain "github.com/wlindb/issue-tracker/internal/domain/tracker/issue"
 	trackerdb "github.com/wlindb/issue-tracker/internal/infrastructure/tracker/generated"
@@ -24,30 +23,6 @@ type IssueRepository struct {
 // NewIssueRepository returns an IssueRepository backed by the given pool.
 func NewIssueRepository(db trackerdb.DBTX) *IssueRepository {
 	return &IssueRepository{db: db}
-}
-
-func (r *IssueRepository) Tx(ctx context.Context, fn func(issuedomain.IssueRepository) error) error {
-	pool, ok := r.db.(*pgxpool.Pool)
-	if !ok {
-		return errors.New("cannot start tx: already inside a transaction")
-	}
-
-	tx, err := pool.Begin(ctx)
-	if err != nil {
-		return fmt.Errorf("begin tx: %w", err)
-	}
-	defer func() {
-		_ = tx.Rollback(ctx)
-	}()
-
-	if err := fn(NewIssueRepository(tx)); err != nil {
-		return err
-	}
-
-	if err := tx.Commit(ctx); err != nil {
-		return fmt.Errorf("commit tx: %w", err)
-	}
-	return nil
 }
 
 // CreateIssue inserts a new issue row and returns the domain model.

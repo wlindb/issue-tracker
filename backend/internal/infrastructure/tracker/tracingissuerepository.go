@@ -63,21 +63,6 @@ func (r *TracingIssueRepository) GetIssue(ctx context.Context, id uuid.UUID) (is
 	return result, nil
 }
 
-// func (r *TracingIssueRepository) Tx(ctx context.Context, fn func(issuedomain.IssueRepository) error) error {
-// 	ctx, span := r.tracer.Start(ctx, "tracker.IssueRepository.Tx")
-// 	defer span.End()
-//
-// 	err := r.inner.Tx(ctx, func(txRepository issuedomain.IssueRepository) error {
-// 		return fn(NewTracingIssueRepository(txRepository, r.tracer))
-// 	})
-// 	if err != nil {
-// 		span.RecordError(err)
-// 		span.SetStatus(codes.Error, err.Error())
-// 		return fmt.Errorf("tx: %w", err)
-// 	}
-// 	return nil
-// }
-
 func (r *TracingIssueRepository) Update(ctx context.Context, issue issuedomain.Issue) (issuedomain.Issue, error) {
 	ctx, span := r.tracer.Start(ctx, "tracker.IssueRepository.Update")
 	defer span.End()

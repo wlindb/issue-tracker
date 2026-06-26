@@ -140,6 +140,15 @@ func createTestProject(t *testing.T, ctx context.Context) uuid.UUID {
 	return id
 }
 
+func createTestLabel(t *testing.T, ctx context.Context, name string) uuid.UUID {
+	t.Helper()
+	workspaceID := ctx.Value(testWorkspaceIDKey).(uuid.UUID)
+	labelID := uuid.New()
+	_, err := testPool.Exec(ctx, "INSERT INTO labels (id, workspace_id, name) VALUES ($1, $2, $3)", labelID, workspaceID, name)
+	require.NoError(t, err)
+	return labelID
+}
+
 func Test_Create_NoDescription_SuccessfulProjectCreation(t *testing.T) {
 	repository := tracker.NewProjectRepository(testPool)
 	_, ctx := createTestWorkspace(t)
@@ -325,8 +334,8 @@ func Test_CreateIssue_WithOptionalFields_SuccessfulCreation(t *testing.T) {
 	_, ctx := createTestWorkspace(t)
 	projectID := createTestProject(t, ctx)
 	labels := []issuedomain.Label{
-		{ID: uuid.New(), Name: "backend"},
-		{ID: uuid.New(), Name: "urgent"},
+		{ID: createTestLabel(t, ctx, "backend"), Name: "backend"},
+		{ID: createTestLabel(t, ctx, "urgent"), Name: "urgent"},
 	}
 
 	description := "detailed description"
