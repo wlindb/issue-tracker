@@ -67,10 +67,22 @@ func createIssueParamsFromDomain(issue issuedomain.Issue) trackerdb.CreateIssueP
 		Description: description,
 		Status:      string(issue.Status),
 		Priority:    string(issue.Priority),
-		Labels:      issue.Labels,
 		AssigneeID:  assigneeID,
 		ProjectID:   issue.ProjectID,
 		ReporterID:  issue.ReporterID,
+	}
+}
+
+func createManyIssueLabelsParamsFromDomain(issue issuedomain.Issue) trackerdb.CreateManyIssueLabelsParams {
+	labelIDs := make([]uuid.UUID, len(issue.Labels))
+
+	for i, label := range issue.Labels {
+		labelIDs[i] = label.ID
+	}
+
+	return trackerdb.CreateManyIssueLabelsParams{
+		IssueID:  issue.ID,
+		LabelIds: labelIDs,
 	}
 }
 
@@ -120,14 +132,18 @@ func updateIssueParamsFromDomain(issue issuedomain.Issue) trackerdb.UpdateIssueP
 	}
 }
 
-func issueToDomain(row trackerdb.Issue) issuedomain.Issue {
+func issueToDomain(row trackerdb.Issue, labels []issuedomain.Label) issuedomain.Issue {
+	issueLabels := labels
+	if issueLabels == nil {
+		issueLabels = []issuedomain.Label{}
+	}
 	issue := issuedomain.Issue{
 		ID:         row.ID,
 		Identifier: row.Identifier,
 		Title:      row.Title,
 		Status:     issuedomain.Status(row.Status),
 		Priority:   issuedomain.Priority(row.Priority),
-		Labels:     row.Labels,
+		Labels:     issueLabels,
 		ProjectID:  row.ProjectID,
 		ReporterID: row.ReporterID,
 		CreatedAt:  row.CreatedAt.Time,
@@ -147,7 +163,7 @@ func issueToDomain(row trackerdb.Issue) issuedomain.Issue {
 func issuesToDomain(rows []trackerdb.Issue) []issuedomain.Issue {
 	issues := make([]issuedomain.Issue, len(rows))
 	for idx, row := range rows {
-		issues[idx] = issueToDomain(row)
+		issues[idx] = issueToDomain(row, []issuedomain.Label{})
 	}
 	return issues
 }
