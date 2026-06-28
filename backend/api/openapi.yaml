@@ -208,6 +208,13 @@ components:
         items:      { type: array, items: { $ref: "#/components/schemas/Comment" } }
         nextCursor: { type: string, nullable: true }
 
+    LabelPage:
+      type: object
+      required: [items]
+      properties:
+        items:      { type: array, items: { $ref: "#/components/schemas/Label" } }
+        nextCursor: { type: string, nullable: true }
+
     Error:
       type: object
       required: [code, message]
@@ -313,6 +320,12 @@ components:
       required: [body]
       properties:
         body: { type: string, minLength: 1 }
+
+    CreateLabelRequest:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string }
 
   parameters:
     WorkspaceIdParam:
@@ -486,6 +499,47 @@ paths:
                 type: array
                 items: { $ref: "#/components/schemas/WorkspaceMember" }
         "404": { $ref: "#/components/responses/NotFound" }
+        "500": { $ref: "#/components/responses/InternalServerError" }
+
+  /workspaces/{workspaceId}/labels:
+    parameters:
+      - { $ref: "#/components/parameters/WorkspaceIdParam" }
+
+    get:
+      operationId: listLabels
+      summary: List labels in a workspace, optionally filtered by name.
+      tags: [labels]
+      parameters:
+        - name: search
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: List of labels.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LabelPage" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "500": { $ref: "#/components/responses/InternalServerError" }
+
+    post:
+      operationId: createLabel
+      summary: Create a new label in a workspace.
+      tags: [labels]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateLabelRequest" }
+      responses:
+        "201":
+          description: Label created.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Label" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
         "500": { $ref: "#/components/responses/InternalServerError" }
 
   /workspaces/{workspaceId}/projects:

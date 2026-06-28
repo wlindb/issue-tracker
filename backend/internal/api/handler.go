@@ -11,6 +11,7 @@ type Handler struct {
 	ProjectHandler
 	CommentHandler
 	IssueHandler
+	LabelHandler
 }
 
 var _ model.StrictServerInterface = (*Handler)(nil)
