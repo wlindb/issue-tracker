@@ -10,6 +10,7 @@ import (
 	trackerdb "github.com/wlindb/issue-tracker/internal/infrastructure/tracker/generated"
 )
 
+// Compile-time: *LabelRepository must satisfy domain interface.
 var _ issuedomain.LabelRepository = (*LabelRepository)(nil)
 
 // LabelRepository is a PostgreSQL-backed implementation of issuedomain.LabelRepository.
@@ -17,7 +18,7 @@ type LabelRepository struct {
 	db trackerdb.DBTX
 }
 
-// NewLabelRepository returns a LabelRepository backed by the given database connection.
+// NewLabelRepository returns a LabelRepository backed by the given pool.
 func NewLabelRepository(db trackerdb.DBTX) *LabelRepository {
 	return &LabelRepository{db: db}
 }
