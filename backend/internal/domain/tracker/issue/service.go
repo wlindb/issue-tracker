@@ -146,9 +146,19 @@ func (s *IssueService) UpdateIssuePriority(ctx context.Context, issueID uuid.UUI
 	if err != nil {
 		return Issue{}, fmt.Errorf("update issue priority: %w", err)
 	}
-	result, err := s.repository.Update(ctx, updated)
-	if err != nil {
-		return Issue{}, fmt.Errorf("update issue priority: %w", err)
+
+	var result Issue
+	if err = s.unitOfWork.RunInTx(ctx, func(tx Repositories) error {
+		result, err = tx.Issues.Update(ctx, updated)
+		if err != nil {
+			return fmt.Errorf("update issue priority: %w", err)
+		}
+		if err = result.EmitPriorityUpdated(ctx); err != nil {
+			return fmt.Errorf("emit priority updated: %w", err)
+		}
+		return nil
+	}); err != nil {
+		return Issue{}, fmt.Errorf("run in tx: %w", err)
 	}
 	return result, nil
 }

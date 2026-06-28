@@ -36,6 +36,12 @@ var IssueStatusUpdatedSubject = WorkspaceSubject{subject: "workspaces.%s.issues.
 // IssueStatusUpdatedSubjectAll is the wildcard subject for internal consumers.
 const IssueStatusUpdatedSubjectAll = "workspaces.*.issues.status_updated"
 
+// IssuePriorityUpdatedSubject is the workspace-scoped subject pattern for issue priority updated events.
+var IssuePriorityUpdatedSubject = WorkspaceSubject{subject: "workspaces.%s.issues.priority_updated"}
+
+// IssuePriorityUpdatedSubjectAll is the wildcard subject for internal consumers.
+const IssuePriorityUpdatedSubjectAll = "workspaces.*.issues.priority_updated"
+
 // IssueTitleUpdatedSubject is the workspace-scoped subject pattern for issue title updated events.
 var IssueTitleUpdatedSubject = WorkspaceSubject{subject: "workspaces.%s.issues.title_updated"}
 
