@@ -18,6 +18,8 @@ type IssueStatusUpdatedEvent struct {
 	Payload    Issue
 }
 
+var StatusUpdated = event.New[IssueStatusUpdatedEvent]()
+
 type IssuePriorityUpdatedEvent struct {
 	OccurredAt time.Time `json:"occurred_at"`
 	Payload    Issue
@@ -25,11 +27,16 @@ type IssuePriorityUpdatedEvent struct {
 
 var PriorityUpdated = event.New[IssuePriorityUpdatedEvent]()
 
-var StatusUpdated = event.New[IssueStatusUpdatedEvent]()
-
 type IssueTitleUpdatedEvent struct {
 	OccurredAt time.Time `json:"occurred_at"`
 	Payload    Issue
 }
 
 var TitleUpdated = event.New[IssueTitleUpdatedEvent]()
+
+type IssueAssigneeUpdatedEvent struct {
+	OccurredAt time.Time `json:"occurred_at"`
+	Payload    Issue
+}
+
+var AssigneeUpdated = event.New[IssueAssigneeUpdatedEvent]()

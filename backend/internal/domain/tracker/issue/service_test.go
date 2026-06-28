@@ -279,8 +279,8 @@ func Test_GetIssue_NotFound_ReturnsError(t *testing.T) {
 // — UpdateIssueAssignee —
 
 func Test_UpdateIssueAssignee_ValidAssignee_ReturnsUpdatedIssue(t *testing.T) {
-	uow := &mockUnitOfWork{}
 	repository := &mockIssueRepository{}
+	uow := &fakeUnitOfWork{repositories: issue.Repositories{Issues: repository}}
 	service := issue.NewIssueService(uow, repository)
 
 	issueID := uuid.New()
@@ -300,7 +300,11 @@ func Test_UpdateIssueAssignee_ValidAssignee_ReturnsUpdatedIssue(t *testing.T) {
 		return i.ID == issueID && i.AssigneeID != nil && *i.AssigneeID == assigneeID
 	})).Return(returned, nil)
 
-	actual, err := service.UpdateIssueAssignee(context.Background(), issueID, &assigneeID)
+	ctxWithNoopPublisher := event.WithPublisher(context.Background(), func(_ context.Context, _ issue.IssueAssigneeUpdatedEvent) error {
+		return nil
+	})
+
+	actual, err := service.UpdateIssueAssignee(ctxWithNoopPublisher, issueID, &assigneeID)
 	require.NoError(t, err)
 	require.NotNil(t, actual.AssigneeID)
 	assert.Equal(t, assigneeID, *actual.AssigneeID)
@@ -308,8 +312,8 @@ func Test_UpdateIssueAssignee_ValidAssignee_ReturnsUpdatedIssue(t *testing.T) {
 }
 
 func Test_UpdateIssueAssignee_NilAssignee_ClearsAssignee(t *testing.T) {
-	uow := &mockUnitOfWork{}
 	repository := &mockIssueRepository{}
+	uow := &fakeUnitOfWork{repositories: issue.Repositories{Issues: repository}}
 	service := issue.NewIssueService(uow, repository)
 
 	issueID := uuid.New()
@@ -330,30 +334,38 @@ func Test_UpdateIssueAssignee_NilAssignee_ClearsAssignee(t *testing.T) {
 		return i.ID == issueID && i.AssigneeID == nil
 	})).Return(returned, nil)
 
-	actual, err := service.UpdateIssueAssignee(context.Background(), issueID, nil)
+	ctxWithNoopPublisher := event.WithPublisher(context.Background(), func(_ context.Context, _ issue.IssueAssigneeUpdatedEvent) error {
+		return nil
+	})
+
+	actual, err := service.UpdateIssueAssignee(ctxWithNoopPublisher, issueID, nil)
 	require.NoError(t, err)
 	assert.Nil(t, actual.AssigneeID)
 	repository.AssertExpectations(t)
 }
 
 func Test_UpdateIssueAssignee_IssueNotFound_ReturnsError(t *testing.T) {
-	uow := &mockUnitOfWork{}
 	repository := &mockIssueRepository{}
+	uow := &fakeUnitOfWork{repositories: issue.Repositories{Issues: repository}}
 	service := issue.NewIssueService(uow, repository)
 
 	issueID := uuid.New()
 	assigneeID := uuid.New()
 	repository.On("GetIssue", mock.Anything, issueID).Return(issue.Issue{}, issue.ErrIssueNotFound)
 
-	_, err := service.UpdateIssueAssignee(context.Background(), issueID, &assigneeID)
+	ctxWithNoopPublisher := event.WithPublisher(context.Background(), func(_ context.Context, _ issue.IssueAssigneeUpdatedEvent) error {
+		return nil
+	})
+
+	_, err := service.UpdateIssueAssignee(ctxWithNoopPublisher, issueID, &assigneeID)
 	require.Error(t, err)
 	assert.ErrorIs(t, err, issue.ErrIssueNotFound)
 	repository.AssertExpectations(t)
 }
 
 func Test_UpdateIssueAssignee_UpdateError_ReturnsError(t *testing.T) {
-	uow := &mockUnitOfWork{}
 	repository := &mockIssueRepository{}
+	uow := &fakeUnitOfWork{repositories: issue.Repositories{Issues: repository}}
 	service := issue.NewIssueService(uow, repository)
 
 	issueID := uuid.New()
@@ -367,6 +379,72 @@ func Test_UpdateIssueAssignee_UpdateError_ReturnsError(t *testing.T) {
 	_, err := service.UpdateIssueAssignee(context.Background(), issueID, &assigneeID)
 	require.Error(t, err)
 	assert.ErrorIs(t, err, updateErr)
+	repository.AssertExpectations(t)
+}
+
+func Test_UpdateIssueAssignee_SuccessfulUpdate_PublishesIssueAssigneeUpdatedEvent(t *testing.T) {
+	repository := &mockIssueRepository{}
+	uow := &fakeUnitOfWork{repositories: issue.Repositories{Issues: repository}}
+	service := issue.NewIssueService(uow, repository)
+
+	issueID := uuid.New()
+	assigneeID := uuid.New()
+	existing := issue.Issue{
+		ID:       issueID,
+		Title:    "Test issue",
+		Status:   issue.StatusTodo,
+		Priority: issue.PriorityNone,
+		Labels:   []issue.Label{},
+	}
+	returned := existing
+	returned.AssigneeID = &assigneeID
+
+	var published []issue.IssueAssigneeUpdatedEvent
+	ctx := event.WithPublisher(context.Background(), func(_ context.Context, e issue.IssueAssigneeUpdatedEvent) error {
+		published = append(published, e)
+		return nil
+	})
+
+	repository.On("GetIssue", mock.Anything, issueID).Return(existing, nil)
+	repository.On("Update", mock.Anything, mock.MatchedBy(func(i issue.Issue) bool {
+		return i.ID == issueID && i.AssigneeID != nil && *i.AssigneeID == assigneeID
+	})).Return(returned, nil)
+
+	actual, err := service.UpdateIssueAssignee(ctx, issueID, &assigneeID)
+	require.NoError(t, err)
+	require.Len(t, published, 1)
+	assert.Equal(t, returned, actual)
+	assert.Equal(t, returned, published[0].Payload)
+	repository.AssertExpectations(t)
+}
+
+func Test_UpdateIssueAssignee_EmitAssigneeUpdatedError_ReturnsError(t *testing.T) {
+	repository := &mockIssueRepository{}
+	uow := &fakeUnitOfWork{repositories: issue.Repositories{Issues: repository}}
+	service := issue.NewIssueService(uow, repository)
+
+	issueID := uuid.New()
+	assigneeID := uuid.New()
+	existing := issue.Issue{
+		ID:       issueID,
+		Title:    "Test issue",
+		Status:   issue.StatusTodo,
+		Priority: issue.PriorityNone,
+		Labels:   []issue.Label{},
+	}
+	updated := existing
+	updated.AssigneeID = &assigneeID
+
+	expectedError := errors.New("publish error")
+	ctx := event.WithPublisher(context.Background(), func(_ context.Context, _ issue.IssueAssigneeUpdatedEvent) error {
+		return expectedError
+	})
+
+	repository.On("GetIssue", mock.Anything, issueID).Return(existing, nil)
+	repository.On("Update", mock.Anything, mock.Anything).Return(updated, nil)
+
+	_, err := service.UpdateIssueAssignee(ctx, issueID, &assigneeID)
+	assert.ErrorIs(t, err, expectedError)
 	repository.AssertExpectations(t)
 }
 
@@ -636,7 +714,7 @@ func Test_UpdateIssuePriority_SuccessfulUpdate_PublishesIssuePriorityUpdatedEven
 	returned.Priority = issue.PriorityHigh
 
 	var published []issue.IssuePriorityUpdatedEvent
-	ctx := event.WithPublisher[issue.IssuePriorityUpdatedEvent](context.Background(), func(_ context.Context, e issue.IssuePriorityUpdatedEvent) error {
+	ctx := event.WithPublisher(context.Background(), func(_ context.Context, e issue.IssuePriorityUpdatedEvent) error {
 		published = append(published, e)
 		return nil
 	})
@@ -671,7 +749,7 @@ func Test_UpdateIssuePriority_EmitPriorityUpdatedError_ReturnsError(t *testing.T
 	returned.Priority = issue.PriorityHigh
 
 	expectedError := errors.New("nats down")
-	ctx := event.WithPublisher[issue.IssuePriorityUpdatedEvent](context.Background(), func(_ context.Context, _ issue.IssuePriorityUpdatedEvent) error {
+	ctx := event.WithPublisher(context.Background(), func(_ context.Context, _ issue.IssuePriorityUpdatedEvent) error {
 		return expectedError
 	})
 
