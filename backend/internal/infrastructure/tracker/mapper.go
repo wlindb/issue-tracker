@@ -213,3 +213,19 @@ func commentsToDomain(rows []trackerdb.Comment) []commentdomain.Comment {
 	}
 	return comments
 }
+
+func labelToDomain(row trackerdb.Label) issuedomain.Label {
+	return issuedomain.Label{ID: row.ID, Name: row.Name}
+}
+
+func labelsToDomain(rows []trackerdb.Label) []issuedomain.Label {
+	labels := make([]issuedomain.Label, len(rows))
+	for i, row := range rows {
+		labels[i] = labelToDomain(row)
+	}
+	return labels
+}
+
+func getOrCreateLabelParams(id uuid.UUID, name string) trackerdb.GetOrCreateLabelParams {
+	return trackerdb.GetOrCreateLabelParams{ID: id, Name: name}
+}
