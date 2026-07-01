@@ -43,3 +43,88 @@ func (q *Queries) InsertIssueLabel(ctx context.Context, arg InsertIssueLabelPara
 	_, err := q.db.Exec(ctx, insertIssueLabel, arg.IssueID, arg.LabelID)
 	return err
 }
+
+const upsertLabel = `-- name: UpsertLabel :one
+INSERT INTO labels (id, workspace_id, name, created_at)
+VALUES ($1, current_setting('app.workspace_id')::uuid, $2, NOW())
+ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name
+RETURNING id, workspace_id, name, created_at
+`
+
+type UpsertLabelParams struct {
+	ID   uuid.UUID
+	Name string
+}
+
+func (q *Queries) UpsertLabel(ctx context.Context, arg UpsertLabelParams) (Label, error) {
+	row := q.db.QueryRow(ctx, upsertLabel, arg.ID, arg.Name)
+	var i Label
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.Name,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const listLabelsByIDs = `-- name: ListLabelsByIDs :many
+SELECT id, workspace_id, name, created_at FROM labels
+WHERE id = ANY($1::uuid[])
+`
+
+func (q *Queries) ListLabelsByIDs(ctx context.Context, ids []uuid.UUID) ([]Label, error) {
+	rows, err := q.db.Query(ctx, listLabelsByIDs, ids)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Label
+	for rows.Next() {
+		var i Label
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkspaceID,
+			&i.Name,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const searchLabelsByName = `-- name: SearchLabelsByName :many
+SELECT id, workspace_id, name, created_at FROM labels
+WHERE name ILIKE '%' || $1 || '%'
+ORDER BY name
+`
+
+func (q *Queries) SearchLabelsByName(ctx context.Context, search string) ([]Label, error) {
+	rows, err := q.db.Query(ctx, searchLabelsByName, search)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Label
+	for rows.Next() {
+		var i Label
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkspaceID,
+			&i.Name,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
