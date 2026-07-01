@@ -114,6 +114,11 @@ type CreateIssueRequest struct {
 	Title       string        `json:"title"`
 }
 
+// CreateLabelRequest defines model for CreateLabelRequest.
+type CreateLabelRequest struct {
+	Name string `json:"name"`
+}
+
 // CreateProjectRequest defines model for CreateProjectRequest.
 type CreateProjectRequest struct {
 	Description *string `json:"description,omitempty"`
@@ -163,6 +168,12 @@ type IssueStatus string
 type Label struct {
 	Id   uuid.UUID `json:"id"`
 	Name string    `json:"name"`
+}
+
+// LabelPage defines model for LabelPage.
+type LabelPage struct {
+	Items      []Label `json:"items"`
+	NextCursor *string `json:"nextCursor,omitempty"`
 }
 
 // Project defines model for Project.
@@ -295,6 +306,11 @@ type ListCommentsParams struct {
 	Limit  *LimitParam  `form:"limit,omitempty" json:"limit,omitempty"`
 }
 
+// ListLabelsParams defines parameters for ListLabels.
+type ListLabelsParams struct {
+	Search *string `form:"search,omitempty" json:"search,omitempty"`
+}
+
 // ListProjectsParams defines parameters for ListProjects.
 type ListProjectsParams struct {
 	Cursor *CursorParam `form:"cursor,omitempty" json:"cursor,omitempty"`
@@ -327,6 +343,9 @@ type UpdateIssueStatusJSONRequestBody = UpdateIssueStatusRequest
 
 // UpdateIssueTitleJSONRequestBody defines body for UpdateIssueTitle for application/json ContentType.
 type UpdateIssueTitleJSONRequestBody = UpdateIssueTitleRequest
+
+// CreateLabelJSONRequestBody defines body for CreateLabel for application/json ContentType.
+type CreateLabelJSONRequestBody = CreateLabelRequest
 
 // CreateProjectJSONRequestBody defines body for CreateProject for application/json ContentType.
 type CreateProjectJSONRequestBody = CreateProjectRequest
@@ -384,6 +403,12 @@ type ServerInterface interface {
 	// Update the title of an issue.
 	// (PUT /workspaces/{workspaceId}/issues/{issueId}/title)
 	UpdateIssueTitle(ctx echo.Context, workspaceId WorkspaceIdParam, issueId IssueIdParam) error
+	// List labels in a workspace, optionally filtered by name.
+	// (GET /workspaces/{workspaceId}/labels)
+	ListLabels(ctx echo.Context, workspaceId WorkspaceIdParam, params ListLabelsParams) error
+	// Create a new label in a workspace.
+	// (POST /workspaces/{workspaceId}/labels)
+	CreateLabel(ctx echo.Context, workspaceId WorkspaceIdParam) error
 	// List members of a workspace.
 	// (GET /workspaces/{workspaceId}/members)
 	ListWorkspaceMembers(ctx echo.Context, workspaceId WorkspaceIdParam) error
@@ -823,6 +848,51 @@ func (w *ServerInterfaceWrapper) UpdateIssueTitle(ctx echo.Context) error {
 	return err
 }
 
+// ListLabels converts echo context to params.
+func (w *ServerInterfaceWrapper) ListLabels(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", ctx.Param("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter workspaceId: %s", err))
+	}
+
+	ctx.Set(BearerAuthScopes, []string{})
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListLabelsParams
+	// ------------- Optional query parameter "search" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "search", ctx.QueryParams(), &params.Search, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter search: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.ListLabels(ctx, workspaceId, params)
+	return err
+}
+
+// CreateLabel converts echo context to params.
+func (w *ServerInterfaceWrapper) CreateLabel(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", ctx.Param("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter workspaceId: %s", err))
+	}
+
+	ctx.Set(BearerAuthScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.CreateLabel(ctx, workspaceId)
+	return err
+}
+
 // ListWorkspaceMembers converts echo context to params.
 func (w *ServerInterfaceWrapper) ListWorkspaceMembers(ctx echo.Context) error {
 	var err error
@@ -1015,6 +1085,8 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 	router.PUT(baseURL+"/workspaces/:workspaceId/issues/:issueId/priority", wrapper.UpdateIssuePriority)
 	router.PUT(baseURL+"/workspaces/:workspaceId/issues/:issueId/status", wrapper.UpdateIssueStatus)
 	router.PUT(baseURL+"/workspaces/:workspaceId/issues/:issueId/title", wrapper.UpdateIssueTitle)
+	router.GET(baseURL+"/workspaces/:workspaceId/labels", wrapper.ListLabels)
+	router.POST(baseURL+"/workspaces/:workspaceId/labels", wrapper.CreateLabel)
 	router.GET(baseURL+"/workspaces/:workspaceId/members", wrapper.ListWorkspaceMembers)
 	router.GET(baseURL+"/workspaces/:workspaceId/projects", wrapper.ListProjects)
 	router.POST(baseURL+"/workspaces/:workspaceId/projects", wrapper.CreateProject)
@@ -1972,6 +2044,91 @@ func (response UpdateIssueTitle500JSONResponse) VisitUpdateIssueTitleResponse(w 
 	return json.NewEncoder(w).Encode(response)
 }
 
+type ListLabelsRequestObject struct {
+	WorkspaceId WorkspaceIdParam `json:"workspaceId"`
+	Params      ListLabelsParams
+}
+
+type ListLabelsResponseObject interface {
+	VisitListLabelsResponse(w http.ResponseWriter) error
+}
+
+type ListLabels200JSONResponse LabelPage
+
+func (response ListLabels200JSONResponse) VisitListLabelsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListLabels401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response ListLabels401JSONResponse) VisitListLabelsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type ListLabels500JSONResponse struct {
+	InternalServerErrorJSONResponse
+}
+
+func (response ListLabels500JSONResponse) VisitListLabelsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateLabelRequestObject struct {
+	WorkspaceId WorkspaceIdParam `json:"workspaceId"`
+	Body        *CreateLabelJSONRequestBody
+}
+
+type CreateLabelResponseObject interface {
+	VisitCreateLabelResponse(w http.ResponseWriter) error
+}
+
+type CreateLabel201JSONResponse Label
+
+func (response CreateLabel201JSONResponse) VisitCreateLabelResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(201)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateLabel400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response CreateLabel400JSONResponse) VisitCreateLabelResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateLabel401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response CreateLabel401JSONResponse) VisitCreateLabelResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateLabel500JSONResponse struct {
+	InternalServerErrorJSONResponse
+}
+
+func (response CreateLabel500JSONResponse) VisitCreateLabelResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
 type ListWorkspaceMembersRequestObject struct {
 	WorkspaceId WorkspaceIdParam `json:"workspaceId"`
 }
@@ -2332,6 +2489,12 @@ type StrictServerInterface interface {
 	// Update the title of an issue.
 	// (PUT /workspaces/{workspaceId}/issues/{issueId}/title)
 	UpdateIssueTitle(ctx context.Context, request UpdateIssueTitleRequestObject) (UpdateIssueTitleResponseObject, error)
+	// List labels in a workspace, optionally filtered by name.
+	// (GET /workspaces/{workspaceId}/labels)
+	ListLabels(ctx context.Context, request ListLabelsRequestObject) (ListLabelsResponseObject, error)
+	// Create a new label in a workspace.
+	// (POST /workspaces/{workspaceId}/labels)
+	CreateLabel(ctx context.Context, request CreateLabelRequestObject) (CreateLabelResponseObject, error)
 	// List members of a workspace.
 	// (GET /workspaces/{workspaceId}/members)
 	ListWorkspaceMembers(ctx context.Context, request ListWorkspaceMembersRequestObject) (ListWorkspaceMembersResponseObject, error)
@@ -2826,6 +2989,63 @@ func (sh *strictHandler) UpdateIssueTitle(ctx echo.Context, workspaceId Workspac
 	return nil
 }
 
+// ListLabels operation middleware
+func (sh *strictHandler) ListLabels(ctx echo.Context, workspaceId WorkspaceIdParam, params ListLabelsParams) error {
+	var request ListLabelsRequestObject
+
+	request.WorkspaceId = workspaceId
+	request.Params = params
+
+	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.ListLabels(ctx.Request().Context(), request.(ListLabelsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListLabels")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(ListLabelsResponseObject); ok {
+		return validResponse.VisitListLabelsResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
+}
+
+// CreateLabel operation middleware
+func (sh *strictHandler) CreateLabel(ctx echo.Context, workspaceId WorkspaceIdParam) error {
+	var request CreateLabelRequestObject
+
+	request.WorkspaceId = workspaceId
+
+	var body CreateLabelJSONRequestBody
+	if err := ctx.Bind(&body); err != nil {
+		return err
+	}
+	request.Body = &body
+
+	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.CreateLabel(ctx.Request().Context(), request.(CreateLabelRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CreateLabel")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(CreateLabelResponseObject); ok {
+		return validResponse.VisitCreateLabelResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
+}
+
 // ListWorkspaceMembers operation middleware
 func (sh *strictHandler) ListWorkspaceMembers(ctx echo.Context, workspaceId WorkspaceIdParam) error {
 	var request ListWorkspaceMembersRequestObject
@@ -2995,47 +3215,49 @@ func (sh *strictHandler) UpdateProject(ctx echo.Context, workspaceId WorkspaceId
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
-	"fwEAAP//mpo0WgVZAAA=",
+	"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",
+	"/6uDZc5SXgAA",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

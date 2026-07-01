@@ -270,5 +270,6 @@ func newHandler(pool *pgxpool.Pool, tracer trace.Tracer, workspaceService *works
 				tracer,
 			),
 		),
+		LabelHandler: api.NewLabelHandler(),
 	}
 }
