@@ -13,6 +13,7 @@ import (
 
 	commentdomain "github.com/wlindb/issue-tracker/internal/domain/tracker/comment"
 	issuedomain "github.com/wlindb/issue-tracker/internal/domain/tracker/issue"
+	"github.com/wlindb/issue-tracker/internal/domain/tracker/label"
 	trackerdb "github.com/wlindb/issue-tracker/internal/infrastructure/tracker/generated"
 )
 
@@ -116,7 +117,7 @@ func Test_IssueToDomain_NilOptionalFields_SetsNils(t *testing.T) {
 		UpdatedAt:   pgtype.Timestamptz{Time: now, Valid: true},
 	}
 
-	actual := issueToDomain(row, []issuedomain.Label{})
+	actual := issueToDomain(row, []label.Label{})
 
 	require.NotNil(t, actual)
 	assert.Equal(t, issueID, actual.ID)
@@ -151,7 +152,7 @@ func Test_IssueToDomain_WithOptionalFields_SetsValues(t *testing.T) {
 		CreatedAt:   pgtype.Timestamptz{Time: now, Valid: true},
 		UpdatedAt:   pgtype.Timestamptz{Time: now, Valid: true},
 	}
-	labels := []issuedomain.Label{{ID: labelID, Name: "frontend"}}
+	labels := []label.Label{{ID: labelID, Name: "frontend"}}
 
 	actual := issueToDomain(row, labels)
 
@@ -196,7 +197,7 @@ func Test_CreateIssueParamsFromDomain_NoOptionalFields_MapsCorrectly(t *testing.
 		Title:      "Test issue",
 		Status:     issuedomain.StatusBacklog,
 		Priority:   issuedomain.PriorityNone,
-		Labels:     []issuedomain.Label{},
+		Labels:     []label.Label{},
 		ProjectID:  projectID,
 		ReporterID: reporterID,
 	}
@@ -225,7 +226,7 @@ func Test_CreateIssueParamsFromDomain_WithOptionalFields_MapsCorrectly(t *testin
 		Description: &description,
 		Status:      issuedomain.StatusInProgress,
 		Priority:    issuedomain.PriorityHigh,
-		Labels:      []issuedomain.Label{{ID: uuid.New(), Name: "backend"}},
+		Labels:      []label.Label{{ID: uuid.New(), Name: "backend"}},
 		AssigneeID:  &assigneeID,
 		ProjectID:   uuid.New(),
 		ReporterID:  uuid.New(),
@@ -414,7 +415,7 @@ func Test_UpdateIssueParamsFromDomain_NoOptionalFields_MapsCorrectly(t *testing.
 		Title:     "Test issue",
 		Status:    issuedomain.StatusInProgress,
 		Priority:  issuedomain.PriorityHigh,
-		Labels:    []issuedomain.Label{},
+		Labels:    []label.Label{},
 		UpdatedAt: now,
 	}
 
@@ -441,7 +442,7 @@ func Test_UpdateIssueParamsFromDomain_WithOptionalFields_MapsCorrectly(t *testin
 		Description: &description,
 		Status:      issuedomain.StatusDone,
 		Priority:    issuedomain.PriorityUrgent,
-		Labels:      []issuedomain.Label{{ID: uuid.New(), Name: "backend"}},
+		Labels:      []label.Label{{ID: uuid.New(), Name: "backend"}},
 		AssigneeID:  &assigneeID,
 		UpdatedAt:   now,
 	}

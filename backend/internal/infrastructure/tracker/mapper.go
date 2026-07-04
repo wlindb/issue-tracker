@@ -6,6 +6,7 @@ import (
 
 	commentdomain "github.com/wlindb/issue-tracker/internal/domain/tracker/comment"
 	issuedomain "github.com/wlindb/issue-tracker/internal/domain/tracker/issue"
+	"github.com/wlindb/issue-tracker/internal/domain/tracker/label"
 	projectdomain "github.com/wlindb/issue-tracker/internal/domain/tracker/project"
 	workspacedomain "github.com/wlindb/issue-tracker/internal/domain/tracker/workspace"
 	trackerdb "github.com/wlindb/issue-tracker/internal/infrastructure/tracker/generated"
@@ -132,10 +133,10 @@ func updateIssueParamsFromDomain(issue issuedomain.Issue) trackerdb.UpdateIssueP
 	}
 }
 
-func issueToDomain(row trackerdb.Issue, labels []issuedomain.Label) issuedomain.Issue {
+func issueToDomain(row trackerdb.Issue, labels []label.Label) issuedomain.Issue {
 	issueLabels := labels
 	if issueLabels == nil {
-		issueLabels = []issuedomain.Label{}
+		issueLabels = []label.Label{}
 	}
 	issue := issuedomain.Issue{
 		ID:         row.ID,
@@ -163,7 +164,7 @@ func issueToDomain(row trackerdb.Issue, labels []issuedomain.Label) issuedomain.
 func issuesToDomain(rows []trackerdb.Issue) []issuedomain.Issue {
 	issues := make([]issuedomain.Issue, len(rows))
 	for idx, row := range rows {
-		issues[idx] = issueToDomain(row, []issuedomain.Label{})
+		issues[idx] = issueToDomain(row, []label.Label{})
 	}
 	return issues
 }
@@ -214,12 +215,12 @@ func commentsToDomain(rows []trackerdb.Comment) []commentdomain.Comment {
 	return comments
 }
 
-func labelToDomain(row trackerdb.Label) issuedomain.Label {
-	return issuedomain.Label{ID: row.ID, Name: row.Name}
+func labelToDomain(row trackerdb.Label) label.Label {
+	return label.Label{ID: row.ID, Name: row.Name}
 }
 
-func labelsToDomain(rows []trackerdb.Label) []issuedomain.Label {
-	labels := make([]issuedomain.Label, len(rows))
+func labelsToDomain(rows []trackerdb.Label) []label.Label {
+	labels := make([]label.Label, len(rows))
 	for i, row := range rows {
 		labels[i] = labelToDomain(row)
 	}

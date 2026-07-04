@@ -22,6 +22,7 @@ import (
 	"github.com/wlindb/issue-tracker/internal/api"
 	"github.com/wlindb/issue-tracker/internal/api/model"
 	issuedomain "github.com/wlindb/issue-tracker/internal/domain/tracker/issue"
+	"github.com/wlindb/issue-tracker/internal/domain/tracker/label"
 )
 
 // mockIssueService implements api.IssueService for testing.
@@ -122,7 +123,7 @@ func Test_ListIssues_IssuesExist_Returns200(t *testing.T) {
 					Title:      "Fix login bug",
 					Status:     issuedomain.StatusBacklog,
 					Priority:   issuedomain.PriorityNone,
-					Labels:     []issuedomain.Label{},
+					Labels:     []label.Label{},
 					ProjectID:  projectID,
 					ReporterID: userID,
 					CreatedAt:  now,
@@ -248,7 +249,7 @@ func Test_CreateIssue_ValidBody_Returns201(t *testing.T) {
 			Title:      "New feature",
 			Status:     issuedomain.StatusTodo,
 			Priority:   issuedomain.PriorityMedium,
-			Labels:     []issuedomain.Label{},
+			Labels:     []label.Label{},
 			ProjectID:  projectID,
 			ReporterID: userID,
 			CreatedAt:  now,
@@ -468,7 +469,7 @@ func Test_UpdateIssueStatus_ValidRequest_Returns200(t *testing.T) {
 			Title:      "Fix login bug",
 			Status:     issuedomain.StatusInProgress,
 			Priority:   issuedomain.PriorityNone,
-			Labels:     []issuedomain.Label{},
+			Labels:     []label.Label{},
 			ProjectID:  uuid.New(),
 			ReporterID: userID,
 			CreatedAt:  now,
@@ -628,7 +629,7 @@ func Test_UpdateIssueDescription_ValidRequest_Returns200(t *testing.T) {
 			Description: &description,
 			Status:      issuedomain.StatusTodo,
 			Priority:    issuedomain.PriorityNone,
-			Labels:      []issuedomain.Label{},
+			Labels:      []label.Label{},
 			ProjectID:   uuid.New(),
 			ReporterID:  uuid.New(),
 			CreatedAt:   now,
@@ -663,7 +664,7 @@ func Test_UpdateIssueDescription_NullDescription_Returns200(t *testing.T) {
 			Title:      "Some issue",
 			Status:     issuedomain.StatusTodo,
 			Priority:   issuedomain.PriorityNone,
-			Labels:     []issuedomain.Label{},
+			Labels:     []label.Label{},
 			ProjectID:  uuid.New(),
 			ReporterID: uuid.New(),
 			CreatedAt:  now,
@@ -770,7 +771,7 @@ func Test_UpdateIssueTitle_ValidRequest_Returns200(t *testing.T) {
 			Title:      title,
 			Status:     issuedomain.StatusTodo,
 			Priority:   issuedomain.PriorityNone,
-			Labels:     []issuedomain.Label{},
+			Labels:     []label.Label{},
 			ProjectID:  uuid.New(),
 			ReporterID: uuid.New(),
 			CreatedAt:  now,
@@ -877,7 +878,7 @@ func Test_UpdateIssuePriority_ValidRequest_Returns200(t *testing.T) {
 		Title:      "Test issue",
 		Status:     issuedomain.StatusTodo,
 		Priority:   issuedomain.PriorityHigh,
-		Labels:     []issuedomain.Label{},
+		Labels:     []label.Label{},
 		ProjectID:  uuid.New(),
 		ReporterID: uuid.New(),
 	}
@@ -1040,7 +1041,7 @@ func Test_GetIssue_IssueExists_Returns200(t *testing.T) {
 			Title:      "Fix login bug",
 			Status:     issuedomain.StatusBacklog,
 			Priority:   issuedomain.PriorityNone,
-			Labels:     []issuedomain.Label{},
+			Labels:     []label.Label{},
 			ProjectID:  projectID,
 			ReporterID: reporterID,
 			CreatedAt:  now,
@@ -1082,7 +1083,7 @@ func Test_UpdateIssueAssignee_ValidAssignee_Returns200(t *testing.T) {
 		Title:      "Fix login bug",
 		Status:     issuedomain.StatusBacklog,
 		Priority:   issuedomain.PriorityNone,
-		Labels:     []issuedomain.Label{},
+		Labels:     []label.Label{},
 		ProjectID:  uuid.New(),
 		ReporterID: userID,
 		AssigneeID: &assigneeID,
@@ -1119,7 +1120,7 @@ func Test_UpdateIssueAssignee_NullAssignee_Returns200(t *testing.T) {
 		Title:      "Fix login bug",
 		Status:     issuedomain.StatusBacklog,
 		Priority:   issuedomain.PriorityNone,
-		Labels:     []issuedomain.Label{},
+		Labels:     []label.Label{},
 		ProjectID:  uuid.New(),
 		ReporterID: userID,
 		AssigneeID: nil,

@@ -19,6 +19,7 @@ import (
 
 	commentdomain "github.com/wlindb/issue-tracker/internal/domain/tracker/comment"
 	issuedomain "github.com/wlindb/issue-tracker/internal/domain/tracker/issue"
+	"github.com/wlindb/issue-tracker/internal/domain/tracker/label"
 	projectdomain "github.com/wlindb/issue-tracker/internal/domain/tracker/project"
 	workspacedomain "github.com/wlindb/issue-tracker/internal/domain/tracker/workspace"
 	infradb "github.com/wlindb/issue-tracker/internal/infrastructure/db"
@@ -281,7 +282,7 @@ func Test_CreateIssue_FromCommand_HasEmptyLabels(t *testing.T) {
 		Status:     issuedomain.StatusTodo,
 		Priority:   issuedomain.PriorityMedium,
 	}
-	issue := command.ToIssue(uuid.New(), command.Slugify, []issuedomain.Label{})
+	issue := command.ToIssue(uuid.New(), command.Slugify, []label.Label{})
 	assert.NotNil(t, issue.Labels)
 	assert.Empty(t, issue.Labels)
 
@@ -306,7 +307,7 @@ func Test_CreateIssue_NoOptionalFields_SuccessfulCreation(t *testing.T) {
 		Title:      "Simple issue",
 		Status:     issuedomain.StatusBacklog,
 		Priority:   issuedomain.PriorityNone,
-		Labels:     []issuedomain.Label{},
+		Labels:     []label.Label{},
 		ProjectID:  projectID,
 		ReporterID: uuid.New(),
 	}
@@ -333,7 +334,7 @@ func Test_CreateIssue_WithOptionalFields_SuccessfulCreation(t *testing.T) {
 	repository := tracker.NewIssueRepository(testPool)
 	_, ctx := createTestWorkspace(t)
 	projectID := createTestProject(t, ctx)
-	labels := []issuedomain.Label{
+	labels := []label.Label{
 		{ID: createTestLabel(t, ctx, "backend"), Name: "backend"},
 		{ID: createTestLabel(t, ctx, "urgent"), Name: "urgent"},
 	}
@@ -363,7 +364,7 @@ func Test_CreateIssue_WithOptionalFields_SuccessfulCreation(t *testing.T) {
 	assert.Equal(t, assigneeID, *actual.AssigneeID)
 	assert.Equal(t, issuedomain.StatusInProgress, actual.Status)
 	assert.Equal(t, issuedomain.PriorityHigh, actual.Priority)
-	assert.Equal(t, []issuedomain.Label{}, actual.Labels)
+	assert.Equal(t, []label.Label{}, actual.Labels)
 }
 
 func Test_CreateIssue_DuplicateID_ReturnsError(t *testing.T) {
@@ -378,7 +379,7 @@ func Test_CreateIssue_DuplicateID_ReturnsError(t *testing.T) {
 		Title:      "First",
 		Status:     issuedomain.StatusBacklog,
 		Priority:   issuedomain.PriorityNone,
-		Labels:     []issuedomain.Label{},
+		Labels:     []label.Label{},
 		ProjectID:  projectID,
 		ReporterID: uuid.New(),
 	}
@@ -402,7 +403,7 @@ func Test_CreateIssue_DuplicateIdentifierSameProject_ReturnsError(t *testing.T) 
 		Title:      "First",
 		Status:     issuedomain.StatusBacklog,
 		Priority:   issuedomain.PriorityNone,
-		Labels:     []issuedomain.Label{},
+		Labels:     []label.Label{},
 		ProjectID:  projectID,
 		ReporterID: uuid.New(),
 	}
@@ -427,7 +428,7 @@ func Test_CreateIssue_DuplicateIdentifierDifferentProject_Succeeds(t *testing.T)
 		Title:      "Issue in A",
 		Status:     issuedomain.StatusBacklog,
 		Priority:   issuedomain.PriorityNone,
-		Labels:     []issuedomain.Label{},
+		Labels:     []label.Label{},
 		ProjectID:  projectA,
 		ReporterID: uuid.New(),
 	}
@@ -440,7 +441,7 @@ func Test_CreateIssue_DuplicateIdentifierDifferentProject_Succeeds(t *testing.T)
 		Title:      "Issue in B",
 		Status:     issuedomain.StatusBacklog,
 		Priority:   issuedomain.PriorityNone,
-		Labels:     []issuedomain.Label{},
+		Labels:     []label.Label{},
 		ProjectID:  projectB,
 		ReporterID: uuid.New(),
 	}
@@ -458,7 +459,7 @@ func Test_CreateIssue_InvalidProjectID_ReturnsError(t *testing.T) {
 		Title:      "Bad project ref",
 		Status:     issuedomain.StatusBacklog,
 		Priority:   issuedomain.PriorityNone,
-		Labels:     []issuedomain.Label{},
+		Labels:     []label.Label{},
 		ProjectID:  uuid.New(), // nonexistent project
 		ReporterID: uuid.New(),
 	}
@@ -550,7 +551,7 @@ func Test_ListIssues_WithIssues_ReturnsAllIssues(t *testing.T) {
 			Title:      fmt.Sprintf("Issue %d", idx),
 			Status:     issuedomain.StatusBacklog,
 			Priority:   issuedomain.PriorityNone,
-			Labels:     []issuedomain.Label{},
+			Labels:     []label.Label{},
 			ProjectID:  projectID,
 			ReporterID: uuid.New(),
 		})
@@ -577,7 +578,7 @@ func Test_ListIssues_FilterByStatus_ReturnsFilteredIssues(t *testing.T) {
 			Title:      fmt.Sprintf("Issue %d", idx),
 			Status:     status,
 			Priority:   issuedomain.PriorityNone,
-			Labels:     []issuedomain.Label{},
+			Labels:     []label.Label{},
 			ProjectID:  projectID,
 			ReporterID: uuid.New(),
 		})
@@ -608,7 +609,7 @@ func Test_ListIssues_FilterByPriority_ReturnsFilteredIssues(t *testing.T) {
 			Title:      fmt.Sprintf("Issue %d", idx),
 			Status:     issuedomain.StatusBacklog,
 			Priority:   priority,
-			Labels:     []issuedomain.Label{},
+			Labels:     []label.Label{},
 			ProjectID:  projectID,
 			ReporterID: uuid.New(),
 		})
@@ -641,7 +642,7 @@ func Test_ListIssues_FilterByAssignee_ReturnsFilteredIssues(t *testing.T) {
 			Title:      fmt.Sprintf("Issue %d", idx),
 			Status:     issuedomain.StatusBacklog,
 			Priority:   issuedomain.PriorityNone,
-			Labels:     []issuedomain.Label{},
+			Labels:     []label.Label{},
 			AssigneeID: assignee,
 			ProjectID:  projectID,
 			ReporterID: uuid.New(),
@@ -672,7 +673,7 @@ func Test_ListIssues_IsolatedByWorkspace_ReturnsEmpty(t *testing.T) {
 		Title:      "Issue in Workspace A",
 		Status:     issuedomain.StatusBacklog,
 		Priority:   issuedomain.PriorityNone,
-		Labels:     []issuedomain.Label{},
+		Labels:     []label.Label{},
 		ProjectID:  projectID,
 		ReporterID: uuid.New(),
 	})
@@ -697,7 +698,7 @@ func Test_ListIssues_IsolatesByProject_ReturnsOnlyProjectIssues(t *testing.T) {
 		Title:      "Issue in A",
 		Status:     issuedomain.StatusBacklog,
 		Priority:   issuedomain.PriorityNone,
-		Labels:     []issuedomain.Label{},
+		Labels:     []label.Label{},
 		ProjectID:  projectA,
 		ReporterID: uuid.New(),
 	})
@@ -709,7 +710,7 @@ func Test_ListIssues_IsolatesByProject_ReturnsOnlyProjectIssues(t *testing.T) {
 		Title:      "Issue in B",
 		Status:     issuedomain.StatusBacklog,
 		Priority:   issuedomain.PriorityNone,
-		Labels:     []issuedomain.Label{},
+		Labels:     []label.Label{},
 		ProjectID:  projectB,
 		ReporterID: uuid.New(),
 	})
@@ -732,7 +733,7 @@ func createTestIssue(t *testing.T, ctx context.Context, projectID uuid.UUID) iss
 		Title:      "Test Issue",
 		Status:     issuedomain.StatusBacklog,
 		Priority:   issuedomain.PriorityNone,
-		Labels:     []issuedomain.Label{},
+		Labels:     []label.Label{},
 		ProjectID:  projectID,
 		ReporterID: uuid.New(),
 	}

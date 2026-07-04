@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/wlindb/issue-tracker/internal/domain/tracker/issue"
+	"github.com/wlindb/issue-tracker/internal/domain/tracker/label"
 )
 
 func Test_ToIssue_NewCommand_GeneratesNonZeroID(t *testing.T) {
@@ -21,7 +22,7 @@ func Test_ToIssue_NewCommand_GeneratesNonZeroID(t *testing.T) {
 		Priority:   issue.PriorityMedium,
 	}
 
-	result := command.ToIssue(uuid.New(), command.Slugify, []issue.Label{})
+	result := command.ToIssue(uuid.New(), command.Slugify, []label.Label{})
 
 	assert.NotEqual(t, uuid.Nil, result.ID)
 }
@@ -51,7 +52,7 @@ func Test_ToIssue_Title_GeneratesSlugIdentifier(t *testing.T) {
 				Priority:   issue.PriorityMedium,
 			}
 
-			result := command.ToIssue(fixedID, command.Slugify, []issue.Label{})
+			result := command.ToIssue(fixedID, command.Slugify, []label.Label{})
 
 			assert.Equal(t, tt.identifier, result.Identifier)
 		})
@@ -73,7 +74,7 @@ func Test_ToIssue_FullCommand_PopulatesAllFields(t *testing.T) {
 		AssigneeID:  &assigneeID,
 	}
 
-	result := command.ToIssue(uuid.New(), command.Slugify, []issue.Label{})
+	result := command.ToIssue(uuid.New(), command.Slugify, []label.Label{})
 
 	assert.Equal(t, projectID, result.ProjectID)
 	assert.Equal(t, reporterID, result.ReporterID)
@@ -93,7 +94,7 @@ func Test_ToIssue_NoLabels_HasEmptyLabels(t *testing.T) {
 		Priority:   issue.PriorityMedium,
 	}
 
-	result := command.ToIssue(uuid.New(), command.Slugify, []issue.Label{})
+	result := command.ToIssue(uuid.New(), command.Slugify, []label.Label{})
 
 	assert.NotNil(t, result.Labels)
 	assert.Empty(t, result.Labels)
@@ -292,7 +293,7 @@ func baseIssue() issue.Issue {
 		Title:      "Test issue",
 		Status:     issue.StatusTodo,
 		Priority:   issue.PriorityNone,
-		Labels:     []issue.Label{},
+		Labels:     []label.Label{},
 		ProjectID:  uuid.New(),
 		ReporterID: uuid.New(),
 	}

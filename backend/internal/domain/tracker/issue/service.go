@@ -6,6 +6,8 @@ import (
 	"log/slog"
 
 	"github.com/google/uuid"
+
+	label "github.com/wlindb/issue-tracker/internal/domain/tracker/label"
 )
 
 // IssueService implements the domain logic for managing issues.
@@ -24,7 +26,7 @@ type UnitOfWork interface {
 }
 
 type LabelLister interface {
-	ListByIDs(ctx context.Context, ids []uuid.UUID) ([]Label, error)
+	ListByIDs(ctx context.Context, ids []uuid.UUID) ([]label.Label, error)
 }
 
 // NewIssueService creates an IssueService wired to the given repository and event publisher.

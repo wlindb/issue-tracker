@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/wlindb/issue-tracker/internal/domain/tracker/issue"
+	"github.com/wlindb/issue-tracker/internal/domain/tracker/label"
 	"github.com/wlindb/issue-tracker/internal/pkg/domain/event"
 )
 
@@ -56,28 +57,28 @@ type mockLabelRepository struct {
 	mock.Mock
 }
 
-func (m *mockLabelRepository) GetOrCreate(ctx context.Context, name string) (issue.Label, error) {
+func (m *mockLabelRepository) GetOrCreate(ctx context.Context, name string) (label.Label, error) {
 	args := m.Called(ctx, name)
-	if result, ok := args.Get(0).(issue.Label); ok {
+	if result, ok := args.Get(0).(label.Label); ok {
 		return result, args.Error(1)
 	}
-	return issue.Label{}, args.Error(1)
+	return label.Label{}, args.Error(1)
 }
 
-func (m *mockLabelRepository) ListByIDs(ctx context.Context, ids []uuid.UUID) ([]issue.Label, error) {
+func (m *mockLabelRepository) ListByIDs(ctx context.Context, ids []uuid.UUID) ([]label.Label, error) {
 	args := m.Called(ctx, ids)
-	if result, ok := args.Get(0).([]issue.Label); ok {
+	if result, ok := args.Get(0).([]label.Label); ok {
 		return result, args.Error(1)
 	}
-	return []issue.Label{}, args.Error(1)
+	return []label.Label{}, args.Error(1)
 }
 
-func (m *mockLabelRepository) SearchByName(ctx context.Context, name string) ([]issue.Label, error) {
+func (m *mockLabelRepository) SearchByName(ctx context.Context, name string) ([]label.Label, error) {
 	args := m.Called(ctx, name)
-	if result, ok := args.Get(0).([]issue.Label); ok {
+	if result, ok := args.Get(0).([]label.Label); ok {
 		return result, args.Error(1)
 	}
-	return []issue.Label{}, args.Error(1)
+	return []label.Label{}, args.Error(1)
 }
 
 type mockUnitOfWork struct {
@@ -211,7 +212,7 @@ func Test_CreateIssue_ValidCommand_ReturnsCreatedIssue(t *testing.T) {
 		Priority:   issue.PriorityMedium,
 	}
 
-	labelRepository.On("ListByIDs", mock.Anything, command.LabelIDs).Return([]issue.Label{}, nil)
+	labelRepository.On("ListByIDs", mock.Anything, command.LabelIDs).Return([]label.Label{}, nil)
 	repository.On("CreateIssue", mock.Anything, mock.Anything).Return(expected, nil)
 
 	ctxWithNoopPublisher := event.WithPublisher(context.Background(), func(_ context.Context, _ issue.IssueCreatedEvent) error {
@@ -242,7 +243,7 @@ func Test_CreateIssue_RunInTxError_ReturnsError(t *testing.T) {
 		Status:     issue.StatusTodo,
 		Priority:   issue.PriorityMedium,
 	}
-	labelRepository.On("ListByIDs", mock.Anything, command.LabelIDs).Return([]issue.Label{}, nil)
+	labelRepository.On("ListByIDs", mock.Anything, command.LabelIDs).Return([]label.Label{}, nil)
 
 	_, err := service.CreateIssue(context.Background(), command)
 	require.Error(t, err)
@@ -267,7 +268,7 @@ func Test_CreateIssue_RepositoryError_ReturnsError(t *testing.T) {
 		Status:     issue.StatusTodo,
 		Priority:   issue.PriorityMedium,
 	}
-	labelRepository.On("ListByIDs", mock.Anything, command.LabelIDs).Return([]issue.Label{}, nil)
+	labelRepository.On("ListByIDs", mock.Anything, command.LabelIDs).Return([]label.Label{}, nil)
 
 	_, err := service.CreateIssue(context.Background(), command)
 	require.Error(t, err)
@@ -294,7 +295,7 @@ func Test_CreateIssue_WithLabelIDs_ResolvesLabelsBeforeTransaction(t *testing.T)
 		Priority:   issue.PriorityMedium,
 		LabelIDs:   []uuid.UUID{labelIDOne, labelIDTwo},
 	}
-	resolvedLabels := []issue.Label{
+	resolvedLabels := []label.Label{
 		{ID: labelIDOne, Name: "bug"},
 		{ID: labelIDTwo, Name: "high-priority"},
 	}
@@ -338,7 +339,7 @@ func Test_CreateIssue_LabelRepositoryError_ReturnsError(t *testing.T) {
 		LabelIDs:   []uuid.UUID{uuid.New()},
 	}
 	labelRepositoryErr := errors.New("list labels failed")
-	labelRepository.On("ListByIDs", mock.Anything, command.LabelIDs).Return([]issue.Label{}, labelRepositoryErr)
+	labelRepository.On("ListByIDs", mock.Anything, command.LabelIDs).Return([]label.Label{}, labelRepositoryErr)
 
 	_, err := service.CreateIssue(context.Background(), command)
 	require.Error(t, err)
@@ -399,7 +400,7 @@ func Test_UpdateIssueAssignee_ValidAssignee_ReturnsUpdatedIssue(t *testing.T) {
 		Title:    "Test issue",
 		Status:   issue.StatusTodo,
 		Priority: issue.PriorityNone,
-		Labels:   []issue.Label{},
+		Labels:   []label.Label{},
 	}
 	returned := existing
 	returned.AssigneeID = &assigneeID
@@ -432,7 +433,7 @@ func Test_UpdateIssueAssignee_NilAssignee_ClearsAssignee(t *testing.T) {
 		Title:      "Test issue",
 		Status:     issue.StatusTodo,
 		Priority:   issue.PriorityNone,
-		Labels:     []issue.Label{},
+		Labels:     []label.Label{},
 		AssigneeID: &oldAssignee,
 	}
 	returned := existing
@@ -479,7 +480,7 @@ func Test_UpdateIssueAssignee_UpdateError_ReturnsError(t *testing.T) {
 
 	issueID := uuid.New()
 	assigneeID := uuid.New()
-	existing := issue.Issue{ID: issueID, Status: issue.StatusTodo, Priority: issue.PriorityNone, Labels: []issue.Label{}}
+	existing := issue.Issue{ID: issueID, Status: issue.StatusTodo, Priority: issue.PriorityNone, Labels: []label.Label{}}
 	updateErr := errors.New("db error")
 
 	repository.On("GetIssue", mock.Anything, issueID).Return(existing, nil)
@@ -503,7 +504,7 @@ func Test_UpdateIssueAssignee_SuccessfulUpdate_PublishesIssueAssigneeUpdatedEven
 		Title:    "Test issue",
 		Status:   issue.StatusTodo,
 		Priority: issue.PriorityNone,
-		Labels:   []issue.Label{},
+		Labels:   []label.Label{},
 	}
 	returned := existing
 	returned.AssigneeID = &assigneeID
@@ -539,7 +540,7 @@ func Test_UpdateIssueAssignee_EmitAssigneeUpdatedError_ReturnsError(t *testing.T
 		Title:    "Test issue",
 		Status:   issue.StatusTodo,
 		Priority: issue.PriorityNone,
-		Labels:   []issue.Label{},
+		Labels:   []label.Label{},
 	}
 	updated := existing
 	updated.AssigneeID = &assigneeID
@@ -571,7 +572,7 @@ func Test_UpdateIssueDescription_ValidDescription_ReturnsUpdatedIssue(t *testing
 		Title:    "Test issue",
 		Status:   issue.StatusTodo,
 		Priority: issue.PriorityNone,
-		Labels:   []issue.Label{},
+		Labels:   []label.Label{},
 	}
 	returned := existing
 	returned.Description = &description
@@ -603,7 +604,7 @@ func Test_UpdateIssueDescription_NilDescription_ClearsDescription(t *testing.T) 
 		Description: &oldDesc,
 		Status:      issue.StatusTodo,
 		Priority:    issue.PriorityNone,
-		Labels:      []issue.Label{},
+		Labels:      []label.Label{},
 	}
 	returned := existing
 	returned.Description = nil
@@ -652,7 +653,7 @@ func Test_UpdateIssueDescription_SuccessfulUpdate_PublishesIssueDescriptionUpdat
 		Description: &oldDesc,
 		Status:      issue.StatusTodo,
 		Priority:    issue.PriorityNone,
-		Labels:      []issue.Label{},
+		Labels:      []label.Label{},
 	}
 	returned := existing
 	returned.Description = &newDesc
@@ -688,7 +689,7 @@ func Test_UpdateIssueDescription_EmitDescriptionUpdatedError_ReturnsError(t *tes
 		Title:    "Test issue",
 		Status:   issue.StatusTodo,
 		Priority: issue.PriorityNone,
-		Labels:   []issue.Label{},
+		Labels:   []label.Label{},
 	}
 	returned := existing
 	returned.Description = &newDesc
@@ -720,7 +721,7 @@ func Test_UpdateIssueTitle_ValidTitle_ReturnsUpdatedIssue(t *testing.T) {
 		Title:    "old title",
 		Status:   issue.StatusTodo,
 		Priority: issue.PriorityNone,
-		Labels:   []issue.Label{},
+		Labels:   []label.Label{},
 	}
 	returned := existing
 	returned.Title = title
@@ -751,7 +752,7 @@ func Test_UpdateIssueTitle_EmptyTitle_ReturnsError(t *testing.T) {
 		Title:    "old title",
 		Status:   issue.StatusTodo,
 		Priority: issue.PriorityNone,
-		Labels:   []issue.Label{},
+		Labels:   []label.Label{},
 	}
 
 	repository.On("GetIssue", mock.Anything, issueID).Return(existing, nil)
@@ -782,7 +783,7 @@ func Test_UpdateIssueTitle_UpdateError_ReturnsError(t *testing.T) {
 	service := issue.NewIssueService(uow, repository, &mockLabelRepository{})
 
 	issueID := uuid.New()
-	existing := issue.Issue{ID: issueID, Title: "old title", Status: issue.StatusTodo, Priority: issue.PriorityNone, Labels: []issue.Label{}}
+	existing := issue.Issue{ID: issueID, Title: "old title", Status: issue.StatusTodo, Priority: issue.PriorityNone, Labels: []label.Label{}}
 	updateErr := errors.New("db error")
 
 	repository.On("GetIssue", mock.Anything, issueID).Return(existing, nil)
@@ -807,7 +808,7 @@ func Test_UpdateIssuePriority_ValidPriority_ReturnsUpdatedIssue(t *testing.T) {
 		Title:    "Test issue",
 		Status:   issue.StatusTodo,
 		Priority: issue.PriorityNone,
-		Labels:   []issue.Label{},
+		Labels:   []label.Label{},
 	}
 	returned := existing
 	returned.Priority = issue.PriorityHigh
@@ -837,7 +838,7 @@ func Test_UpdateIssuePriority_InvalidPriority_ReturnsError(t *testing.T) {
 		Title:    "Test issue",
 		Status:   issue.StatusTodo,
 		Priority: issue.PriorityNone,
-		Labels:   []issue.Label{},
+		Labels:   []label.Label{},
 	}
 
 	repository.On("GetIssue", mock.Anything, issueID).Return(existing, nil)
@@ -868,7 +869,7 @@ func Test_UpdateIssuePriority_UpdateError_ReturnsError(t *testing.T) {
 	service := issue.NewIssueService(uow, repository, &mockLabelRepository{})
 
 	issueID := uuid.New()
-	existing := issue.Issue{ID: issueID, Status: issue.StatusTodo, Priority: issue.PriorityNone, Labels: []issue.Label{}}
+	existing := issue.Issue{ID: issueID, Status: issue.StatusTodo, Priority: issue.PriorityNone, Labels: []label.Label{}}
 	updateErr := errors.New("db error")
 
 	repository.On("GetIssue", mock.Anything, issueID).Return(existing, nil)
@@ -891,7 +892,7 @@ func Test_UpdateIssuePriority_SuccessfulUpdate_PublishesIssuePriorityUpdatedEven
 		Title:    "Test issue",
 		Status:   issue.StatusTodo,
 		Priority: issue.PriorityNone,
-		Labels:   []issue.Label{},
+		Labels:   []label.Label{},
 	}
 	returned := existing
 	returned.Priority = issue.PriorityHigh
@@ -926,7 +927,7 @@ func Test_UpdateIssuePriority_EmitPriorityUpdatedError_ReturnsError(t *testing.T
 		Title:    "Test issue",
 		Status:   issue.StatusTodo,
 		Priority: issue.PriorityNone,
-		Labels:   []issue.Label{},
+		Labels:   []label.Label{},
 	}
 	returned := existing
 	returned.Priority = issue.PriorityHigh
@@ -957,7 +958,7 @@ func Test_UpdateIssueStatus_ValidStatus_ReturnsUpdatedIssue(t *testing.T) {
 		Title:    "Test issue",
 		Status:   issue.StatusTodo,
 		Priority: issue.PriorityNone,
-		Labels:   []issue.Label{},
+		Labels:   []label.Label{},
 	}
 	returned := existing
 	returned.Status = issue.StatusDone
@@ -984,7 +985,7 @@ func Test_UpdateIssueStatus_InvalidStatus_ReturnsError(t *testing.T) {
 		Title:    "Test issue",
 		Status:   issue.StatusTodo,
 		Priority: issue.PriorityNone,
-		Labels:   []issue.Label{},
+		Labels:   []label.Label{},
 	}
 
 	repository.On("GetIssue", mock.Anything, issueID).Return(existing, nil)
@@ -1015,7 +1016,7 @@ func Test_UpdateIssueStatus_UpdateError_ReturnsError(t *testing.T) {
 	service := issue.NewIssueService(uow, repository, &mockLabelRepository{})
 
 	issueID := uuid.New()
-	existing := issue.Issue{ID: issueID, Status: issue.StatusTodo, Priority: issue.PriorityNone, Labels: []issue.Label{}}
+	existing := issue.Issue{ID: issueID, Status: issue.StatusTodo, Priority: issue.PriorityNone, Labels: []label.Label{}}
 	updateErr := errors.New("db error")
 
 	repository.On("GetIssue", mock.Anything, issueID).Return(existing, nil)
@@ -1057,7 +1058,7 @@ func Test_CreateIssue_SuccessfulPersistence_PublishesIssueCreatedEvent(t *testin
 		return nil
 	})
 
-	labelRepository.On("ListByIDs", mock.Anything, command.LabelIDs).Return([]issue.Label{}, nil)
+	labelRepository.On("ListByIDs", mock.Anything, command.LabelIDs).Return([]label.Label{}, nil)
 	repository.On("CreateIssue", mock.Anything, mock.Anything).Return(expected, nil)
 	actual, err := service.CreateIssue(ctx, command)
 	require.NoError(t, err)
@@ -1092,7 +1093,7 @@ func Test_CreateIssue_EmitCreatedError_ReturnsError(t *testing.T) {
 		return expectedError
 	})
 
-	labelRepository.On("ListByIDs", mock.Anything, command.LabelIDs).Return([]issue.Label{}, nil)
+	labelRepository.On("ListByIDs", mock.Anything, command.LabelIDs).Return([]label.Label{}, nil)
 	repository.On("CreateIssue", mock.Anything, mock.Anything).Return(returned, nil)
 
 	_, err := service.CreateIssue(ctx, command)
@@ -1112,7 +1113,7 @@ func Test_UpdateIssueStatus_SuccessfulUpdate_PublishesIssueStatusUpdatedEvent(t 
 		Title:    "Test issue",
 		Status:   issue.StatusTodo,
 		Priority: issue.PriorityNone,
-		Labels:   []issue.Label{},
+		Labels:   []label.Label{},
 	}
 	returned := existing
 	returned.Status = issue.StatusDone
@@ -1147,7 +1148,7 @@ func Test_UpdateIssueStatus_PublisherError_StillReturnsIssue(t *testing.T) {
 		Title:    "Test issue",
 		Status:   issue.StatusTodo,
 		Priority: issue.PriorityNone,
-		Labels:   []issue.Label{},
+		Labels:   []label.Label{},
 	}
 	returned := existing
 	returned.Status = issue.StatusDone
@@ -1176,7 +1177,7 @@ func Test_UpdateIssueTitle_SuccessfulUpdate_PublishesIssueTitleUpdatedEvent(t *t
 		Title:    "old title",
 		Status:   issue.StatusTodo,
 		Priority: issue.PriorityNone,
-		Labels:   []issue.Label{},
+		Labels:   []label.Label{},
 	}
 	returned := existing
 	returned.Title = "new title"
@@ -1211,7 +1212,7 @@ func Test_UpdateIssueTitle_EmitTitleUpdatedError_ReturnsError(t *testing.T) {
 		Title:    "old title",
 		Status:   issue.StatusTodo,
 		Priority: issue.PriorityNone,
-		Labels:   []issue.Label{},
+		Labels:   []label.Label{},
 	}
 	returned := existing
 	returned.Title = "new title"

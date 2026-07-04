@@ -8,23 +8,23 @@ import (
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 
-	issuedomain "github.com/wlindb/issue-tracker/internal/domain/tracker/issue"
+	"github.com/wlindb/issue-tracker/internal/domain/tracker/label"
 )
 
-var _ issuedomain.LabelRepository = (*TracingLabelRepository)(nil)
+var _ label.LabelRepository = (*TracingLabelRepository)(nil)
 
 // TracingLabelRepository wraps a LabelRepository and adds an OTel child span to each operation.
 type TracingLabelRepository struct {
-	inner  issuedomain.LabelRepository
+	inner  label.LabelRepository
 	tracer trace.Tracer
 }
 
 // NewTracingLabelRepository returns a TracingLabelRepository that delegates to inner.
-func NewTracingLabelRepository(inner issuedomain.LabelRepository, tracer trace.Tracer) *TracingLabelRepository {
+func NewTracingLabelRepository(inner label.LabelRepository, tracer trace.Tracer) *TracingLabelRepository {
 	return &TracingLabelRepository{inner: inner, tracer: tracer}
 }
 
-func (r *TracingLabelRepository) GetOrCreate(ctx context.Context, name string) (issuedomain.Label, error) {
+func (r *TracingLabelRepository) GetOrCreate(ctx context.Context, name string) (label.Label, error) {
 	ctx, span := r.tracer.Start(ctx, "tracker.LabelRepository.GetOrCreate")
 	defer span.End()
 
@@ -32,12 +32,12 @@ func (r *TracingLabelRepository) GetOrCreate(ctx context.Context, name string) (
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
-		return issuedomain.Label{}, fmt.Errorf("get or create label: %w", err)
+		return label.Label{}, fmt.Errorf("get or create label: %w", err)
 	}
 	return result, nil
 }
 
-func (r *TracingLabelRepository) ListByIDs(ctx context.Context, ids []uuid.UUID) ([]issuedomain.Label, error) {
+func (r *TracingLabelRepository) ListByIDs(ctx context.Context, ids []uuid.UUID) ([]label.Label, error) {
 	ctx, span := r.tracer.Start(ctx, "tracker.LabelRepository.ListByIDs")
 	defer span.End()
 
@@ -45,12 +45,12 @@ func (r *TracingLabelRepository) ListByIDs(ctx context.Context, ids []uuid.UUID)
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
-		return []issuedomain.Label{}, fmt.Errorf("list labels by ids: %w", err)
+		return []label.Label{}, fmt.Errorf("list labels by ids: %w", err)
 	}
 	return result, nil
 }
 
-func (r *TracingLabelRepository) SearchByName(ctx context.Context, name string) ([]issuedomain.Label, error) {
+func (r *TracingLabelRepository) SearchByName(ctx context.Context, name string) ([]label.Label, error) {
 	ctx, span := r.tracer.Start(ctx, "tracker.LabelRepository.SearchByName")
 	defer span.End()
 
@@ -58,7 +58,7 @@ func (r *TracingLabelRepository) SearchByName(ctx context.Context, name string) 
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
-		return []issuedomain.Label{}, fmt.Errorf("search labels by name: %w", err)
+		return []label.Label{}, fmt.Errorf("search labels by name: %w", err)
 	}
 	return result, nil
 }

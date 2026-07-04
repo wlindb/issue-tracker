@@ -19,6 +19,7 @@ import (
 	"github.com/wlindb/issue-tracker/internal/api/model"
 	commentdomain "github.com/wlindb/issue-tracker/internal/domain/tracker/comment"
 	issuedomain "github.com/wlindb/issue-tracker/internal/domain/tracker/issue"
+	"github.com/wlindb/issue-tracker/internal/domain/tracker/label"
 	projectdomain "github.com/wlindb/issue-tracker/internal/domain/tracker/project"
 	workspacedomain "github.com/wlindb/issue-tracker/internal/domain/tracker/workspace"
 	tracker "github.com/wlindb/issue-tracker/internal/infrastructure/tracker"
@@ -57,7 +58,7 @@ func setupCommentFixture(t *testing.T) commentIntegrationFixture {
 		Title:      "Comment Test Issue",
 		Status:     issuedomain.StatusBacklog,
 		Priority:   issuedomain.PriorityNone,
-		Labels:     []issuedomain.Label{},
+		Labels:     []label.Label{},
 		ProjectID:  projectID,
 		ReporterID: ownerID,
 	}

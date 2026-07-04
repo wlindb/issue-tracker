@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
+	"github.com/wlindb/issue-tracker/internal/domain/tracker/label"
 )
 
 var (
@@ -56,12 +58,6 @@ func (p Priority) Valid() bool {
 	return false
 }
 
-// Label is a workspace-scoped tag that can be attached to issues.
-type Label struct {
-	ID   uuid.UUID
-	Name string
-}
-
 // Issue is the domain representation of a tracked issue.
 type Issue struct {
 	ID          uuid.UUID
@@ -70,7 +66,7 @@ type Issue struct {
 	Description *string
 	Status      Status
 	Priority    Priority
-	Labels      []Label
+	Labels      []label.Label
 	AssigneeID  *uuid.UUID
 	ProjectID   uuid.UUID
 	ReporterID  uuid.UUID
@@ -114,7 +110,7 @@ func (c CreateIssueCommand) Slugify(s string) string {
 
 type Slugifier func(s string) string
 
-func (c CreateIssueCommand) ToIssue(id uuid.UUID, slugifier Slugifier, labels []Label) Issue {
+func (c CreateIssueCommand) ToIssue(id uuid.UUID, slugifier Slugifier, labels []label.Label) Issue {
 	return Issue{
 		ID:          id,
 		Identifier:  slugifier(fmt.Sprintf("%s-%s", c.Title, id.String()[:8])),

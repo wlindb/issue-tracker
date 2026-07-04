@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	issuedomain "github.com/wlindb/issue-tracker/internal/domain/tracker/issue"
+	"github.com/wlindb/issue-tracker/internal/domain/tracker/label"
 	trackerdb "github.com/wlindb/issue-tracker/internal/infrastructure/tracker/generated"
 )
 
@@ -38,7 +39,7 @@ func (r *IssueRepository) CreateIssue(ctx context.Context, issue issuedomain.Iss
 		return issuedomain.Issue{}, fmt.Errorf("create many issue labels: %w", err)
 	}
 
-	return issueToDomain(dbIssue, []issuedomain.Label{}), nil
+	return issueToDomain(dbIssue, []label.Label{}), nil
 }
 
 // GetIssue retrieves a single issue by its ID, or ErrIssueNotFound if it does not exist.
@@ -51,7 +52,7 @@ func (r *IssueRepository) GetIssue(ctx context.Context, id uuid.UUID) (issuedoma
 		}
 		return issuedomain.Issue{}, fmt.Errorf("get issue: %w", err)
 	}
-	return issueToDomain(row, []issuedomain.Label{}), nil
+	return issueToDomain(row, []label.Label{}), nil
 }
 
 // Update persists mutable fields of an existing issue and returns the updated domain model.
@@ -65,7 +66,7 @@ func (r *IssueRepository) Update(ctx context.Context, issue issuedomain.Issue) (
 		}
 		return issuedomain.Issue{}, fmt.Errorf("update issue: %w", err)
 	}
-	return issueToDomain(row, []issuedomain.Label{}), nil
+	return issueToDomain(row, []label.Label{}), nil
 }
 
 // ListIssues returns a filtered list of issues for the given project.
