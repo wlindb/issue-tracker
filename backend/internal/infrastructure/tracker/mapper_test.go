@@ -360,6 +360,50 @@ func Test_CreateCommentParamsFromDomain_MapsCorrectly(t *testing.T) {
 	assert.Equal(t, issueID, actual.IssueID)
 }
 
+// — Label mapper tests —
+
+func Test_labelToDomain_Row_ReturnsDomainLabel(t *testing.T) {
+	labelID := uuid.New()
+	now := time.Now().UTC()
+	row := trackerdb.Label{
+		ID:          labelID,
+		WorkspaceID: uuid.New(),
+		Name:        "backend",
+		CreatedAt:   pgtype.Timestamptz{Time: now, Valid: true},
+	}
+
+	actual := labelToDomain(row)
+
+	assert.Equal(t, labelID, actual.ID)
+	assert.Equal(t, "backend", actual.Name)
+}
+
+func Test_labelsToDomain_Rows_ReturnsDomainLabels(t *testing.T) {
+	now := time.Now().UTC()
+	firstID, secondID := uuid.New(), uuid.New()
+	rows := []trackerdb.Label{
+		{ID: firstID, WorkspaceID: uuid.New(), Name: "backend", CreatedAt: pgtype.Timestamptz{Time: now, Valid: true}},
+		{ID: secondID, WorkspaceID: uuid.New(), Name: "frontend", CreatedAt: pgtype.Timestamptz{Time: now, Valid: true}},
+	}
+
+	actual := labelsToDomain(rows)
+
+	require.Len(t, actual, 2)
+	assert.Equal(t, firstID, actual[0].ID)
+	assert.Equal(t, "backend", actual[0].Name)
+	assert.Equal(t, secondID, actual[1].ID)
+	assert.Equal(t, "frontend", actual[1].Name)
+}
+
+func Test_getOrCreateLabelParams_Label_ReturnsParams(t *testing.T) {
+	labelID := uuid.New()
+
+	actual := getOrCreateLabelParams(labelID, "backend")
+
+	assert.Equal(t, labelID, actual.ID)
+	assert.Equal(t, "backend", actual.Name)
+}
+
 // — UpdateIssueParamsFromDomain tests —
 
 func Test_UpdateIssueParamsFromDomain_NoOptionalFields_MapsCorrectly(t *testing.T) {

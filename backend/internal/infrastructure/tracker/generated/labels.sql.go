@@ -9,6 +9,7 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const getLabel = `-- name: GetLabel :one
@@ -19,6 +20,30 @@ WHERE id = $1
 
 func (q *Queries) GetLabel(ctx context.Context, id uuid.UUID) (Label, error) {
 	row := q.db.QueryRow(ctx, getLabel, id)
+	var i Label
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.Name,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const getOrCreateLabel = `-- name: GetOrCreateLabel :one
+INSERT INTO labels (id, workspace_id, name, created_at)
+VALUES ($1, current_setting('app.workspace_id')::uuid, $2, NOW())
+ON CONFLICT (workspace_id, name) DO UPDATE SET name = EXCLUDED.name
+RETURNING id, workspace_id, name, created_at
+`
+
+type GetOrCreateLabelParams struct {
+	ID   uuid.UUID
+	Name string
+}
+
+func (q *Queries) GetOrCreateLabel(ctx context.Context, arg GetOrCreateLabelParams) (Label, error) {
+	row := q.db.QueryRow(ctx, getOrCreateLabel, arg.ID, arg.Name)
 	var i Label
 	err := row.Scan(
 		&i.ID,
@@ -42,4 +67,65 @@ type InsertIssueLabelParams struct {
 func (q *Queries) InsertIssueLabel(ctx context.Context, arg InsertIssueLabelParams) error {
 	_, err := q.db.Exec(ctx, insertIssueLabel, arg.IssueID, arg.LabelID)
 	return err
+}
+
+const listLabelsByIDs = `-- name: ListLabelsByIDs :many
+SELECT id, workspace_id, name, created_at FROM labels
+WHERE id = ANY($1::uuid[])
+`
+
+func (q *Queries) ListLabelsByIDs(ctx context.Context, ids []uuid.UUID) ([]Label, error) {
+	rows, err := q.db.Query(ctx, listLabelsByIDs, ids)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Label
+	for rows.Next() {
+		var i Label
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkspaceID,
+			&i.Name,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const searchLabelsByName = `-- name: SearchLabelsByName :many
+SELECT id, workspace_id, name, created_at FROM labels
+WHERE name ILIKE '%' || $1 || '%'
+ORDER BY name
+`
+
+func (q *Queries) SearchLabelsByName(ctx context.Context, search pgtype.Text) ([]Label, error) {
+	rows, err := q.db.Query(ctx, searchLabelsByName, search)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Label
+	for rows.Next() {
+		var i Label
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkspaceID,
+			&i.Name,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
