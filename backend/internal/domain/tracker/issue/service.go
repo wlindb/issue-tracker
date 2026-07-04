@@ -10,8 +10,9 @@ import (
 
 // IssueService implements the domain logic for managing issues.
 type IssueService struct {
-	unitOfWork UnitOfWork
-	repository IssueRepository
+	unitOfWork  UnitOfWork
+	repository  IssueRepository
+	labelLister LabelLister
 }
 
 type Repositories struct {
@@ -22,12 +23,17 @@ type UnitOfWork interface {
 	RunInTx(ctx context.Context, fn func(Repositories) error) error
 }
 
+type LabelLister interface {
+	ListByIDs(ctx context.Context, ids []uuid.UUID) ([]Label, error)
+}
+
 // NewIssueService creates an IssueService wired to the given repository and event publisher.
 func NewIssueService(
 	unitOfWork UnitOfWork,
 	repository IssueRepository,
+	labelLister LabelLister,
 ) *IssueService {
-	return &IssueService{unitOfWork: unitOfWork, repository: repository}
+	return &IssueService{unitOfWork: unitOfWork, repository: repository, labelLister: labelLister}
 }
 
 // ListIssues returns a paginated list of issues for the given project.
@@ -50,13 +56,18 @@ func (s *IssueService) GetIssue(ctx context.Context, issueID uuid.UUID) (Issue, 
 
 // CreateIssue creates a new issue from the given command.
 func (s *IssueService) CreateIssue(ctx context.Context, command CreateIssueCommand) (Issue, error) {
+	labels, err := s.labelLister.ListByIDs(ctx, command.LabelIDs)
+	if err != nil {
+		return Issue{}, fmt.Errorf("create issue: %w", err)
+	}
+
 	var issue Issue
 	if err := s.unitOfWork.RunInTx(ctx, func(tx Repositories) error {
-		var err error
-		issue, err = tx.Issues.CreateIssue(ctx, command.ToIssue(uuid.New(), command.Slugify, []Label{}))
+		createdIssue, err := tx.Issues.CreateIssue(ctx, command.ToIssue(uuid.New(), command.Slugify, labels))
 		if err != nil {
 			return fmt.Errorf("create issue: %w", err)
 		}
+		issue = createdIssue
 
 		if err := issue.EmitCreated(ctx); err != nil {
 			return fmt.Errorf("emit created: %w", err)

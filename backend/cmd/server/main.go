@@ -245,6 +245,10 @@ func newHandler(pool *pgxpool.Pool, tracer trace.Tracer, workspaceService *works
 		trackerinfra.NewIssueRepository(pool),
 		tracer,
 	)
+	labelRepository := trackerinfra.NewTracingLabelRepository(
+		trackerinfra.NewLabelRepository(pool),
+		tracer,
+	)
 	commentRepository := trackerinfra.NewTracingCommentRepository(
 		trackerinfra.NewCommentRepository(pool),
 		tracer,
@@ -260,7 +264,7 @@ func newHandler(pool *pgxpool.Pool, tracer trace.Tracer, workspaceService *works
 		),
 		IssueHandler: api.NewIssueHandler(
 			trackerinfra.NewTracingIssueService(
-				issue.NewIssueService(trackerinfra.NewUoW(pool), issueRepository),
+				issue.NewIssueService(trackerinfra.NewUoW(pool), issueRepository, labelRepository),
 				tracer,
 			),
 		),

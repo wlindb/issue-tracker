@@ -52,12 +52,12 @@ func setupIssueFixture(t *testing.T) issueIntegrationFixture {
 	require.NoError(t, err)
 
 	ctx := api.WithWorkspaceID(api.WithUserID(t.Context(), ownerID), workspaceID)
-	projRepo := tracker.NewProjectRepository(testPool)
+	projectRepository := tracker.NewProjectRepository(testPool)
 	projectID := uuid.New()
 	projectName := "IssueProject-" + projectID.String()[:8]
 	project, err := projectdomain.New(projectID, strings.ToLower(projectID.String()[:8]), projectName, nil, ownerID)
 	require.NoError(t, err)
-	_, err = projRepo.Create(ctx, project)
+	_, err = projectRepository.Create(ctx, project)
 	require.NoError(t, err)
 
 	return issueIntegrationFixture{
@@ -70,14 +70,15 @@ func setupIssueFixture(t *testing.T) issueIntegrationFixture {
 func newIssueIntegrationServer(t *testing.T, f issueIntegrationFixture) *echo.Echo {
 	t.Helper()
 	issueRepo := tracker.NewIssueRepository(testPool)
+	labelRepository := tracker.NewLabelRepository(testPool)
 	uow := tracker.NewUoW(testPool)
-	issueSvc := issuedomain.NewIssueService(uow, issueRepo)
-	projRepo := tracker.NewProjectRepository(testPool)
-	projSvc := projectdomain.NewProjectService(projRepo)
+	issueService := issuedomain.NewIssueService(uow, issueRepo, labelRepository)
+	projectRepository := tracker.NewProjectRepository(testPool)
+	projectService := projectdomain.NewProjectService(projectRepository)
 
 	h := &api.Handler{
-		IssueHandler:   api.NewIssueHandler(issueSvc),
-		ProjectHandler: api.NewProjectHandler(projSvc),
+		IssueHandler:   api.NewIssueHandler(issueService),
+		ProjectHandler: api.NewProjectHandler(projectService),
 	}
 	e := echo.New()
 	e.Use(injectWorkspace(f.workspaceID, f.userID))
