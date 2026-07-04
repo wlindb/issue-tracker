@@ -1,11 +1,12 @@
-import { useState } from 'react'
 import { XIcon } from 'lucide-react'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
-import type { Issue, IssuePriority, IssueStatus, User } from '@/api/generated/issueTrackerAPI'
+import type { Issue, IssuePriority, IssueStatus, Label, User } from '@/api/generated/issueTrackerAPI'
 import { PriorityIcon } from '@/components/PriorityIcon'
 import { StatusIcon } from '@/components/StatusIcon'
 import { STATUS_LABEL } from '@/components/statusLabel'
+import { LabelDot } from '@/components/LabelDot'
+import { LabelPicker } from '@/components/issue-detail/LabelPicker'
 import { cn } from '@/lib/utils'
 
 const PRIORITY_LABEL: Record<IssuePriority, string> = {
@@ -36,33 +37,24 @@ const selectClass = cn(
 interface IssueMetaSidebarProps {
   issue: Issue
   users: User[]
+  workspaceId: string
   onStatusChange: (status: IssueStatus) => void
   onPriorityChange: (priority: IssuePriority) => void
   onAssigneeChange: (assigneeId: string | null) => void
-  onLabelsChange: (labels: string[]) => void
+  onLabelsChange: (labels: Label[]) => void
 }
 
 export function IssueMetaSidebar({
   issue,
   users,
+  workspaceId,
   onStatusChange,
   onPriorityChange,
   onAssigneeChange,
   onLabelsChange,
 }: IssueMetaSidebarProps) {
-  const [labelInput, setLabelInput] = useState('')
-
-  function handleAddLabel(e: React.KeyboardEvent<HTMLInputElement>) {
-    if (e.key !== 'Enter') return
-    const trimmed = labelInput.trim().toLowerCase()
-    if (trimmed && !issue.labels.includes(trimmed)) {
-      onLabelsChange([...issue.labels, trimmed])
-    }
-    setLabelInput('')
-  }
-
-  function handleRemoveLabel(label: string) {
-    onLabelsChange(issue.labels.filter((l) => l !== label))
+  function handleRemoveLabel(labelId: string) {
+    onLabelsChange(issue.labels.filter((l) => l.id !== labelId))
   }
 
   return (
@@ -136,28 +128,26 @@ export function IssueMetaSidebar({
       </MetaRow>
 
       <MetaRow label="Labels">
-        <div className="flex flex-wrap gap-1">
+        <div className="flex flex-wrap items-center gap-1">
           {issue.labels.map((label) => (
-            <Badge key={label} variant="outline" className="gap-1 pr-1 text-xs">
-              {label}
+            <Badge key={label.id} variant="outline" className="gap-1 pr-1 text-xs">
+              <LabelDot labelId={label.id} />
+              {label.name}
               <button
                 type="button"
-                onClick={() => handleRemoveLabel(label)}
+                onClick={() => handleRemoveLabel(label.id)}
                 className="rounded hover:text-destructive transition-colors"
               >
                 <XIcon className="size-3" />
               </button>
             </Badge>
           ))}
+          <LabelPicker
+            workspaceId={workspaceId}
+            attachedLabels={issue.labels}
+            onLabelsChange={onLabelsChange}
+          />
         </div>
-        <input
-          type="text"
-          value={labelInput}
-          onChange={(e) => setLabelInput(e.target.value)}
-          onKeyDown={handleAddLabel}
-          placeholder="Add label..."
-          className="w-full rounded-md border border-input bg-transparent px-2.5 py-1 text-xs placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-        />
       </MetaRow>
     </div>
   )

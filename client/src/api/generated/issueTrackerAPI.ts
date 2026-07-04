@@ -28,6 +28,11 @@ export const IssuePriority = {
   low: 'low',
 } as const;
 
+export interface Label {
+  id: string;
+  name: string;
+}
+
 export interface User {
   id: string;
   email: string;
@@ -57,7 +62,7 @@ export interface Issue {
   description?: string | null;
   status: IssueStatus;
   priority: IssuePriority;
-  labels: string[];
+  labels: Label[];
   /** @nullable */
   assigneeId?: string | null;
   reporterId: string;
@@ -82,6 +87,11 @@ export interface Workspace {
   updatedAt: string;
 }
 
+export interface WorkspaceMember {
+  id: string;
+  email: string;
+}
+
 export interface WorkspacePage {
   items: Workspace[];
   /** @nullable */
@@ -102,6 +112,12 @@ export interface IssuePage {
 
 export interface CommentPage {
   items: Comment[];
+  /** @nullable */
+  nextCursor?: string | null;
+}
+
+export interface LabelPage {
+  items: Label[];
   /** @nullable */
   nextCursor?: string | null;
 }
@@ -136,6 +152,7 @@ export interface CreateIssueRequest {
   priority: IssuePriority;
   /** @nullable */
   assigneeId?: string | null;
+  labelIds: string[];
 }
 
 export interface UpdateIssueTitleRequest {
@@ -168,6 +185,10 @@ export interface SearchIssueRequest {
 export interface CreateCommentRequest {
   /** @minLength 1 */
   body: string;
+}
+
+export interface CreateLabelRequest {
+  name: string;
 }
 
 /**
@@ -208,6 +229,10 @@ export type InternalServerErrorResponse = Error;
 export type CursorParamParameter = string;
 
 export type LimitParamParameter = number;
+
+export type ListLabelsParams = {
+search?: string;
+};
 
 export type ListProjectsParams = {
 cursor?: CursorParamParameter;
@@ -274,6 +299,47 @@ export const getWorkspace = (
  ) => {
       return customFetch<Workspace>(
       {url: `/api/v1/workspaces/${workspaceId}`, method: 'GET'
+    },
+      );
+    }
+
+/**
+ * @summary List members of a workspace.
+ */
+export const listWorkspaceMembers = (
+    workspaceId: string,
+ ) => {
+      return customFetch<WorkspaceMember[]>(
+      {url: `/api/v1/workspaces/${workspaceId}/members`, method: 'GET'
+    },
+      );
+    }
+
+/**
+ * @summary List labels in a workspace, optionally filtered by name.
+ */
+export const listLabels = (
+    workspaceId: string,
+    params?: ListLabelsParams,
+ ) => {
+      return customFetch<LabelPage>(
+      {url: `/api/v1/workspaces/${workspaceId}/labels`, method: 'GET',
+        params
+    },
+      );
+    }
+
+/**
+ * @summary Create a new label in a workspace.
+ */
+export const createLabel = (
+    workspaceId: string,
+    createLabelRequest: CreateLabelRequest,
+ ) => {
+      return customFetch<Label>(
+      {url: `/api/v1/workspaces/${workspaceId}/labels`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: createLabelRequest
     },
       );
     }
@@ -546,6 +612,9 @@ export const deleteComment = (
 export type ListWorkspacesResult = NonNullable<Awaited<ReturnType<typeof listWorkspaces>>>
 export type CreateWorkspaceResult = NonNullable<Awaited<ReturnType<typeof createWorkspace>>>
 export type GetWorkspaceResult = NonNullable<Awaited<ReturnType<typeof getWorkspace>>>
+export type ListWorkspaceMembersResult = NonNullable<Awaited<ReturnType<typeof listWorkspaceMembers>>>
+export type ListLabelsResult = NonNullable<Awaited<ReturnType<typeof listLabels>>>
+export type CreateLabelResult = NonNullable<Awaited<ReturnType<typeof createLabel>>>
 export type ListProjectsResult = NonNullable<Awaited<ReturnType<typeof listProjects>>>
 export type CreateProjectResult = NonNullable<Awaited<ReturnType<typeof createProject>>>
 export type GetProjectResult = NonNullable<Awaited<ReturnType<typeof getProject>>>

@@ -15,6 +15,7 @@ import {
   type Issue,
   type IssueStatus,
   type IssuePriority,
+  type Label,
   type Project,
 } from '@/api/generated/issueTrackerAPI'
 import { useWorkspace } from '@/context/WorkspaceContext'
@@ -87,7 +88,7 @@ export function IssueDetailPage() {
     setIssue(updated)
   }
 
-  function handleLabelsChange(labels: string[]) {
+  function handleLabelsChange(labels: Label[]) {
     if (!issue) return
     setIssue({ ...issue, labels })
   }
@@ -106,7 +107,7 @@ export function IssueDetailPage() {
     )
   }
 
-  if (error || !issue || !project) {
+  if (error || !issue || !project || !activeWorkspace) {
     return (
       <div className="flex h-full items-center justify-center text-muted-foreground">
         {error ?? 'Issue not found.'}
@@ -153,6 +154,7 @@ export function IssueDetailPage() {
             <IssueMetaSidebar
               issue={issue}
               users={[]}
+              workspaceId={activeWorkspace.id}
               onStatusChange={handleStatusChange}
               onPriorityChange={handlePriorityChange}
               onAssigneeChange={handleAssigneeChange}
