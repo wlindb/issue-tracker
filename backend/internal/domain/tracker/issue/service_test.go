@@ -53,6 +53,11 @@ func (m *mockIssueRepository) Update(ctx context.Context, i issue.Issue) (issue.
 	return issue.Issue{}, args.Error(1)
 }
 
+func (m *mockIssueRepository) AddLabel(ctx context.Context, issueID uuid.UUID, l label.Label) error {
+	args := m.Called(ctx, issueID, l)
+	return args.Error(0)
+}
+
 type mockLabelRepository struct {
 	mock.Mock
 }
@@ -1227,5 +1232,94 @@ func Test_UpdateIssueTitle_EmitTitleUpdatedError_ReturnsError(t *testing.T) {
 
 	_, err := service.UpdateIssueTitle(ctx, issueID, "new title")
 	require.ErrorIs(t, err, expectedError)
+	repository.AssertExpectations(t)
+}
+
+// — AddLabel —
+
+func Test_AddLabel_NewLabel_ReturnsIssueWithLabel(t *testing.T) {
+	repository := &mockIssueRepository{}
+	uow := &fakeUnitOfWork{repositories: issue.Repositories{Issues: repository}}
+	service := issue.NewIssueService(uow, repository, &mockLabelRepository{})
+
+	issueID := uuid.New()
+	newLabel := label.Label{ID: uuid.New(), Name: "bug"}
+	existing := issue.Issue{
+		ID:       issueID,
+		Title:    "Test issue",
+		Status:   issue.StatusTodo,
+		Priority: issue.PriorityNone,
+		Labels:   []label.Label{},
+	}
+
+	repository.On("GetIssue", mock.Anything, issueID).Return(existing, nil)
+	repository.On("AddLabel", mock.Anything, issueID, newLabel).Return(nil)
+
+	actual, err := service.AddLabel(context.Background(), issueID, newLabel)
+	require.NoError(t, err)
+	assert.Contains(t, actual.Labels, newLabel)
+	repository.AssertExpectations(t)
+}
+
+func Test_AddLabel_LabelAlreadyPresent_ReturnsIssueUnchanged(t *testing.T) {
+	repository := &mockIssueRepository{}
+	uow := &fakeUnitOfWork{repositories: issue.Repositories{Issues: repository}}
+	service := issue.NewIssueService(uow, repository, &mockLabelRepository{})
+
+	issueID := uuid.New()
+	existingLabel := label.Label{ID: uuid.New(), Name: "bug"}
+	existing := issue.Issue{
+		ID:       issueID,
+		Title:    "Test issue",
+		Status:   issue.StatusTodo,
+		Priority: issue.PriorityNone,
+		Labels:   []label.Label{existingLabel},
+	}
+
+	repository.On("GetIssue", mock.Anything, issueID).Return(existing, nil)
+
+	actual, err := service.AddLabel(context.Background(), issueID, existingLabel)
+	require.NoError(t, err)
+	assert.Equal(t, existing, actual)
+	repository.AssertNotCalled(t, "AddLabel", mock.Anything, mock.Anything, mock.Anything)
+	repository.AssertExpectations(t)
+}
+
+func Test_AddLabel_IssueNotFound_ReturnsError(t *testing.T) {
+	repository := &mockIssueRepository{}
+	uow := &fakeUnitOfWork{repositories: issue.Repositories{Issues: repository}}
+	service := issue.NewIssueService(uow, repository, &mockLabelRepository{})
+
+	issueID := uuid.New()
+	newLabel := label.Label{ID: uuid.New(), Name: "bug"}
+	repository.On("GetIssue", mock.Anything, issueID).Return(issue.Issue{}, issue.ErrIssueNotFound)
+
+	_, err := service.AddLabel(context.Background(), issueID, newLabel)
+	require.Error(t, err)
+	assert.ErrorIs(t, err, issue.ErrIssueNotFound)
+	repository.AssertExpectations(t)
+}
+
+func Test_AddLabel_RepositoryError_ReturnsError(t *testing.T) {
+	repository := &mockIssueRepository{}
+	uow := &fakeUnitOfWork{repositories: issue.Repositories{Issues: repository}}
+	service := issue.NewIssueService(uow, repository, &mockLabelRepository{})
+
+	issueID := uuid.New()
+	newLabel := label.Label{ID: uuid.New(), Name: "bug"}
+	existing := issue.Issue{
+		ID:       issueID,
+		Title:    "Test issue",
+		Status:   issue.StatusTodo,
+		Priority: issue.PriorityNone,
+		Labels:   []label.Label{},
+	}
+
+	repository.On("GetIssue", mock.Anything, issueID).Return(existing, nil)
+	repository.On("AddLabel", mock.Anything, issueID, newLabel).Return(label.ErrLabelNotFound)
+
+	_, err := service.AddLabel(context.Background(), issueID, newLabel)
+	require.Error(t, err)
+	assert.ErrorIs(t, err, label.ErrLabelNotFound)
 	repository.AssertExpectations(t)
 }

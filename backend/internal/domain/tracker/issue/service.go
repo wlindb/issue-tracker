@@ -220,7 +220,20 @@ func (s *IssueService) UpdateIssueStatus(ctx context.Context, issueID uuid.UUID,
 	return result, nil
 }
 
-// AddLabel is a stub; full attach/resolve logic lands in a follow-up.
-func (s *IssueService) AddLabel(_ context.Context, _ uuid.UUID, _ label.Label) (Issue, error) {
-	return Issue{}, nil
+// AddLabel attaches a label to an issue. Adding a label the issue already has is a no-op.
+func (s *IssueService) AddLabel(ctx context.Context, issueID uuid.UUID, label label.Label) (Issue, error) {
+	current, err := s.repository.GetIssue(ctx, issueID)
+	if err != nil {
+		return Issue{}, fmt.Errorf("add label: %w", err)
+	}
+
+	if current.HasLabel(label) {
+		return current, nil
+	}
+
+	if err := s.repository.AddLabel(ctx, issueID, label); err != nil {
+		return Issue{}, fmt.Errorf("add label: %w", err)
+	}
+
+	return current.AddLabel(label), nil
 }

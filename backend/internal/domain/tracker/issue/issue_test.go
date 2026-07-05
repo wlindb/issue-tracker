@@ -285,6 +285,44 @@ func Test_UpdateAssignee_ValidAssigneeID_OriginalUnchanged(t *testing.T) {
 	assert.Nil(t, base.AssigneeID)
 }
 
+// — Issue.HasLabel —
+
+func Test_HasLabel_LabelPresent_ReturnsTrue(t *testing.T) {
+	existingLabel := label.Label{ID: uuid.New(), Name: "bug"}
+	base := baseIssue()
+	base.Labels = []label.Label{existingLabel}
+
+	assert.True(t, base.HasLabel(existingLabel))
+}
+
+func Test_HasLabel_LabelAbsent_ReturnsFalse(t *testing.T) {
+	base := baseIssue()
+
+	assert.False(t, base.HasLabel(label.Label{ID: uuid.New(), Name: "bug"}))
+}
+
+// — Issue.AddLabel —
+
+func Test_AddLabel_NewLabel_AppendsLabel(t *testing.T) {
+	base := baseIssue()
+	newLabel := label.Label{ID: uuid.New(), Name: "bug"}
+
+	actual := base.AddLabel(newLabel)
+
+	assert.Contains(t, actual.Labels, newLabel)
+}
+
+func Test_AddLabel_LabelAlreadyPresent_ReturnsUnchanged(t *testing.T) {
+	existingLabel := label.Label{ID: uuid.New(), Name: "bug"}
+	base := baseIssue()
+	base.Labels = []label.Label{existingLabel}
+
+	actual := base.AddLabel(existingLabel)
+
+	assert.Equal(t, base, actual)
+	assert.Len(t, actual.Labels, 1)
+}
+
 // baseIssue returns a minimal valid Issue for use in tests.
 func baseIssue() issue.Issue {
 	return issue.Issue{

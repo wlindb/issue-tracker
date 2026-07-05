@@ -9,6 +9,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 
 	issuedomain "github.com/wlindb/issue-tracker/internal/domain/tracker/issue"
+	"github.com/wlindb/issue-tracker/internal/domain/tracker/label"
 )
 
 var _ issuedomain.IssueRepository = (*TracingIssueRepository)(nil)
@@ -74,4 +75,16 @@ func (r *TracingIssueRepository) Update(ctx context.Context, issue issuedomain.I
 		return issuedomain.Issue{}, fmt.Errorf("update issue: %w", err)
 	}
 	return result, nil
+}
+
+func (r *TracingIssueRepository) AddLabel(ctx context.Context, issueID uuid.UUID, label label.Label) error {
+	ctx, span := r.tracer.Start(ctx, "tracker.IssueRepository.AddLabel")
+	defer span.End()
+
+	if err := r.inner.AddLabel(ctx, issueID, label); err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+		return fmt.Errorf("add label: %w", err)
+	}
+	return nil
 }
