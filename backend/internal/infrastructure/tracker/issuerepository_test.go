@@ -1,5 +1,3 @@
-//go:build !integration
-
 package tracker
 
 import (
@@ -17,6 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	issuedomain "github.com/wlindb/issue-tracker/internal/domain/tracker/issue"
+	"github.com/wlindb/issue-tracker/internal/domain/tracker/label"
 	trackerdb "github.com/wlindb/issue-tracker/internal/infrastructure/tracker/generated"
 )
 
@@ -95,7 +94,7 @@ func Test_CreateIssue_Success_ReturnsDomainIssue(t *testing.T) {
 		Title:      "Test issue",
 		Status:     issuedomain.StatusTodo,
 		Priority:   issuedomain.PriorityMedium,
-		Labels:     []issuedomain.Label{{ID: labelID, Name: "backend"}},
+		Labels:     []label.Label{{ID: labelID, Name: "backend"}},
 		ProjectID:  projectID,
 		ReporterID: reporterID,
 	}
@@ -143,7 +142,7 @@ func Test_CreateIssue_QueryError_ReturnsWrappedError(t *testing.T) {
 		Title:      "Error test",
 		Status:     issuedomain.StatusBacklog,
 		Priority:   issuedomain.PriorityNone,
-		Labels:     []issuedomain.Label{},
+		Labels:     []label.Label{},
 		ProjectID:  uuid.New(),
 		ReporterID: uuid.New(),
 	})
@@ -265,7 +264,7 @@ func Test_Update_Success_ReturnsDomainIssue(t *testing.T) {
 		Description: &description,
 		Status:      issuedomain.StatusInProgress,
 		Priority:    issuedomain.PriorityHigh,
-		Labels:      []issuedomain.Label{},
+		Labels:      []label.Label{},
 		ProjectID:   projectID,
 		ReporterID:  reporterID,
 	}
@@ -311,7 +310,7 @@ func Test_Update_QueryError_ReturnsWrappedError(t *testing.T) {
 		ID:       uuid.New(),
 		Status:   issuedomain.StatusDone,
 		Priority: issuedomain.PriorityNone,
-		Labels:   []issuedomain.Label{},
+		Labels:   []label.Label{},
 	})
 
 	require.Error(t, err)

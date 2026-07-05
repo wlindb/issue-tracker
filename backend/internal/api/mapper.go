@@ -8,6 +8,7 @@ import (
 	"github.com/wlindb/issue-tracker/internal/api/model"
 	commentdomain "github.com/wlindb/issue-tracker/internal/domain/tracker/comment"
 	issuedomain "github.com/wlindb/issue-tracker/internal/domain/tracker/issue"
+	"github.com/wlindb/issue-tracker/internal/domain/tracker/label"
 	trackerdomain "github.com/wlindb/issue-tracker/internal/domain/tracker/project"
 	workspacedomain "github.com/wlindb/issue-tracker/internal/domain/tracker/workspace"
 )
@@ -163,4 +164,16 @@ func createIssueCommandFromModel(projectID uuid.UUID, reporterID uuid.UUID, req 
 		AssigneeID:  req.AssigneeId,
 		LabelIDs:    req.LabelIds,
 	}
+}
+
+func labelFromDomain(l label.Label) model.Label {
+	return model.Label{Id: l.ID, Name: l.Name}
+}
+
+func labelsFromDomain(labels []label.Label) []model.Label {
+	items := make([]model.Label, len(labels))
+	for i, l := range labels {
+		items[i] = labelFromDomain(l)
+	}
+	return items
 }

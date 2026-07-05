@@ -28,6 +28,7 @@ import (
 	"github.com/wlindb/issue-tracker/internal/config"
 	commentdomain "github.com/wlindb/issue-tracker/internal/domain/tracker/comment"
 	"github.com/wlindb/issue-tracker/internal/domain/tracker/issue"
+	"github.com/wlindb/issue-tracker/internal/domain/tracker/label"
 	trackerdomain "github.com/wlindb/issue-tracker/internal/domain/tracker/project"
 	workspacedomain "github.com/wlindb/issue-tracker/internal/domain/tracker/workspace"
 	"github.com/wlindb/issue-tracker/internal/infrastructure/db"
@@ -254,6 +255,10 @@ func newHandler(pool *pgxpool.Pool, tracer trace.Tracer, workspaceService *works
 		tracer,
 	)
 
+	tracingLabelRepository := trackerinfra.NewTracingLabelRepository(labelRepository, tracer)
+	labelService := label.NewLabelService(tracingLabelRepository)
+	tracingLabelService := trackerinfra.NewTracingLabelService(labelService, tracer)
+
 	return &api.Handler{
 		WorkspaceHandler: api.NewWorkspaceHandler(workspaceService),
 		ProjectHandler: api.NewProjectHandler(
@@ -274,6 +279,6 @@ func newHandler(pool *pgxpool.Pool, tracer trace.Tracer, workspaceService *works
 				tracer,
 			),
 		),
-		LabelHandler: api.NewLabelHandler(),
+		LabelHandler: api.NewLabelHandler(tracingLabelService),
 	}
 }
