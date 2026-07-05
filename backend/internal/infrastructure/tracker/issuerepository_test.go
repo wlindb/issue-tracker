@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -316,5 +317,95 @@ func Test_Update_QueryError_ReturnsWrappedError(t *testing.T) {
 	require.Error(t, err)
 	assert.ErrorIs(t, err, dbErr)
 	assert.Contains(t, err.Error(), "update issue")
+	mockDatabase.AssertExpectations(t)
+}
+
+// — AddLabel unit tests —
+
+func Test_AddLabel_Success_ReturnsNil(t *testing.T) {
+	mockDatabase := new(mockDBTX)
+	mockDatabase.On("Exec", mock.Anything, mock.Anything, mock.Anything).
+		Return(pgconn.CommandTag{}, nil)
+	repository := &IssueRepository{db: mockDatabase}
+
+	err := repository.AddLabel(context.Background(), uuid.New(), label.Label{ID: uuid.New()})
+
+	require.NoError(t, err)
+	mockDatabase.AssertExpectations(t)
+}
+
+func Test_AddLabel_LabelForeignKeyViolation_ReturnsErrLabelNotFound(t *testing.T) {
+	pgErr := &pgconn.PgError{Code: pgerrcode.ForeignKeyViolation, ConstraintName: "issue_labels_label_id_fkey"}
+
+	mockDatabase := new(mockDBTX)
+	mockDatabase.On("Exec", mock.Anything, mock.Anything, mock.Anything).
+		Return(pgconn.CommandTag{}, pgErr)
+	repository := &IssueRepository{db: mockDatabase}
+
+	err := repository.AddLabel(context.Background(), uuid.New(), label.Label{ID: uuid.New()})
+
+	require.Error(t, err)
+	assert.ErrorIs(t, err, label.ErrLabelNotFound)
+	mockDatabase.AssertExpectations(t)
+}
+
+func Test_AddLabel_IssueForeignKeyViolation_ReturnsErrIssueNotFound(t *testing.T) {
+	pgErr := &pgconn.PgError{Code: pgerrcode.ForeignKeyViolation, ConstraintName: "issue_labels_issue_id_fkey"}
+
+	mockDatabase := new(mockDBTX)
+	mockDatabase.On("Exec", mock.Anything, mock.Anything, mock.Anything).
+		Return(pgconn.CommandTag{}, pgErr)
+	repository := &IssueRepository{db: mockDatabase}
+
+	err := repository.AddLabel(context.Background(), uuid.New(), label.Label{ID: uuid.New()})
+
+	require.Error(t, err)
+	assert.ErrorIs(t, err, issuedomain.ErrIssueNotFound)
+	mockDatabase.AssertExpectations(t)
+}
+
+func Test_AddLabel_LabelWorkspaceMismatch_ReturnsErrLabelNotFound(t *testing.T) {
+	pgErr := &pgconn.PgError{Code: pgerrcode.ForeignKeyViolation, ConstraintName: "issue_labels_workspace_matches_label"}
+
+	mockDatabase := new(mockDBTX)
+	mockDatabase.On("Exec", mock.Anything, mock.Anything, mock.Anything).
+		Return(pgconn.CommandTag{}, pgErr)
+	repository := &IssueRepository{db: mockDatabase}
+
+	err := repository.AddLabel(context.Background(), uuid.New(), label.Label{ID: uuid.New()})
+
+	require.Error(t, err)
+	assert.ErrorIs(t, err, label.ErrLabelNotFound)
+	mockDatabase.AssertExpectations(t)
+}
+
+func Test_AddLabel_IssueWorkspaceMismatch_ReturnsErrIssueNotFound(t *testing.T) {
+	pgErr := &pgconn.PgError{Code: pgerrcode.ForeignKeyViolation, ConstraintName: "issue_labels_workspace_matches_issue"}
+
+	mockDatabase := new(mockDBTX)
+	mockDatabase.On("Exec", mock.Anything, mock.Anything, mock.Anything).
+		Return(pgconn.CommandTag{}, pgErr)
+	repository := &IssueRepository{db: mockDatabase}
+
+	err := repository.AddLabel(context.Background(), uuid.New(), label.Label{ID: uuid.New()})
+
+	require.Error(t, err)
+	assert.ErrorIs(t, err, issuedomain.ErrIssueNotFound)
+	mockDatabase.AssertExpectations(t)
+}
+
+func Test_AddLabel_OtherError_ReturnsWrappedError(t *testing.T) {
+	dbErr := errors.New("db down")
+
+	mockDatabase := new(mockDBTX)
+	mockDatabase.On("Exec", mock.Anything, mock.Anything, mock.Anything).
+		Return(pgconn.CommandTag{}, dbErr)
+	repository := &IssueRepository{db: mockDatabase}
+
+	err := repository.AddLabel(context.Background(), uuid.New(), label.Label{ID: uuid.New()})
+
+	require.Error(t, err)
+	assert.ErrorIs(t, err, dbErr)
+	assert.Contains(t, err.Error(), "add label")
 	mockDatabase.AssertExpectations(t)
 }

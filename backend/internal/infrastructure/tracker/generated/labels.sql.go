@@ -54,21 +54,6 @@ func (q *Queries) GetOrCreateLabel(ctx context.Context, arg GetOrCreateLabelPara
 	return i, err
 }
 
-const insertIssueLabel = `-- name: InsertIssueLabel :exec
-INSERT INTO issue_labels (issue_id, label_id) VALUES ($1, $2)
-RETURNING issue_id, label_id
-`
-
-type InsertIssueLabelParams struct {
-	IssueID uuid.UUID
-	LabelID uuid.UUID
-}
-
-func (q *Queries) InsertIssueLabel(ctx context.Context, arg InsertIssueLabelParams) error {
-	_, err := q.db.Exec(ctx, insertIssueLabel, arg.IssueID, arg.LabelID)
-	return err
-}
-
 const listLabelsByIDs = `-- name: ListLabelsByIDs :many
 SELECT id, workspace_id, name, created_at FROM labels
 WHERE id = ANY($1::uuid[])

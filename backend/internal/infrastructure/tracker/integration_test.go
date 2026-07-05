@@ -931,3 +931,71 @@ func Test_GetComments_NoComments_ReturnsEmptySlice(t *testing.T) {
 	require.NoError(t, err)
 	assert.Empty(t, actual)
 }
+
+// — AddLabel integration tests —
+
+// countIssueLabels checks the issue_labels join row directly, since GetIssue
+// does not currently resolve Issue.Labels (issueToDomain is always called with
+// an empty label slice) — resolving labels on read is out of scope here.
+func countIssueLabels(t *testing.T, ctx context.Context, issueID, labelID uuid.UUID) int {
+	t.Helper()
+	var count int
+	err := testPool.QueryRow(ctx, "SELECT COUNT(*) FROM issue_labels WHERE issue_id = $1 AND label_id = $2", issueID, labelID).Scan(&count)
+	require.NoError(t, err)
+	return count
+}
+
+func Test_AddLabel_NewLabel_AttachesLabel(t *testing.T) {
+	repository := tracker.NewIssueRepository(testPool)
+	_, ctx := createTestWorkspace(t)
+	projectID := createTestProject(t, ctx)
+	issue := createTestIssue(t, ctx, projectID)
+	labelID := createTestLabel(t, ctx, "backend")
+
+	err := repository.AddLabel(ctx, issue.ID, label.Label{ID: labelID})
+
+	require.NoError(t, err)
+	assert.Equal(t, 1, countIssueLabels(t, ctx, issue.ID, labelID))
+}
+
+func Test_AddLabel_AlreadyAttachedLabel_NoOpSuccess(t *testing.T) {
+	repository := tracker.NewIssueRepository(testPool)
+	_, ctx := createTestWorkspace(t)
+	projectID := createTestProject(t, ctx)
+	issue := createTestIssue(t, ctx, projectID)
+	labelID := createTestLabel(t, ctx, "urgent")
+
+	err := repository.AddLabel(ctx, issue.ID, label.Label{ID: labelID})
+	require.NoError(t, err)
+
+	err = repository.AddLabel(ctx, issue.ID, label.Label{ID: labelID})
+
+	require.NoError(t, err)
+	assert.Equal(t, 1, countIssueLabels(t, ctx, issue.ID, labelID))
+}
+
+func Test_AddLabel_NonExistentLabel_ReturnsErrLabelNotFound(t *testing.T) {
+	repository := tracker.NewIssueRepository(testPool)
+	_, ctx := createTestWorkspace(t)
+	projectID := createTestProject(t, ctx)
+	issue := createTestIssue(t, ctx, projectID)
+
+	err := repository.AddLabel(ctx, issue.ID, label.Label{ID: uuid.New()})
+
+	require.Error(t, err)
+	assert.ErrorIs(t, err, label.ErrLabelNotFound)
+}
+
+func Test_AddLabel_IssueInDifferentWorkspace_ReturnsErrIssueNotFound(t *testing.T) {
+	repository := tracker.NewIssueRepository(testPool)
+	_, ctxA := createTestWorkspace(t)
+	_, ctxB := createTestWorkspace(t)
+	projectID := createTestProject(t, ctxA)
+	issue := createTestIssue(t, ctxA, projectID)
+	labelID := createTestLabel(t, ctxB, "cross-workspace")
+
+	err := repository.AddLabel(ctxB, issue.ID, label.Label{ID: labelID})
+
+	require.Error(t, err)
+	assert.ErrorIs(t, err, issuedomain.ErrIssueNotFound)
+}
