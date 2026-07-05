@@ -219,3 +219,8 @@ func (s *IssueService) UpdateIssueStatus(ctx context.Context, issueID uuid.UUID,
 	}
 	return result, nil
 }
+
+// AddLabel is a stub; full attach/resolve logic lands in a follow-up.
+func (s *IssueService) AddLabel(_ context.Context, _ uuid.UUID, _ label.Label) (Issue, error) {
+	return Issue{}, nil
+}

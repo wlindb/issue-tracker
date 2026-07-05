@@ -9,6 +9,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 
 	issuedomain "github.com/wlindb/issue-tracker/internal/domain/tracker/issue"
+	"github.com/wlindb/issue-tracker/internal/domain/tracker/label"
 )
 
 // issueServicer mirrors api.IssueService without importing the api package,
@@ -22,6 +23,7 @@ type issueServicer interface {
 	UpdateIssueTitle(ctx context.Context, issueID uuid.UUID, title string) (issuedomain.Issue, error)
 	UpdateIssuePriority(ctx context.Context, issueID uuid.UUID, priority issuedomain.Priority) (issuedomain.Issue, error)
 	UpdateIssueAssignee(ctx context.Context, issueID uuid.UUID, assigneeID *uuid.UUID) (issuedomain.Issue, error)
+	AddLabel(ctx context.Context, issueID uuid.UUID, label label.Label) (issuedomain.Issue, error)
 }
 
 // TracingIssueService wraps an issueServicer and adds an OTel child span to each operation.
@@ -135,6 +137,19 @@ func (s *TracingIssueService) UpdateIssueStatus(ctx context.Context, issueID uui
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
 		return issuedomain.Issue{}, fmt.Errorf("tracker.IssueService.UpdateIssueStatus: %w", err)
+	}
+	return issue, nil
+}
+
+func (s *TracingIssueService) AddLabel(ctx context.Context, issueID uuid.UUID, label label.Label) (issuedomain.Issue, error) {
+	ctx, span := s.tracer.Start(ctx, "tracker.IssueService.AddLabel")
+	defer span.End()
+
+	issue, err := s.inner.AddLabel(ctx, issueID, label)
+	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+		return issuedomain.Issue{}, fmt.Errorf("add label: %w", err)
 	}
 	return issue, nil
 }
