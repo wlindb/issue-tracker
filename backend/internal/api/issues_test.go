@@ -95,6 +95,14 @@ func (m *mockIssueService) UpdateIssueStatus(ctx context.Context, issueID uuid.U
 	return issuedomain.Issue{}, args.Error(1)
 }
 
+func (m *mockIssueService) AddLabel(ctx context.Context, issueID uuid.UUID, label label.Label) (issuedomain.Issue, error) {
+	args := m.Called(ctx, issueID, label)
+	if issue, ok := args.Get(0).(issuedomain.Issue); ok {
+		return issue, args.Error(1)
+	}
+	return issuedomain.Issue{}, args.Error(1)
+}
+
 func newIssueTestServer(t *testing.T, service api.IssueService) *echo.Echo {
 	t.Helper()
 	e := echo.New()
@@ -1220,4 +1228,124 @@ func Test_UpdateIssueAssignee_InvalidIssueIDFormat_Returns400(t *testing.T) {
 	require.Equal(t, http.StatusBadRequest, rec.Code)
 	service.AssertNotCalled(t, "ListIssues")
 	service.AssertNotCalled(t, "CreateIssue")
+}
+
+// — AddIssueLabel —
+
+func Test_AddIssueLabel_MalformedBody_Returns400(t *testing.T) {
+	service := &mockIssueService{}
+	issueID := uuid.New()
+
+	e := newIssueTestServer(t, service)
+	e.Use(injectUser(uuid.New()))
+
+	req := httptest.NewRequest(http.MethodPost, wsPath("/issues/"+issueID.String()+"/labels"), strings.NewReader(`{}`))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusBadRequest, rec.Code)
+	service.AssertNotCalled(t, "AddLabel")
+}
+
+func Test_AddIssueLabel_LabelNotFound_Returns404(t *testing.T) {
+	service := &mockIssueService{}
+	issueID := uuid.New()
+	labelID := uuid.New()
+
+	service.On("AddLabel", mock.Anything, issueID, label.Label{ID: labelID}).
+		Return(issuedomain.Issue{}, label.ErrLabelNotFound)
+
+	e := newIssueTestServer(t, service)
+	e.Use(injectUser(uuid.New()))
+
+	body := `{"id":"` + labelID.String() + `"}`
+	req := httptest.NewRequest(http.MethodPost, wsPath("/issues/"+issueID.String()+"/labels"), strings.NewReader(body))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusNotFound, rec.Code)
+	service.AssertExpectations(t)
+}
+
+func Test_AddIssueLabel_IssueNotFound_Returns422(t *testing.T) {
+	service := &mockIssueService{}
+	issueID := uuid.New()
+	labelID := uuid.New()
+
+	service.On("AddLabel", mock.Anything, issueID, label.Label{ID: labelID}).
+		Return(issuedomain.Issue{}, issuedomain.ErrIssueNotFound)
+
+	e := newIssueTestServer(t, service)
+	e.Use(injectUser(uuid.New()))
+
+	body := `{"id":"` + labelID.String() + `"}`
+	req := httptest.NewRequest(http.MethodPost, wsPath("/issues/"+issueID.String()+"/labels"), strings.NewReader(body))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusUnprocessableEntity, rec.Code)
+	service.AssertExpectations(t)
+}
+
+func Test_AddIssueLabel_ServiceError_Returns500(t *testing.T) {
+	service := &mockIssueService{}
+	issueID := uuid.New()
+	labelID := uuid.New()
+
+	service.On("AddLabel", mock.Anything, issueID, label.Label{ID: labelID}).
+		Return(issuedomain.Issue{}, errors.New("db down"))
+
+	e := newIssueTestServer(t, service)
+	e.Use(injectUser(uuid.New()))
+
+	body := `{"id":"` + labelID.String() + `"}`
+	req := httptest.NewRequest(http.MethodPost, wsPath("/issues/"+issueID.String()+"/labels"), strings.NewReader(body))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusInternalServerError, rec.Code)
+	service.AssertExpectations(t)
+}
+
+func Test_AddIssueLabel_ValidRequest_Returns200(t *testing.T) {
+	service := &mockIssueService{}
+	issueID := uuid.New()
+	labelID := uuid.New()
+	now := time.Now().UTC()
+
+	updatedIssue := issuedomain.Issue{
+		ID:         issueID,
+		Identifier: "PROJ-1",
+		Title:      "Fix login bug",
+		Status:     issuedomain.StatusBacklog,
+		Priority:   issuedomain.PriorityNone,
+		Labels:     []label.Label{{ID: labelID, Name: "bug"}},
+		ProjectID:  uuid.New(),
+		ReporterID: uuid.New(),
+		CreatedAt:  now,
+		UpdatedAt:  now,
+	}
+	service.On("AddLabel", mock.Anything, issueID, label.Label{ID: labelID}).
+		Return(updatedIssue, nil)
+
+	e := newIssueTestServer(t, service)
+	e.Use(injectUser(uuid.New()))
+
+	body := `{"id":"` + labelID.String() + `"}`
+	req := httptest.NewRequest(http.MethodPost, wsPath("/issues/"+issueID.String()+"/labels"), strings.NewReader(body))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusOK, rec.Code)
+	var actual model.Issue
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &actual))
+	require.Len(t, actual.Labels, 1)
+	assert.Equal(t, labelID, actual.Labels[0].Id)
+	assert.Equal(t, "bug", actual.Labels[0].Name)
+	service.AssertExpectations(t)
 }

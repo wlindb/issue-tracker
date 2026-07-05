@@ -9,6 +9,7 @@ import (
 
 	"github.com/wlindb/issue-tracker/internal/api/model"
 	issuedomain "github.com/wlindb/issue-tracker/internal/domain/tracker/issue"
+	"github.com/wlindb/issue-tracker/internal/domain/tracker/label"
 )
 
 // Sentinel errors returned by IssueService implementations.
@@ -27,6 +28,7 @@ type IssueService interface {
 	UpdateIssueTitle(ctx context.Context, issueID uuid.UUID, title string) (issuedomain.Issue, error)
 	UpdateIssuePriority(ctx context.Context, issueID uuid.UUID, priority issuedomain.Priority) (issuedomain.Issue, error)
 	UpdateIssueAssignee(ctx context.Context, issueID uuid.UUID, assigneeID *uuid.UUID) (issuedomain.Issue, error)
+	AddLabel(ctx context.Context, issueID uuid.UUID, label label.Label) (issuedomain.Issue, error)
 }
 
 // IssueHandler holds the issue service dependency.
@@ -222,8 +224,27 @@ func (h *Handler) UpdateIssueAssignee(ctx context.Context, req model.UpdateIssue
 	return model.UpdateIssueAssignee200JSONResponse(issueFromDomain(issue)), nil
 }
 
-func (h *Handler) AddIssueLabel(_ context.Context, _ model.AddIssueLabelRequestObject) (model.AddIssueLabelResponseObject, error) {
-	return model.AddIssueLabel200JSONResponse(model.Issue{}), nil
+func (h *Handler) AddIssueLabel(ctx context.Context, req model.AddIssueLabelRequestObject) (model.AddIssueLabelResponseObject, error) {
+	if req.Body == nil || req.Body.Id == uuid.Nil {
+		return model.AddIssueLabel400JSONResponse{
+			BadRequestJSONResponse: newBadRequest("invalid_input", "label id is required"),
+		}, nil
+	}
+	issue, err := h.IssueHandler.service.AddLabel(ctx, req.IssueId, label.Label{ID: req.Body.Id})
+	if errors.Is(err, label.ErrLabelNotFound) {
+		return model.AddIssueLabel404JSONResponse{
+			NotFoundJSONResponse: newNotFound("not_found", "label not found"),
+		}, nil
+	}
+	if errors.Is(err, issuedomain.ErrIssueNotFound) {
+		return model.AddIssueLabel422JSONResponse{
+			UnprocessableEntityJSONResponse: newUnprocessable("unprocessable_entity", "issue not found"),
+		}, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("add issue label: %w", err)
+	}
+	return model.AddIssueLabel200JSONResponse(issueFromDomain(issue)), nil
 }
 
 func (h *Handler) DeleteIssue(_ context.Context, _ model.DeleteIssueRequestObject) (model.DeleteIssueResponseObject, error) {
