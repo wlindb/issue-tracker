@@ -327,6 +327,17 @@ components:
       properties:
         name: { type: string }
 
+    AddIssueLabelRequest:
+      type: object
+      required: [id]
+      properties:
+        id:
+          type: string
+          format: uuid
+          x-go-type: uuid.UUID
+          x-go-type-import:
+            path: github.com/google/uuid
+
   parameters:
     WorkspaceIdParam:
       name: workspaceId
@@ -879,6 +890,34 @@ paths:
         "400": { $ref: "#/components/responses/BadRequest" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/UnprocessableEntity" }
+        "500": { $ref: "#/components/responses/InternalServerError" }
+
+  /workspaces/{workspaceId}/issues/{issueId}/labels:
+    parameters:
+      - { $ref: "#/components/parameters/WorkspaceIdParam" }
+      - { $ref: "#/components/parameters/IssueIdParam" }
+
+    post:
+      operationId: addIssueLabel
+      summary: Attach a label to an issue.
+      tags: [issues]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AddIssueLabelRequest" }
+      responses:
+        "200":
+          description: >-
+            Label attached to issue. Returned whether the label was newly
+            attached or the issue already had this label.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Issue" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
         "404": { $ref: "#/components/responses/NotFound" }
         "422": { $ref: "#/components/responses/UnprocessableEntity" }
         "500": { $ref: "#/components/responses/InternalServerError" }

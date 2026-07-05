@@ -222,6 +222,10 @@ func (h *Handler) UpdateIssueAssignee(ctx context.Context, req model.UpdateIssue
 	return model.UpdateIssueAssignee200JSONResponse(issueFromDomain(issue)), nil
 }
 
+func (h *Handler) AddIssueLabel(_ context.Context, _ model.AddIssueLabelRequestObject) (model.AddIssueLabelResponseObject, error) {
+	return model.AddIssueLabel200JSONResponse(model.Issue{}), nil
+}
+
 func (h *Handler) DeleteIssue(_ context.Context, _ model.DeleteIssueRequestObject) (model.DeleteIssueResponseObject, error) {
 	return model.DeleteIssue500JSONResponse{InternalServerErrorJSONResponse: model.InternalServerErrorJSONResponse(notImplemented())}, nil
 }

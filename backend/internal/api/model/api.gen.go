@@ -82,6 +82,11 @@ func (e IssueStatus) Valid() bool {
 	}
 }
 
+// AddIssueLabelRequest defines model for AddIssueLabelRequest.
+type AddIssueLabelRequest struct {
+	Id uuid.UUID `json:"id"`
+}
+
 // Comment defines model for Comment.
 type Comment struct {
 	AuthorId  uuid.UUID `json:"authorId"`
@@ -335,6 +340,9 @@ type CreateCommentJSONRequestBody = CreateCommentRequest
 // UpdateIssueDescriptionJSONRequestBody defines body for UpdateIssueDescription for application/json ContentType.
 type UpdateIssueDescriptionJSONRequestBody = UpdateIssueDescriptionRequest
 
+// AddIssueLabelJSONRequestBody defines body for AddIssueLabel for application/json ContentType.
+type AddIssueLabelJSONRequestBody = AddIssueLabelRequest
+
 // UpdateIssuePriorityJSONRequestBody defines body for UpdateIssuePriority for application/json ContentType.
 type UpdateIssuePriorityJSONRequestBody = UpdateIssuePriorityRequest
 
@@ -394,6 +402,9 @@ type ServerInterface interface {
 	// Update the description of an issue.
 	// (PUT /workspaces/{workspaceId}/issues/{issueId}/description)
 	UpdateIssueDescription(ctx echo.Context, workspaceId WorkspaceIdParam, issueId IssueIdParam) error
+	// Attach a label to an issue.
+	// (POST /workspaces/{workspaceId}/issues/{issueId}/labels)
+	AddIssueLabel(ctx echo.Context, workspaceId WorkspaceIdParam, issueId IssueIdParam) error
 	// Update the priority of an issue.
 	// (PUT /workspaces/{workspaceId}/issues/{issueId}/priority)
 	UpdateIssuePriority(ctx echo.Context, workspaceId WorkspaceIdParam, issueId IssueIdParam) error
@@ -770,6 +781,32 @@ func (w *ServerInterfaceWrapper) UpdateIssueDescription(ctx echo.Context) error 
 	return err
 }
 
+// AddIssueLabel converts echo context to params.
+func (w *ServerInterfaceWrapper) AddIssueLabel(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", ctx.Param("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter workspaceId: %s", err))
+	}
+
+	// ------------- Path parameter "issueId" -------------
+	var issueId IssueIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "issueId", ctx.Param("issueId"), &issueId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter issueId: %s", err))
+	}
+
+	ctx.Set(BearerAuthScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.AddIssueLabel(ctx, workspaceId, issueId)
+	return err
+}
+
 // UpdateIssuePriority converts echo context to params.
 func (w *ServerInterfaceWrapper) UpdateIssuePriority(ctx echo.Context) error {
 	var err error
@@ -1082,6 +1119,7 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 	router.GET(baseURL+"/workspaces/:workspaceId/issues/:issueId/comments", wrapper.ListComments)
 	router.POST(baseURL+"/workspaces/:workspaceId/issues/:issueId/comments", wrapper.CreateComment)
 	router.PUT(baseURL+"/workspaces/:workspaceId/issues/:issueId/description", wrapper.UpdateIssueDescription)
+	router.POST(baseURL+"/workspaces/:workspaceId/issues/:issueId/labels", wrapper.AddIssueLabel)
 	router.PUT(baseURL+"/workspaces/:workspaceId/issues/:issueId/priority", wrapper.UpdateIssuePriority)
 	router.PUT(baseURL+"/workspaces/:workspaceId/issues/:issueId/status", wrapper.UpdateIssueStatus)
 	router.PUT(baseURL+"/workspaces/:workspaceId/issues/:issueId/title", wrapper.UpdateIssueTitle)
@@ -1833,6 +1871,74 @@ func (response UpdateIssueDescription500JSONResponse) VisitUpdateIssueDescriptio
 	return json.NewEncoder(w).Encode(response)
 }
 
+type AddIssueLabelRequestObject struct {
+	WorkspaceId WorkspaceIdParam `json:"workspaceId"`
+	IssueId     IssueIdParam     `json:"issueId"`
+	Body        *AddIssueLabelJSONRequestBody
+}
+
+type AddIssueLabelResponseObject interface {
+	VisitAddIssueLabelResponse(w http.ResponseWriter) error
+}
+
+type AddIssueLabel200JSONResponse Issue
+
+func (response AddIssueLabel200JSONResponse) VisitAddIssueLabelResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type AddIssueLabel400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response AddIssueLabel400JSONResponse) VisitAddIssueLabelResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type AddIssueLabel401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response AddIssueLabel401JSONResponse) VisitAddIssueLabelResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type AddIssueLabel404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response AddIssueLabel404JSONResponse) VisitAddIssueLabelResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type AddIssueLabel422JSONResponse struct {
+	UnprocessableEntityJSONResponse
+}
+
+func (response AddIssueLabel422JSONResponse) VisitAddIssueLabelResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(422)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type AddIssueLabel500JSONResponse struct {
+	InternalServerErrorJSONResponse
+}
+
+func (response AddIssueLabel500JSONResponse) VisitAddIssueLabelResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
 type UpdateIssuePriorityRequestObject struct {
 	WorkspaceId WorkspaceIdParam `json:"workspaceId"`
 	IssueId     IssueIdParam     `json:"issueId"`
@@ -2480,6 +2586,9 @@ type StrictServerInterface interface {
 	// Update the description of an issue.
 	// (PUT /workspaces/{workspaceId}/issues/{issueId}/description)
 	UpdateIssueDescription(ctx context.Context, request UpdateIssueDescriptionRequestObject) (UpdateIssueDescriptionResponseObject, error)
+	// Attach a label to an issue.
+	// (POST /workspaces/{workspaceId}/issues/{issueId}/labels)
+	AddIssueLabel(ctx context.Context, request AddIssueLabelRequestObject) (AddIssueLabelResponseObject, error)
 	// Update the priority of an issue.
 	// (PUT /workspaces/{workspaceId}/issues/{issueId}/priority)
 	UpdateIssuePriority(ctx context.Context, request UpdateIssuePriorityRequestObject) (UpdateIssuePriorityResponseObject, error)
@@ -2893,6 +3002,38 @@ func (sh *strictHandler) UpdateIssueDescription(ctx echo.Context, workspaceId Wo
 	return nil
 }
 
+// AddIssueLabel operation middleware
+func (sh *strictHandler) AddIssueLabel(ctx echo.Context, workspaceId WorkspaceIdParam, issueId IssueIdParam) error {
+	var request AddIssueLabelRequestObject
+
+	request.WorkspaceId = workspaceId
+	request.IssueId = issueId
+
+	var body AddIssueLabelJSONRequestBody
+	if err := ctx.Bind(&body); err != nil {
+		return err
+	}
+	request.Body = &body
+
+	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.AddIssueLabel(ctx.Request().Context(), request.(AddIssueLabelRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "AddIssueLabel")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(AddIssueLabelResponseObject); ok {
+		return validResponse.VisitAddIssueLabelResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
+}
+
 // UpdateIssuePriority operation middleware
 func (sh *strictHandler) UpdateIssuePriority(ctx echo.Context, workspaceId WorkspaceIdParam, issueId IssueIdParam) error {
 	var request UpdateIssuePriorityRequestObject
@@ -3215,49 +3356,50 @@ func (sh *strictHandler) UpdateProject(ctx echo.Context, workspaceId WorkspaceId
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
-	"/6uDZc5SXgAA",
+	"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",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file
