@@ -2,7 +2,7 @@ package embeddednats_test
 
 import (
 	"context"
-	"errors"
+	"encoding/json"
 	"fmt"
 	"testing"
 	"time"
@@ -13,7 +13,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	key "github.com/wlindb/issue-tracker/internal/pkg/context"
 	embeddednats "github.com/wlindb/issue-tracker/internal/pkg/nats"
 )
 
@@ -26,7 +25,7 @@ func Test_WorkspaceSubject_Subject_ValidWorkspaceID_ReturnsWorkspaceScopedSubjec
 	assert.Equal(t, expected, actual)
 }
 
-func Test_NATSEventPublisher_Publish_WorkspaceIDInContext_PublishesToWorkspaceScopedSubject(t *testing.T) {
+func Test_NATSEventPublisher_Publish_WithSubjectAndPayload_PublishesMessage(t *testing.T) {
 	server, err := embeddednats.StartEmbeddedServer()
 	require.NoError(t, err)
 	t.Cleanup(server.Shutdown)
@@ -36,7 +35,7 @@ func Test_NATSEventPublisher_Publish_WorkspaceIDInContext_PublishesToWorkspaceSc
 	t.Cleanup(connection.Close)
 
 	workspaceID := uuid.MustParse("00000000-0000-0000-0000-000000000002")
-	expectedSubject := fmt.Sprintf("workspaces.%s.issues.created", workspaceID)
+	expectedSubject := embeddednats.IssueCreatedSubject.Subject(workspaceID)
 
 	received := make(chan string, 1)
 	_, err = connection.Subscribe(expectedSubject, func(message *natsgo.Msg) {
@@ -44,10 +43,12 @@ func Test_NATSEventPublisher_Publish_WorkspaceIDInContext_PublishesToWorkspaceSc
 	})
 	require.NoError(t, err)
 
-	publisher := embeddednats.NewNATSEventPublisher(connection, workspaceReturningSubjectResolver{})
-	ctx := context.WithValue(context.Background(), key.WorkspaceID, workspaceID)
+	payload, err := json.Marshal(testEvent{Name: "test"})
+	require.NoError(t, err)
 
-	err = publisher.Publisher(ctx, testEvent{Name: "test"})
+	publisher := embeddednats.NewNATSEventPublisher(connection)
+
+	err = publisher.Publish(context.Background(), expectedSubject, payload)
 	require.NoError(t, err)
 
 	select {
@@ -58,43 +59,6 @@ func Test_NATSEventPublisher_Publish_WorkspaceIDInContext_PublishesToWorkspaceSc
 	}
 }
 
-func Test_NATSEventPublisher_Publish_MissingWorkspaceID_ReturnsError(t *testing.T) {
-	server, err := embeddednats.StartEmbeddedServer()
-	require.NoError(t, err)
-	t.Cleanup(server.Shutdown)
-
-	connection, err := embeddednats.Connect(server)
-	require.NoError(t, err)
-	t.Cleanup(connection.Close)
-
-	publisher := embeddednats.NewNATSEventPublisher(connection, workspaceMissingSubjectResolver{})
-
-	err = publisher.Publisher(context.Background(), testEvent{Name: "test"})
-
-	assert.ErrorContains(t, err, "workspace ID missing from context")
-}
-
 type testEvent struct {
 	Name string `json:"name"`
-}
-
-func workspaceID(ctx context.Context) (uuid.UUID, error) {
-	workspaceID, ok := ctx.Value(key.WorkspaceID).(uuid.UUID)
-	if !ok {
-		return uuid.UUID{}, fmt.Errorf("workspace ID missing from context")
-	}
-	return workspaceID, nil
-}
-
-type workspaceReturningSubjectResolver struct{}
-
-func (workspaceReturningSubjectResolver) Resolve(ctx context.Context, _ testEvent) (string, error) {
-	workspaceID, err := workspaceID(ctx)
-	return embeddednats.IssueCreatedSubject.Subject(workspaceID), err
-}
-
-type workspaceMissingSubjectResolver struct{}
-
-func (workspaceMissingSubjectResolver) Resolve(_ context.Context, _ testEvent) (string, error) {
-	return "", errors.New("mocked workspace ID missing from context")
 }

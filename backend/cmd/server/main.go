@@ -36,6 +36,7 @@ import (
 	keycloakpkg "github.com/wlindb/issue-tracker/internal/pkg/keycloak"
 	embeddednats "github.com/wlindb/issue-tracker/internal/pkg/nats"
 	"github.com/wlindb/issue-tracker/internal/pkg/telemetry"
+	"github.com/wlindb/issue-tracker/internal/pkg/tracker/model"
 )
 
 func main() {
@@ -226,7 +227,7 @@ func mustGenerateRandomHex(length int) string {
 func newEventHandlers(connection *nats.Conn) error {
 	if _, err := embedding.NewEmbeddingHandler(
 		embedding.WithIssueCreated(
-			embeddednats.NewNATSEventSubscriber[issue.IssueCreatedEvent](connection, embeddednats.IssueCreatedSubjectAll),
+			embeddednats.NewNATSEventSubscriber[model.IssueCreatedEvent](connection, embeddednats.IssueCreatedSubjectAll),
 		),
 	); err != nil {
 		return fmt.Errorf("create embedding handler: %w", err)

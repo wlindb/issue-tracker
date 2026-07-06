@@ -5,13 +5,13 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/wlindb/issue-tracker/internal/domain/tracker/issue"
 	"github.com/wlindb/issue-tracker/internal/pkg/domain/event"
+	"github.com/wlindb/issue-tracker/internal/pkg/tracker/model"
 )
 
 type Option func(*EmbeddingHandler) error
 
-func WithIssueCreated(subscriber event.SubscriberOf[issue.IssueCreatedEvent]) Option {
+func WithIssueCreated(subscriber event.SubscriberOf[model.IssueCreatedEvent]) Option {
 	return func(h *EmbeddingHandler) error {
 		return subscriber.Subscribe(h.HandleIssueCreated)
 	}
@@ -30,7 +30,7 @@ func NewEmbeddingHandler(opts ...Option) (EmbeddingHandler, error) {
 	return handler, nil
 }
 
-func (h EmbeddingHandler) HandleIssueCreated(_ context.Context, event issue.IssueCreatedEvent) error {
+func (h EmbeddingHandler) HandleIssueCreated(_ context.Context, event model.IssueCreatedEvent) error {
 	slog.Info("issue created",
 		"issue_id", event.Payload.ID,
 		"reporter_id", event.Payload.ReporterID,
