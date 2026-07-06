@@ -6,7 +6,9 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 
 	issuedomain "github.com/wlindb/issue-tracker/internal/domain/tracker/issue"
 	"github.com/wlindb/issue-tracker/internal/domain/tracker/label"
@@ -84,4 +86,29 @@ func (r *IssueRepository) ListIssues(
 	return issuedomain.IssuePage{
 		Items: issuesToDomain(rows),
 	}, nil
+}
+
+// AddLabel attaches the given label to the issue, idempotently (attaching an
+// already-present label is a success, not an error). Returns label.ErrLabelNotFound
+// if the label does not exist, or issuedomain.ErrIssueNotFound if the issue does not exist.
+func (r *IssueRepository) AddLabel(ctx context.Context, issueID uuid.UUID, l label.Label) error {
+	queries := trackerdb.New(r.db)
+	err := queries.AddIssueLabel(ctx, trackerdb.AddIssueLabelParams{
+		IssueID: issueID,
+		LabelID: l.ID,
+	})
+	if err == nil {
+		return nil
+	}
+
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.ForeignKeyViolation {
+		switch pgErr.ConstraintName {
+		case "issue_labels_label_id_fkey", "issue_labels_workspace_matches_label":
+			return fmt.Errorf("add label: %w", label.ErrLabelNotFound)
+		case "issue_labels_issue_id_fkey", "issue_labels_workspace_matches_issue":
+			return fmt.Errorf("add label: %w", issuedomain.ErrIssueNotFound)
+		}
+	}
+	return fmt.Errorf("add label: %w", err)
 }

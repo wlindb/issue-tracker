@@ -12,6 +12,22 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const addIssueLabel = `-- name: AddIssueLabel :exec
+INSERT INTO issue_labels (issue_id, label_id, workspace_id)
+VALUES ($1, $2, current_setting('app.workspace_id')::uuid)
+ON CONFLICT (issue_id, label_id) DO NOTHING
+`
+
+type AddIssueLabelParams struct {
+	IssueID uuid.UUID
+	LabelID uuid.UUID
+}
+
+func (q *Queries) AddIssueLabel(ctx context.Context, arg AddIssueLabelParams) error {
+	_, err := q.db.Exec(ctx, addIssueLabel, arg.IssueID, arg.LabelID)
+	return err
+}
+
 const createIssue = `-- name: CreateIssue :one
 INSERT INTO issues (id, identifier, title, description, status, priority, assignee_id, project_id, reporter_id, workspace_id, created_at, updated_at)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, current_setting('app.workspace_id')::uuid, NOW(), NOW())
@@ -61,8 +77,8 @@ func (q *Queries) CreateIssue(ctx context.Context, arg CreateIssueParams) (Issue
 }
 
 const createManyIssueLabels = `-- name: CreateManyIssueLabels :exec
-INSERT INTO issue_labels (issue_id, label_id)
-SELECT $1::uuid, unnest($2::uuid[])
+INSERT INTO issue_labels (issue_id, label_id, workspace_id)
+SELECT $1::uuid, unnest($2::uuid[]), current_setting('app.workspace_id')::uuid
 `
 
 type CreateManyIssueLabelsParams struct {

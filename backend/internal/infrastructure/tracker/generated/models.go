@@ -35,8 +35,9 @@ type Issue struct {
 }
 
 type IssueLabel struct {
-	IssueID uuid.UUID
-	LabelID uuid.UUID
+	IssueID     uuid.UUID
+	LabelID     uuid.UUID
+	WorkspaceID uuid.UUID
 }
 
 type IssueWithLabel struct {

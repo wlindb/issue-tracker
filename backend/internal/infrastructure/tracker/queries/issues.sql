@@ -36,5 +36,10 @@ ORDER BY created_at DESC
 LIMIT 100;
 
 -- name: CreateManyIssueLabels :exec
-INSERT INTO issue_labels (issue_id, label_id)
-SELECT @issue_id::uuid, unnest(@label_ids::uuid[]);
+INSERT INTO issue_labels (issue_id, label_id, workspace_id)
+SELECT @issue_id::uuid, unnest(@label_ids::uuid[]), current_setting('app.workspace_id')::uuid;
+
+-- name: AddIssueLabel :exec
+INSERT INTO issue_labels (issue_id, label_id, workspace_id)
+VALUES (@issue_id, @label_id, current_setting('app.workspace_id')::uuid)
+ON CONFLICT (issue_id, label_id) DO NOTHING;
