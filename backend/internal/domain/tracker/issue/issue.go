@@ -130,6 +130,7 @@ type IssueRepository interface {
 	ListIssues(ctx context.Context, projectID uuid.UUID, query ListIssueQuery) (IssuePage, error)
 	CreateIssue(ctx context.Context, issue Issue) (Issue, error)
 	Update(ctx context.Context, issue Issue) (Issue, error)
+	AddLabel(ctx context.Context, issueID uuid.UUID, label label.Label) error
 }
 
 var (
@@ -183,6 +184,26 @@ func (i Issue) UpdateAssignee(assigneeID uuid.UUID) (Issue, error) {
 // Unassign returns a copy of the issue with the assignee cleared.
 func (i Issue) Unassign() Issue {
 	i.AssigneeID = nil
+	return i
+}
+
+// HasLabel reports whether the issue already has the given label attached.
+func (i Issue) HasLabel(l label.Label) bool {
+	for _, existing := range i.Labels {
+		if existing.ID == l.ID {
+			return true
+		}
+	}
+	return false
+}
+
+// AddLabel returns a copy of the issue with the given label attached.
+// Adding a label the issue already has is a no-op.
+func (i Issue) AddLabel(l label.Label) Issue {
+	if i.HasLabel(l) {
+		return i
+	}
+	i.Labels = append(i.Labels, l)
 	return i
 }
 
