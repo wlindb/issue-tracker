@@ -19,6 +19,7 @@ import {
   type Project,
 } from '@/api/generated/issueTrackerAPI'
 import { useWorkspace } from '@/context/WorkspaceContext'
+import { useCommentCreatedEvents } from '@/hooks/useCommentCreatedEvents'
 import { EditableText } from '@/components/issue-detail/EditableText'
 import { IssueBreadcrumbs } from '@/components/issue-detail/IssueBreadcrumbs'
 import { IssueMetaSidebar } from '@/components/issue-detail/IssueMetaSidebar'
@@ -55,6 +56,10 @@ export function IssueDetailPage() {
     }
     load()
   }, [activeWorkspace, issueId])
+
+  useCommentCreatedEvents(issue?.id, (event) => {
+    setComments((prev) => (prev.some((c) => c.id === event.payload.id) ? prev : [...prev, event.payload]))
+  })
 
   async function handleTitleSave(title: string) {
     if (!activeWorkspace || !issue) return
