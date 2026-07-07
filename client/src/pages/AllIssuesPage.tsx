@@ -9,6 +9,12 @@ import { cn } from '@/lib/utils'
 import { listProjects, listIssues, type Issue, type Project } from '@/api/generated/issueTrackerAPI'
 import { useWorkspace } from '@/context/WorkspaceContext'
 import { useIssueCreatedEvents } from '@/hooks/useIssueCreatedEvents'
+import { useIssueStatusUpdatedEvents } from '@/hooks/useIssueStatusUpdatedEvents'
+import { useIssueTitleUpdatedEvents } from '@/hooks/useIssueTitleUpdatedEvents'
+import { useIssuePriorityUpdatedEvents } from '@/hooks/useIssuePriorityUpdatedEvents'
+import { useIssueAssigneeUpdatedEvents } from '@/hooks/useIssueAssigneeUpdatedEvents'
+import { useIssueDescriptionUpdatedEvents } from '@/hooks/useIssueDescriptionUpdatedEvents'
+import { useProjectCreatedEvents } from '@/hooks/useProjectCreatedEvents'
 
 export function AllIssuesPage() {
   const [issues, setIssues] = useState<Issue[]>([])
@@ -31,8 +37,44 @@ export function AllIssuesPage() {
       return updated
     })
 
+  const upsertProject = (nextProject: Project) =>
+    setProjects((previous) => {
+      const existingIndex = previous.findIndex((existing) => existing.id === nextProject.id)
+      if (existingIndex === -1) {
+        return [nextProject, ...previous]
+      }
+
+      const updated = [...previous]
+      updated[existingIndex] = nextProject
+      return updated
+    })
+
   useIssueCreatedEvents((event) => {
     upsertIssue(event.payload)
+  })
+
+  useIssueStatusUpdatedEvents((event) => {
+    upsertIssue(event.payload)
+  })
+
+  useIssueTitleUpdatedEvents((event) => {
+    upsertIssue(event.payload)
+  })
+
+  useIssuePriorityUpdatedEvents((event) => {
+    upsertIssue(event.payload)
+  })
+
+  useIssueAssigneeUpdatedEvents((event) => {
+    upsertIssue(event.payload)
+  })
+
+  useIssueDescriptionUpdatedEvents((event) => {
+    upsertIssue(event.payload)
+  })
+
+  useProjectCreatedEvents((event) => {
+    upsertProject(event.payload)
   })
 
   useEffect(() => {

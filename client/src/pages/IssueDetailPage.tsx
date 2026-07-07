@@ -23,6 +23,7 @@ import { EditableText } from '@/components/issue-detail/EditableText'
 import { IssueBreadcrumbs } from '@/components/issue-detail/IssueBreadcrumbs'
 import { IssueMetaSidebar } from '@/components/issue-detail/IssueMetaSidebar'
 import { CommentSection } from '@/components/issue-detail/CommentSection'
+import { useCommentCreatedEvents } from '@/hooks/useCommentCreatedEvents'
 
 export function IssueDetailPage() {
   const { issueId } = useParams<{ issueId: string }>()
@@ -98,6 +99,10 @@ export function IssueDetailPage() {
     const comment = await createComment(activeWorkspace.id, issue.id, { body })
     setComments((prev) => [...prev, comment])
   }
+
+  useCommentCreatedEvents(issue?.id, (event) => {
+    setComments((prev) => (prev.some((c) => c.id === event.payload.id) ? prev : [...prev, event.payload]))
+  })
 
   if (loading) {
     return (

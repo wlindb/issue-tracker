@@ -6,12 +6,27 @@ import { CreateProjectForm } from '@/components/CreateProjectForm'
 import { cn } from '@/lib/utils'
 import { listProjects, type Project } from '@/api/generated/issueTrackerAPI'
 import { useWorkspace } from '@/context/WorkspaceContext'
+import { useProjectCreatedEvents } from '@/hooks/useProjectCreatedEvents'
 
 export function ProjectsPage() {
   const [projects, setProjects] = useState<Project[]>([])
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
   const { activeWorkspace } = useWorkspace()
+
+  const upsertProject = (nextProject: Project) =>
+    setProjects((previous) => {
+      const existingIndex = previous.findIndex((existing) => existing.id === nextProject.id)
+      if (existingIndex === -1) {
+        return [nextProject, ...previous]
+      }
+
+      const updated = [...previous]
+      updated[existingIndex] = nextProject
+      return updated
+    })
+
+  useProjectCreatedEvents((event) => upsertProject(event.payload))
 
   useEffect(() => {
     if (!activeWorkspace) return
@@ -25,7 +40,7 @@ export function ProjectsPage() {
   }, [activeWorkspace])
 
   function handleSave(project: Project) {
-    setProjects([project, ...projects])
+    upsertProject(project)
     setCreating(false)
   }
 
