@@ -191,6 +191,10 @@ export interface CreateLabelRequest {
   name: string;
 }
 
+export interface AddIssueLabelRequest {
+  id: string;
+}
+
 /**
  * Invalid request payload or parameters.
  */
@@ -566,6 +570,22 @@ export const updateIssueAssignee = (
     }
 
 /**
+ * @summary Attach a label to an issue.
+ */
+export const addIssueLabel = (
+    workspaceId: string,
+    issueId: string,
+    addIssueLabelRequest: AddIssueLabelRequest,
+ ) => {
+      return customFetch<Issue>(
+      {url: `/api/v1/workspaces/${workspaceId}/issues/${issueId}/labels`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: addIssueLabelRequest
+    },
+      );
+    }
+
+/**
  * @summary List comments on an issue.
  */
 export const listComments = (
@@ -630,6 +650,7 @@ export type UpdateIssueDescriptionResult = NonNullable<Awaited<ReturnType<typeof
 export type UpdateIssueStatusResult = NonNullable<Awaited<ReturnType<typeof updateIssueStatus>>>
 export type UpdateIssuePriorityResult = NonNullable<Awaited<ReturnType<typeof updateIssuePriority>>>
 export type UpdateIssueAssigneeResult = NonNullable<Awaited<ReturnType<typeof updateIssueAssignee>>>
+export type AddIssueLabelResult = NonNullable<Awaited<ReturnType<typeof addIssueLabel>>>
 export type ListCommentsResult = NonNullable<Awaited<ReturnType<typeof listComments>>>
 export type CreateCommentResult = NonNullable<Awaited<ReturnType<typeof createComment>>>
 export type DeleteCommentResult = NonNullable<Awaited<ReturnType<typeof deleteComment>>>

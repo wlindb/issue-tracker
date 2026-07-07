@@ -12,6 +12,7 @@ import {
   updateIssueStatus,
   updateIssuePriority,
   updateIssueAssignee,
+  addIssueLabel,
   type Comment,
   type Issue,
   type IssueStatus,
@@ -93,9 +94,18 @@ export function IssueDetailPage() {
     setIssue(updated)
   }
 
-  function handleLabelsChange(labels: Label[]) {
-    if (!issue) return
-    setIssue({ ...issue, labels })
+  async function handleLabelsChange(labels: Label[]) {
+    if (!activeWorkspace || !issue) return
+    const addedLabel =
+      labels.length > issue.labels.length
+        ? labels.find((label) => !issue.labels.some((existing) => existing.id === label.id))
+        : undefined
+    if (!addedLabel) {
+      setIssue({ ...issue, labels })
+      return
+    }
+    const updated = await addIssueLabel(activeWorkspace.id, issue.id, { id: addedLabel.id })
+    setIssue(updated)
   }
 
   async function handleAddComment(body: string) {
