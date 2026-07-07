@@ -16,10 +16,9 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/wlindb/issue-tracker/internal/api"
+	"github.com/wlindb/issue-tracker/internal/application/tracker/api"
+	"github.com/wlindb/issue-tracker/internal/application/tracker/api/model"
 	labeldomain "github.com/wlindb/issue-tracker/internal/domain/tracker/label"
-
-	"github.com/wlindb/issue-tracker/internal/api/model"
 )
 
 type mockLabelService struct {

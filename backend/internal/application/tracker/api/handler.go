@@ -1,8 +1,6 @@
 package api
 
-import (
-	"github.com/wlindb/issue-tracker/internal/api/model"
-)
+import "github.com/wlindb/issue-tracker/internal/application/tracker/api/model"
 
 // Handler composes per-domain-area handlers and implements StrictServerInterface.
 // Stub methods for unimplemented areas remain directly on Handler.

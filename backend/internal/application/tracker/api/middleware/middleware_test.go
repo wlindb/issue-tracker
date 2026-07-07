@@ -22,8 +22,8 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/wlindb/issue-tracker/internal/api"
-	"github.com/wlindb/issue-tracker/internal/api/middleware"
+	"github.com/wlindb/issue-tracker/internal/application/tracker/api"
+	"github.com/wlindb/issue-tracker/internal/application/tracker/api/middleware"
 )
 
 func generateTestKey(t *testing.T) *rsa.PrivateKey {

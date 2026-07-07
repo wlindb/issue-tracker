@@ -22,8 +22,8 @@ import (
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
 	"github.com/testcontainers/testcontainers-go/wait"
 
-	"github.com/wlindb/issue-tracker/internal/api"
-	"github.com/wlindb/issue-tracker/internal/api/model"
+	"github.com/wlindb/issue-tracker/internal/application/tracker/api"
+	"github.com/wlindb/issue-tracker/internal/application/tracker/api/model"
 	workspacedomain "github.com/wlindb/issue-tracker/internal/domain/tracker/workspace"
 	infradb "github.com/wlindb/issue-tracker/internal/infrastructure/db"
 	tracker "github.com/wlindb/issue-tracker/internal/infrastructure/tracker"

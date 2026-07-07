@@ -27,8 +27,8 @@ import (
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 
-	"github.com/wlindb/issue-tracker/internal/api"
-	"github.com/wlindb/issue-tracker/internal/api/middleware"
+	"github.com/wlindb/issue-tracker/internal/application/tracker/api"
+	"github.com/wlindb/issue-tracker/internal/application/tracker/api/middleware"
 )
 
 type keycloakContainer struct {
@@ -52,7 +52,7 @@ func TestMain(m *testing.M) {
 
 func startKeycloakContainer(ctx context.Context) (*keycloakContainer, error) {
 	_, testFile, _, _ := runtime.Caller(0)
-	realmExportPath := filepath.Join(filepath.Dir(testFile), "../../../keycloak/realm-export.json")
+	realmExportPath := filepath.Join(filepath.Dir(testFile), "../../../../../keycloak/realm-export.json")
 
 	req := testcontainers.ContainerRequest{
 		Image: "quay.io/keycloak/keycloak:26.2",

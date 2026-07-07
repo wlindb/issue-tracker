@@ -12,7 +12,7 @@ import (
 	echojwt "github.com/labstack/echo-jwt/v4"
 	"github.com/labstack/echo/v4"
 
-	"github.com/wlindb/issue-tracker/internal/api"
+	"github.com/wlindb/issue-tracker/internal/application/tracker/api"
 )
 
 // WorkspaceMemberChecker validates that a user is a member of a workspace.

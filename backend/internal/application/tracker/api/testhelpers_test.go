@@ -4,7 +4,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 
-	"github.com/wlindb/issue-tracker/internal/api"
+	"github.com/wlindb/issue-tracker/internal/application/tracker/api"
 )
 
 // testWorkspaceID is a fixed workspace UUID used across contract tests.
