@@ -82,6 +82,13 @@ func ToIssueDescriptionUpdatedEvent(event issue.IssueDescriptionUpdatedEvent) mo
 	}
 }
 
+func ToIssueLabelAddedEvent(event issue.IssueLabelAddedEvent) model.IssueLabelAddedEvent {
+	return model.IssueLabelAddedEvent{
+		OccurredAt: event.OccurredAt,
+		Payload:    ToIssueDTO(event.Payload),
+	}
+}
+
 func ToCommentDTO(comment comment.Comment) model.Comment {
 	return model.Comment{
 		ID:        comment.ID,

@@ -47,3 +47,10 @@ type IssueDescriptionUpdatedEvent struct {
 }
 
 var DescriptionUpdated = event.New[IssueDescriptionUpdatedEvent]()
+
+type IssueLabelAddedEvent struct {
+	OccurredAt time.Time `json:"occurred_at"`
+	Payload    Issue
+}
+
+var LabelAdded = event.New[IssueLabelAddedEvent]()

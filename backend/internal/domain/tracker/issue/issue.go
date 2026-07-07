@@ -255,3 +255,11 @@ func (i Issue) EmitDescriptionUpdated(ctx context.Context) error {
 	}
 	return nil
 }
+
+func (i Issue) EmitLabelAdded(ctx context.Context) error {
+	event := IssueLabelAddedEvent{OccurredAt: time.Now().UTC(), Payload: i}
+	if err := LabelAdded.Publish(ctx, event); err != nil {
+		return fmt.Errorf("issue emit label added: %w", err)
+	}
+	return nil
+}
