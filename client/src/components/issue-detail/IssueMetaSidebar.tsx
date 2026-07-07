@@ -1,7 +1,7 @@
 import { XIcon } from 'lucide-react'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
-import type { Issue, IssuePriority, IssueStatus, Label, User } from '@/api/generated/issueTrackerAPI'
+import type { Issue, IssuePriority, IssueStatus, Label, WorkspaceMember } from '@/api/generated/issueTrackerAPI'
 import { PriorityIcon } from '@/components/PriorityIcon'
 import { StatusIcon } from '@/components/StatusIcon'
 import { STATUS_LABEL } from '@/components/statusLabel'
@@ -20,13 +20,8 @@ const PRIORITY_LABEL: Record<IssuePriority, string> = {
 const ALL_STATUSES: IssueStatus[] = ['backlog', 'todo', 'in_progress', 'done', 'cancelled']
 const ALL_PRIORITIES: IssuePriority[] = ['none', 'urgent', 'high', 'medium', 'low']
 
-function getInitials(name: string): string {
-  return name
-    .split(' ')
-    .map((p) => p[0])
-    .slice(0, 2)
-    .join('')
-    .toUpperCase()
+function getInitials(email: string): string {
+  return email.split('@')[0].slice(0, 2).toUpperCase()
 }
 
 const selectClass = cn(
@@ -36,7 +31,7 @@ const selectClass = cn(
 
 interface IssueMetaSidebarProps {
   issue: Issue
-  users: User[]
+  members: WorkspaceMember[]
   workspaceId: string
   onStatusChange: (status: IssueStatus) => void
   onPriorityChange: (priority: IssuePriority) => void
@@ -46,7 +41,7 @@ interface IssueMetaSidebarProps {
 
 export function IssueMetaSidebar({
   issue,
-  users,
+  members,
   workspaceId,
   onStatusChange,
   onPriorityChange,
@@ -108,20 +103,20 @@ export function IssueMetaSidebar({
           className={selectClass}
         >
           <option value="">Unassigned</option>
-          {users.map((u) => (
-            <option key={u.id} value={u.id}>
-              {u.name}
+          {members.map((m) => (
+            <option key={m.id} value={m.id}>
+              {m.email}
             </option>
           ))}
         </select>
         {issue.assigneeId && (() => {
-          const assignee = users.find((u) => u.id === issue.assigneeId)
+          const assignee = members.find((m) => m.id === issue.assigneeId)
           return assignee ? (
             <div className="flex items-center gap-2 px-0.5">
               <Avatar size="sm">
-                <AvatarFallback>{getInitials(assignee.name)}</AvatarFallback>
+                <AvatarFallback>{getInitials(assignee.email)}</AvatarFallback>
               </Avatar>
-              <span className="text-xs text-muted-foreground">{assignee.name}</span>
+              <span className="text-xs text-muted-foreground">{assignee.email}</span>
             </div>
           ) : null
         })()}
