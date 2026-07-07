@@ -15,8 +15,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/wlindb/issue-tracker/internal/api"
-	"github.com/wlindb/issue-tracker/internal/api/model"
+	"github.com/wlindb/issue-tracker/internal/application/tracker/api"
+	"github.com/wlindb/issue-tracker/internal/application/tracker/api/model"
 	issuedomain "github.com/wlindb/issue-tracker/internal/domain/tracker/issue"
 	projectdomain "github.com/wlindb/issue-tracker/internal/domain/tracker/project"
 	workspacedomain "github.com/wlindb/issue-tracker/internal/domain/tracker/workspace"

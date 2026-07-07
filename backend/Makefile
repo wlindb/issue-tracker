@@ -29,7 +29,7 @@ fmt:
 	goimports -w .
 
 generate:
-	mkdir -p internal/api/model
+	mkdir -p internal/application/tracker/api/model
 	go run github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen \
 		-config api/oapi-codegen.yaml \
 		api/openapi.yaml

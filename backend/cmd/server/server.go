@@ -9,9 +9,9 @@ import (
 	"go.opentelemetry.io/contrib/bridges/otelslog"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/labstack/echo/otelecho"
 
-	"github.com/wlindb/issue-tracker/internal/api"
-	apimiddleware "github.com/wlindb/issue-tracker/internal/api/middleware"
-	"github.com/wlindb/issue-tracker/internal/api/model"
+	"github.com/wlindb/issue-tracker/internal/application/tracker/api"
+	apimiddleware "github.com/wlindb/issue-tracker/internal/application/tracker/api/middleware"
+	"github.com/wlindb/issue-tracker/internal/application/tracker/api/model"
 	"github.com/wlindb/issue-tracker/internal/config"
 )
 

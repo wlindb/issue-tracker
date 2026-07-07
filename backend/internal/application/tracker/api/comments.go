@@ -7,9 +7,8 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/wlindb/issue-tracker/internal/application/tracker/api/model"
 	commentdomain "github.com/wlindb/issue-tracker/internal/domain/tracker/comment"
-
-	"github.com/wlindb/issue-tracker/internal/api/model"
 )
 
 // CommentService is what the handler needs from the domain.

@@ -18,8 +18,8 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/wlindb/issue-tracker/internal/api"
-	"github.com/wlindb/issue-tracker/internal/api/model"
+	"github.com/wlindb/issue-tracker/internal/application/tracker/api"
+	"github.com/wlindb/issue-tracker/internal/application/tracker/api/model"
 	trackerdomain "github.com/wlindb/issue-tracker/internal/domain/tracker/project"
 )
 

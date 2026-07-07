@@ -4,9 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/wlindb/issue-tracker/internal/application/tracker/api/model"
 	"github.com/wlindb/issue-tracker/internal/domain/tracker/label"
-
-	"github.com/wlindb/issue-tracker/internal/api/model"
 )
 
 // LabelService is what the handler needs from the domain.

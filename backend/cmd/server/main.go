@@ -22,9 +22,9 @@ import (
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nkeys"
 
-	"github.com/wlindb/issue-tracker/internal/api"
 	"github.com/wlindb/issue-tracker/internal/application/auth"
 	"github.com/wlindb/issue-tracker/internal/application/embedding"
+	"github.com/wlindb/issue-tracker/internal/application/tracker/api"
 	"github.com/wlindb/issue-tracker/internal/config"
 	commentdomain "github.com/wlindb/issue-tracker/internal/domain/tracker/comment"
 	"github.com/wlindb/issue-tracker/internal/domain/tracker/issue"

@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/wlindb/issue-tracker/internal/api"
+	"github.com/wlindb/issue-tracker/internal/application/tracker/api"
 )
 
 func Test_UserIDFromContext_TableDriven(t *testing.T) {
