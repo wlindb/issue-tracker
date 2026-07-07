@@ -35,6 +35,7 @@ export function CreateIssueForm({ projects, defaultProjectId, onSave, onCancel }
         description: description.trim() || null,
         status: 'backlog',
         priority: 'none',
+        labelIds: [],
       })
       onSave(issue)
     } finally {
