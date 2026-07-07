@@ -32,7 +32,7 @@ export function AllIssuesPage() {
     })
 
   useIssueCreatedEvents((event) => {
-    upsertIssue(event.Payload)
+    upsertIssue(event.payload)
   })
 
   useEffect(() => {
