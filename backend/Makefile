@@ -1,7 +1,7 @@
 BINARY := issue-tracker
 CMD     := ./cmd/server
 
-.PHONY: build run dev test test-unit test-integration lint fmt generate tidy sqlc-tracker docker-up docker-down wait-keycloak
+.PHONY: build run dev test test-unit test-integration lint fmt generate tidy sqlc-tracker sqlc-search docker-up docker-down wait-keycloak
 
 build: lint
 	go build -o bin/$(BINARY) $(CMD)
@@ -20,6 +20,9 @@ test-integration:
 
 sqlc-tracker:
 	cd internal/infrastructure/tracker && go run github.com/sqlc-dev/sqlc/cmd/sqlc generate
+
+sqlc-search:
+	cd internal/infrastructure/search && go run github.com/sqlc-dev/sqlc/cmd/sqlc generate
 
 lint:
 	golangci-lint run ./...
