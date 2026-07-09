@@ -29,10 +29,6 @@ type UpsertUserParams struct {
 func (q *Queries) UpsertUser(ctx context.Context, arg UpsertUserParams) (User, error) {
 	row := q.db.QueryRow(ctx, upsertUser, arg.ID, arg.Email, arg.Name)
 	var i User
-	err := row.Scan(
-		&i.ID,
-		&i.Email,
-		&i.Name,
-	)
+	err := row.Scan(&i.ID, &i.Email, &i.Name)
 	return i, err
 }

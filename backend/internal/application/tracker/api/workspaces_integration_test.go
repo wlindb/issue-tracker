@@ -136,6 +136,12 @@ func createWorkspaceFixture(t *testing.T, ownerID uuid.UUID, name string) worksp
 	)
 	require.NoError(t, err)
 
+	_, err = testPool.Exec(t.Context(),
+		`INSERT INTO users (id, email, name) VALUES ($1, $2, $3)`,
+		ownerID, "owner-"+ownerID.String()+"@example.com", "Test Owner",
+	)
+	require.NoError(t, err)
+
 	return workspacedomain.Workspace{
 		ID:      workspaceID,
 		Name:    name,
@@ -214,5 +220,9 @@ func Test_ListWorkspaceMembers_WithExistingWorkspace_Returns200(t *testing.T) {
 	require.Equal(t, http.StatusOK, membersRec.Code)
 	var actual []model.WorkspaceMember
 	require.NoError(t, json.Unmarshal(membersRec.Body.Bytes(), &actual))
-	assert.NotNil(t, actual)
+	ids := make([]uuid.UUID, len(actual))
+	for index, member := range actual {
+		ids[index] = member.Id
+	}
+	assert.Contains(t, ids, ownerID)
 }
