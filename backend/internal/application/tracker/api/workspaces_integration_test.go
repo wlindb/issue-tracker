@@ -117,6 +117,32 @@ func newWorkspaceIntegrationServer(t *testing.T) *echo.Echo {
 	return e
 }
 
+// createWorkspaceFixture inserts a workspace (and its owner as a member) directly into the
+// database, bypassing both the HTTP API and the repository layer so tests for other endpoints
+// aren't coupled to workspace creation behavior.
+func createWorkspaceFixture(t *testing.T, ownerID uuid.UUID, name string) workspacedomain.Workspace {
+	t.Helper()
+	workspaceID := uuid.New()
+
+	_, err := testPool.Exec(t.Context(),
+		`INSERT INTO workspaces (id, name, owner_id) VALUES ($1, $2, $3)`,
+		workspaceID, name, ownerID,
+	)
+	require.NoError(t, err)
+
+	_, err = testPool.Exec(t.Context(),
+		`INSERT INTO workspace_members (workspace_id, user_id) VALUES ($1, $2)`,
+		workspaceID, ownerID,
+	)
+	require.NoError(t, err)
+
+	return workspacedomain.Workspace{
+		ID:      workspaceID,
+		Name:    name,
+		OwnerID: ownerID,
+	}
+}
+
 func Test_CreateWorkspace_ValidRequest_Returns201(t *testing.T) {
 	ownerID := uuid.New()
 	e := newWorkspaceIntegrationServer(t)
@@ -137,17 +163,10 @@ func Test_CreateWorkspace_ValidRequest_Returns201(t *testing.T) {
 
 func Test_ListWorkspaces_WithExistingWorkspace_Returns200(t *testing.T) {
 	ownerID := uuid.New()
+	created := createWorkspaceFixture(t, ownerID, "ListTest")
+
 	e := newWorkspaceIntegrationServer(t)
 	e.Use(injectUser(ownerID))
-
-	createReq := httptest.NewRequest(http.MethodPost, "/api/v1/workspaces", strings.NewReader(`{"name":"ListTest"}`))
-	createReq.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-	createRec := httptest.NewRecorder()
-	e.ServeHTTP(createRec, createReq)
-	require.Equal(t, http.StatusCreated, createRec.Code)
-
-	var created model.Workspace
-	require.NoError(t, json.Unmarshal(createRec.Body.Bytes(), &created))
 
 	listReq := httptest.NewRequest(http.MethodGet, "/api/v1/workspaces", nil)
 	listRec := httptest.NewRecorder()
@@ -160,49 +179,35 @@ func Test_ListWorkspaces_WithExistingWorkspace_Returns200(t *testing.T) {
 	for index, item := range actual.Items {
 		ids[index] = item.Id
 	}
-	assert.Contains(t, ids, created.Id)
+	assert.Contains(t, ids, created.ID)
 }
 
 func Test_GetWorkspace_WithExistingWorkspace_Returns200(t *testing.T) {
 	ownerID := uuid.New()
+	created := createWorkspaceFixture(t, ownerID, "GetTest")
+
 	e := newWorkspaceIntegrationServer(t)
 	e.Use(injectUser(ownerID))
 
-	createReq := httptest.NewRequest(http.MethodPost, "/api/v1/workspaces", strings.NewReader(`{"name":"GetTest"}`))
-	createReq.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-	createRec := httptest.NewRecorder()
-	e.ServeHTTP(createRec, createReq)
-	require.Equal(t, http.StatusCreated, createRec.Code)
-
-	var created model.Workspace
-	require.NoError(t, json.Unmarshal(createRec.Body.Bytes(), &created))
-
-	getReq := httptest.NewRequest(http.MethodGet, "/api/v1/workspaces/"+created.Id.String(), nil)
+	getReq := httptest.NewRequest(http.MethodGet, "/api/v1/workspaces/"+created.ID.String(), nil)
 	getRec := httptest.NewRecorder()
 	e.ServeHTTP(getRec, getReq)
 
 	require.Equal(t, http.StatusOK, getRec.Code)
 	var actual model.Workspace
 	require.NoError(t, json.Unmarshal(getRec.Body.Bytes(), &actual))
-	assert.Equal(t, created.Id, actual.Id)
+	assert.Equal(t, created.ID, actual.Id)
 	assert.Equal(t, "GetTest", actual.Name)
 }
 
 func Test_ListWorkspaceMembers_WithExistingWorkspace_Returns200(t *testing.T) {
 	ownerID := uuid.New()
+	created := createWorkspaceFixture(t, ownerID, "MembersTest")
+
 	e := newWorkspaceIntegrationServer(t)
 	e.Use(injectUser(ownerID))
 
-	createReq := httptest.NewRequest(http.MethodPost, "/api/v1/workspaces", strings.NewReader(`{"name":"MembersTest"}`))
-	createReq.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-	createRec := httptest.NewRecorder()
-	e.ServeHTTP(createRec, createReq)
-	require.Equal(t, http.StatusCreated, createRec.Code)
-
-	var created model.Workspace
-	require.NoError(t, json.Unmarshal(createRec.Body.Bytes(), &created))
-
-	membersReq := httptest.NewRequest(http.MethodGet, "/api/v1/workspaces/"+created.Id.String()+"/members", nil)
+	membersReq := httptest.NewRequest(http.MethodGet, "/api/v1/workspaces/"+created.ID.String()+"/members", nil)
 	membersRec := httptest.NewRecorder()
 	e.ServeHTTP(membersRec, membersReq)
 
