@@ -1237,7 +1237,7 @@ func Test_UpdateIssueTitle_EmitTitleUpdatedError_ReturnsError(t *testing.T) {
 
 // — AddLabel —
 
-func Test_AddLabel_NewLabel_ReturnsIssueWithLabel(t *testing.T) {
+func Test_AddLabel_NewLabel_PublishesIssueLabelAddedEvent(t *testing.T) {
 	repository := &mockIssueRepository{}
 	uow := &fakeUnitOfWork{repositories: issue.Repositories{Issues: repository}}
 	service := issue.NewIssueService(uow, repository, &mockLabelRepository{})
@@ -1252,12 +1252,48 @@ func Test_AddLabel_NewLabel_ReturnsIssueWithLabel(t *testing.T) {
 		Labels:   []label.Label{},
 	}
 
+	var published []issue.IssueLabelAddedEvent
+	ctx := event.WithPublisher(context.Background(), func(_ context.Context, e issue.IssueLabelAddedEvent) error {
+		published = append(published, e)
+		return nil
+	})
+
 	repository.On("GetIssue", mock.Anything, issueID).Return(existing, nil)
 	repository.On("AddLabel", mock.Anything, issueID, newLabel).Return(nil)
 
-	actual, err := service.AddLabel(context.Background(), issueID, newLabel)
+	actual, err := service.AddLabel(ctx, issueID, newLabel)
 	require.NoError(t, err)
+	require.Len(t, published, 1)
 	assert.Contains(t, actual.Labels, newLabel)
+	assert.Equal(t, actual, published[0].Payload)
+	repository.AssertExpectations(t)
+}
+
+func Test_AddLabel_EmitLabelAddedError_ReturnsError(t *testing.T) {
+	repository := &mockIssueRepository{}
+	uow := &fakeUnitOfWork{repositories: issue.Repositories{Issues: repository}}
+	service := issue.NewIssueService(uow, repository, &mockLabelRepository{})
+
+	issueID := uuid.New()
+	newLabel := label.Label{ID: uuid.New(), Name: "bug"}
+	existing := issue.Issue{
+		ID:       issueID,
+		Title:    "Test issue",
+		Status:   issue.StatusTodo,
+		Priority: issue.PriorityNone,
+		Labels:   []label.Label{},
+	}
+
+	expectedError := errors.New("publish error")
+	ctx := event.WithPublisher(context.Background(), func(_ context.Context, _ issue.IssueLabelAddedEvent) error {
+		return expectedError
+	})
+
+	repository.On("GetIssue", mock.Anything, issueID).Return(existing, nil)
+	repository.On("AddLabel", mock.Anything, issueID, newLabel).Return(nil)
+
+	_, err := service.AddLabel(ctx, issueID, newLabel)
+	assert.ErrorIs(t, err, expectedError)
 	repository.AssertExpectations(t)
 }
 

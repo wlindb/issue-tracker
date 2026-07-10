@@ -48,6 +48,10 @@ func NewEventPublisher(connection *nats.Conn) error {
 		return fmt.Errorf("issue description updated event publisher: %w", err)
 	}
 
+	if err := issue.LabelAdded.AddPublisher(publisher.IssueLabelAddedPublisher); err != nil {
+		return fmt.Errorf("issue label added event publisher: %w", err)
+	}
+
 	if err := comment.Created.AddPublisher(publisher.CommentCreatedPublisher); err != nil {
 		return fmt.Errorf("comment created event publisher: %w", err)
 	}
@@ -222,6 +226,35 @@ func (publisher eventPublisher) IssueDescriptionUpdatedPublisher(ctx context.Con
 	}
 
 	resolver := IssueDescriptionUpdatedSubjectResolver{}
+	subject, err := resolver.Resolve(ctx, event)
+	if err != nil {
+		return fmt.Errorf("resolve: %w", err)
+	}
+
+	if err := publisher.natsEventPublisher.Publish(ctx, subject, payload); err != nil {
+		return fmt.Errorf("publish: %w", err)
+	}
+
+	return nil
+}
+
+type IssueLabelAddedSubjectResolver struct{}
+
+func (IssueLabelAddedSubjectResolver) Resolve(ctx context.Context, _ issue.IssueLabelAddedEvent) (string, error) {
+	workspaceID, err := workspaceID(ctx)
+	if err != nil {
+		return "", fmt.Errorf("issue label added subject resolver: %w", err)
+	}
+	return embeddednats.IssueLabelAddedSubject.Subject(workspaceID), nil
+}
+
+func (publisher eventPublisher) IssueLabelAddedPublisher(ctx context.Context, event issue.IssueLabelAddedEvent) error {
+	payload, err := json.Marshal(ToIssueLabelAddedEvent(event))
+	if err != nil {
+		return fmt.Errorf("marshal: %w", err)
+	}
+
+	resolver := IssueLabelAddedSubjectResolver{}
 	subject, err := resolver.Resolve(ctx, event)
 	if err != nil {
 		return fmt.Errorf("resolve: %w", err)

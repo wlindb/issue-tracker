@@ -60,6 +60,11 @@ type IssueDescriptionUpdatedEvent struct {
 	Payload    Issue     `json:"payload"`
 }
 
+type IssueLabelAddedEvent struct {
+	OccurredAt time.Time `json:"occurred_at"`
+	Payload    Issue     `json:"payload"`
+}
+
 type Comment struct {
 	ID        uuid.UUID
 	Body      string
