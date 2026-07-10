@@ -117,19 +117,30 @@ func newWorkspaceIntegrationServer(t *testing.T) *echo.Echo {
 	return e
 }
 
-// createWorkspaceFixture inserts a workspace (and its owner as a member) directly via the
-// repository layer, bypassing the HTTP API so tests for other endpoints aren't coupled to
-// workspace creation behavior.
+// createWorkspaceFixture inserts a workspace (and its owner as a member) directly into the
+// database, bypassing both the HTTP API and the repository layer so tests for other endpoints
+// aren't coupled to workspace creation behavior.
 func createWorkspaceFixture(t *testing.T, ownerID uuid.UUID, name string) workspacedomain.Workspace {
 	t.Helper()
-	repository := tracker.NewWorkspaceRepository(testPool)
-	created, err := repository.Create(t.Context(), workspacedomain.Workspace{
-		ID:      uuid.New(),
+	workspaceID := uuid.New()
+
+	_, err := testPool.Exec(t.Context(),
+		`INSERT INTO workspaces (id, name, owner_id) VALUES ($1, $2, $3)`,
+		workspaceID, name, ownerID,
+	)
+	require.NoError(t, err)
+
+	_, err = testPool.Exec(t.Context(),
+		`INSERT INTO workspace_members (workspace_id, user_id) VALUES ($1, $2)`,
+		workspaceID, ownerID,
+	)
+	require.NoError(t, err)
+
+	return workspacedomain.Workspace{
+		ID:      workspaceID,
 		Name:    name,
 		OwnerID: ownerID,
-	})
-	require.NoError(t, err)
-	return created
+	}
 }
 
 func Test_CreateWorkspace_ValidRequest_Returns201(t *testing.T) {
