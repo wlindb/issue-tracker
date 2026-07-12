@@ -22,8 +22,9 @@ import (
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
 	"github.com/testcontainers/testcontainers-go/wait"
 
+	rootapi "github.com/wlindb/issue-tracker/internal/application/api"
+	"github.com/wlindb/issue-tracker/internal/application/api/model"
 	"github.com/wlindb/issue-tracker/internal/application/tracker/api"
-	"github.com/wlindb/issue-tracker/internal/application/tracker/api/model"
 	workspacedomain "github.com/wlindb/issue-tracker/internal/domain/tracker/workspace"
 	infradb "github.com/wlindb/issue-tracker/internal/infrastructure/db"
 	tracker "github.com/wlindb/issue-tracker/internal/infrastructure/tracker"
@@ -112,7 +113,7 @@ func newWorkspaceIntegrationServer(t *testing.T) *echo.Echo {
 	handler := api.NewWorkspaceHandler(service)
 	h := &api.Handler{WorkspaceHandler: handler}
 	e := echo.New()
-	strict := model.NewStrictHandler(h, nil)
+	strict := model.NewStrictHandler(&rootapi.Handler{Handler: *h}, nil)
 	model.RegisterHandlersWithBaseURL(e, strict, "/api/v1")
 	return e
 }

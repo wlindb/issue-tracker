@@ -15,8 +15,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	rootapi "github.com/wlindb/issue-tracker/internal/application/api"
+	"github.com/wlindb/issue-tracker/internal/application/api/model"
 	"github.com/wlindb/issue-tracker/internal/application/tracker/api"
-	"github.com/wlindb/issue-tracker/internal/application/tracker/api/model"
 	issuedomain "github.com/wlindb/issue-tracker/internal/domain/tracker/issue"
 	projectdomain "github.com/wlindb/issue-tracker/internal/domain/tracker/project"
 	workspacedomain "github.com/wlindb/issue-tracker/internal/domain/tracker/workspace"
@@ -82,7 +83,7 @@ func newIssueIntegrationServer(t *testing.T, f issueIntegrationFixture) *echo.Ec
 	}
 	e := echo.New()
 	e.Use(injectWorkspace(f.workspaceID, f.userID))
-	strict := model.NewStrictHandler(h, nil)
+	strict := model.NewStrictHandler(&rootapi.Handler{Handler: *h}, nil)
 	model.RegisterHandlersWithBaseURL(e, strict, "/api/v1")
 	return e
 }

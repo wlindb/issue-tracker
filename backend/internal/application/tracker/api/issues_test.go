@@ -19,8 +19,9 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	rootapi "github.com/wlindb/issue-tracker/internal/application/api"
+	"github.com/wlindb/issue-tracker/internal/application/api/model"
 	"github.com/wlindb/issue-tracker/internal/application/tracker/api"
-	"github.com/wlindb/issue-tracker/internal/application/tracker/api/model"
 	issuedomain "github.com/wlindb/issue-tracker/internal/domain/tracker/issue"
 	"github.com/wlindb/issue-tracker/internal/domain/tracker/label"
 )
@@ -109,7 +110,7 @@ func newIssueTestServer(t *testing.T, service api.IssueService) *echo.Echo {
 	h := &api.Handler{
 		IssueHandler: api.NewIssueHandler(service),
 	}
-	strict := model.NewStrictHandler(h, nil)
+	strict := model.NewStrictHandler(&rootapi.Handler{Handler: *h}, nil)
 	model.RegisterHandlersWithBaseURL(e, strict, "/api/v1")
 	return e
 }
@@ -390,76 +391,6 @@ func Test_CreateIssue_ServiceError_Returns500(t *testing.T) {
 
 	require.Equal(t, http.StatusInternalServerError, rec.Code)
 	service.AssertExpectations(t)
-}
-
-// — SearchIssues —
-
-func Test_SearchIssues_Returns501(t *testing.T) {
-	service := &mockIssueService{}
-
-	e := newIssueTestServer(t, service)
-	e.Use(injectUser(uuid.New()))
-
-	body := `{"query":"login bug"}`
-	req := httptest.NewRequest(http.MethodPost, wsPath("/issues/search"), strings.NewReader(body))
-	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-	rec := httptest.NewRecorder()
-	e.ServeHTTP(rec, req)
-
-	require.Equal(t, http.StatusNotImplemented, rec.Code)
-	var actual model.Error
-	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &actual))
-	assert.Equal(t, "not_implemented", actual.Code)
-	service.AssertNotCalled(t, "ListIssues")
-	service.AssertNotCalled(t, "CreateIssue")
-}
-
-func Test_SearchIssues_MissingBody_Returns400(t *testing.T) {
-	service := &mockIssueService{}
-
-	e := newIssueTestServer(t, service)
-	e.Use(injectUser(uuid.New()))
-
-	req := httptest.NewRequest(http.MethodPost, wsPath("/issues/search"), nil)
-	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-	rec := httptest.NewRecorder()
-	e.ServeHTTP(rec, req)
-
-	require.Equal(t, http.StatusBadRequest, rec.Code)
-	service.AssertNotCalled(t, "ListIssues")
-	service.AssertNotCalled(t, "CreateIssue")
-}
-
-func Test_SearchIssues_MissingQuery_Returns400(t *testing.T) {
-	service := &mockIssueService{}
-
-	e := newIssueTestServer(t, service)
-	e.Use(injectUser(uuid.New()))
-
-	req := httptest.NewRequest(http.MethodPost, wsPath("/issues/search"), strings.NewReader(`{}`))
-	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-	rec := httptest.NewRecorder()
-	e.ServeHTTP(rec, req)
-
-	require.Equal(t, http.StatusBadRequest, rec.Code)
-	service.AssertNotCalled(t, "ListIssues")
-	service.AssertNotCalled(t, "CreateIssue")
-}
-
-func Test_SearchIssues_EmptyQuery_Returns400(t *testing.T) {
-	service := &mockIssueService{}
-
-	e := newIssueTestServer(t, service)
-	e.Use(injectUser(uuid.New()))
-
-	req := httptest.NewRequest(http.MethodPost, wsPath("/issues/search"), strings.NewReader(`{"query":""}`))
-	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-	rec := httptest.NewRecorder()
-	e.ServeHTTP(rec, req)
-
-	require.Equal(t, http.StatusBadRequest, rec.Code)
-	service.AssertNotCalled(t, "ListIssues")
-	service.AssertNotCalled(t, "CreateIssue")
 }
 
 // — UpdateIssueStatus —

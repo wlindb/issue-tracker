@@ -7,7 +7,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 
-	"github.com/wlindb/issue-tracker/internal/application/tracker/api/model"
+	"github.com/wlindb/issue-tracker/internal/application/api/model"
 )
 
 //go:embed static

@@ -14,8 +14,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	rootapi "github.com/wlindb/issue-tracker/internal/application/api"
+	"github.com/wlindb/issue-tracker/internal/application/api/model"
 	"github.com/wlindb/issue-tracker/internal/application/tracker/api"
-	"github.com/wlindb/issue-tracker/internal/application/tracker/api/model"
 	projectdomain "github.com/wlindb/issue-tracker/internal/domain/tracker/project"
 	tracker "github.com/wlindb/issue-tracker/internal/infrastructure/tracker"
 )
@@ -27,7 +28,7 @@ func newProjectIntegrationServer(t *testing.T) *echo.Echo {
 	handler := api.NewProjectHandler(service)
 	h := &api.Handler{ProjectHandler: handler}
 	e := echo.New()
-	strict := model.NewStrictHandler(h, nil)
+	strict := model.NewStrictHandler(&rootapi.Handler{Handler: *h}, nil)
 	model.RegisterHandlersWithBaseURL(e, strict, "/api/v1")
 	return e
 }
