@@ -20,6 +20,7 @@ import {
 } from '@/api/generated/issueTrackerAPI'
 import { useWorkspace } from '@/context/WorkspaceContext'
 import { useCommentCreatedEvents } from '@/hooks/useCommentCreatedEvents'
+import { useIssueUpdatedEvents } from '@/hooks/useIssueUpdatedEvents'
 import { EditableText } from '@/components/issue-detail/EditableText'
 import { IssueBreadcrumbs } from '@/components/issue-detail/IssueBreadcrumbs'
 import { IssueMetaSidebar } from '@/components/issue-detail/IssueMetaSidebar'
@@ -59,6 +60,10 @@ export function IssueDetailPage() {
 
   useCommentCreatedEvents(issue?.id, (event) => {
     setComments((prev) => (prev.some((c) => c.id === event.payload.id) ? prev : [...prev, event.payload]))
+  })
+
+  useIssueUpdatedEvents(issue?.id, (nextIssue) => {
+    setIssue(nextIssue)
   })
 
   async function handleTitleSave(title: string) {
@@ -101,7 +106,7 @@ export function IssueDetailPage() {
   async function handleAddComment(body: string) {
     if (!activeWorkspace || !issue) return
     const comment = await createComment(activeWorkspace.id, issue.id, { body })
-    setComments((prev) => [...prev, comment])
+    setComments((prev) => (prev.some((existing) => existing.id === comment.id) ? prev : [...prev, comment]))
   }
 
   if (loading) {
