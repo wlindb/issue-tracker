@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { upsertCurrentUser } from '@/api/generated/issueTrackerAPI'
 import { keycloak } from '../keycloak'
 import { KeycloakContext } from './KeycloakContext'
 
@@ -27,6 +28,11 @@ export function KeycloakProvider({ children }: KeycloakProviderProps) {
       .then((result) => {
         setAuthenticated(result)
         setInitialized(true)
+        if (result) {
+          upsertCurrentUser().catch((err: unknown) => {
+            console.error('Failed to sync current user', err)
+          })
+        }
       })
       .catch((err: unknown) => {
         setError(err instanceof Error ? err : new Error('Keycloak initialization failed'))

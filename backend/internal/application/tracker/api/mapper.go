@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
+	openapi_types "github.com/oapi-codegen/runtime/types"
 
 	"github.com/wlindb/issue-tracker/internal/application/tracker/api/model"
 	commentdomain "github.com/wlindb/issue-tracker/internal/domain/tracker/comment"
@@ -64,7 +65,8 @@ func workspaceMembersFromDomain(domain workspacedomain.WorkspaceMembers) []model
 	items := make([]model.WorkspaceMember, len(domain.Members))
 	for i, m := range domain.Members {
 		items[i] = model.WorkspaceMember{
-			Id: m.UserID,
+			Id:    m.ID,
+			Email: openapi_types.Email(m.Email),
 		}
 	}
 	return items

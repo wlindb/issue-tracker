@@ -188,6 +188,22 @@ func workspacesToDomain(rows []trackerdb.Workspace) []workspacedomain.Workspace 
 	return workspaces
 }
 
+func workspaceMemberToDomain(row trackerdb.WorkspaceMembersWithUser) userdomain.User {
+	return userdomain.User{
+		ID:    row.UserID,
+		Email: row.Email,
+		Name:  row.Name,
+	}
+}
+
+func workspaceMembersToDomain(rows []trackerdb.WorkspaceMembersWithUser) workspacedomain.WorkspaceMembers {
+	members := make([]userdomain.User, len(rows))
+	for i, row := range rows {
+		members[i] = workspaceMemberToDomain(row)
+	}
+	return workspacedomain.WorkspaceMembers{Members: members}
+}
+
 func createCommentParamsFromDomain(c commentdomain.Comment) trackerdb.CreateCommentParams {
 	return trackerdb.CreateCommentParams{
 		ID:       c.ID,

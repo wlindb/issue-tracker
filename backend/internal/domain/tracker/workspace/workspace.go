@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
+	"github.com/wlindb/issue-tracker/internal/domain/tracker/user"
 )
 
 var (
@@ -21,13 +23,8 @@ type Workspace struct {
 	UpdatedAt time.Time
 }
 
-type WorkspaceMember struct {
-	WorkspaceID uuid.UUID
-	UserID      uuid.UUID
-}
-
 type WorkspaceMembers struct {
-	Members []WorkspaceMember
+	Members []user.User
 }
 
 // New constructs and validates a Workspace value.
