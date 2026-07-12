@@ -22,9 +22,11 @@ import (
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nkeys"
 
+	"github.com/wlindb/issue-tracker/internal/application/api"
 	"github.com/wlindb/issue-tracker/internal/application/auth"
 	"github.com/wlindb/issue-tracker/internal/application/embedding"
-	"github.com/wlindb/issue-tracker/internal/application/tracker/api"
+	searchapi "github.com/wlindb/issue-tracker/internal/application/search"
+	trackerapi "github.com/wlindb/issue-tracker/internal/application/tracker/api"
 	"github.com/wlindb/issue-tracker/internal/config"
 	commentdomain "github.com/wlindb/issue-tracker/internal/domain/tracker/comment"
 	"github.com/wlindb/issue-tracker/internal/domain/tracker/issue"
@@ -73,8 +75,8 @@ func run() error {
 
 	pool, err := db.New(ctx, cfg.DatabaseURL,
 		db.WithAppSessionVars(
-			api.WorkspaceIDFromContext,
-			api.UserIDFromContext,
+			trackerapi.WorkspaceIDFromContext,
+			trackerapi.UserIDFromContext,
 		),
 		db.WithAppRole("appuser"),
 	)
@@ -266,26 +268,29 @@ func newHandler(pool *pgxpool.Pool, tracer trace.Tracer, workspaceService *works
 	tracingLabelService := trackerinfra.NewTracingLabelService(labelService, tracer)
 
 	return &api.Handler{
-		WorkspaceHandler: api.NewWorkspaceHandler(workspaceService),
-		ProjectHandler: api.NewProjectHandler(
-			trackerinfra.NewTracingProjectService(
-				trackerdomain.NewProjectService(projectRepository),
-				tracer,
+		Handler: trackerapi.Handler{
+			WorkspaceHandler: trackerapi.NewWorkspaceHandler(workspaceService),
+			ProjectHandler: trackerapi.NewProjectHandler(
+				trackerinfra.NewTracingProjectService(
+					trackerdomain.NewProjectService(projectRepository),
+					tracer,
+				),
 			),
-		),
-		IssueHandler: api.NewIssueHandler(
-			trackerinfra.NewTracingIssueService(
-				issue.NewIssueService(trackerinfra.NewUoW(pool), issueRepository, labelRepository),
-				tracer,
+			IssueHandler: trackerapi.NewIssueHandler(
+				trackerinfra.NewTracingIssueService(
+					issue.NewIssueService(trackerinfra.NewUoW(pool), issueRepository, labelRepository),
+					tracer,
+				),
 			),
-		),
-		CommentHandler: api.NewCommentHandler(
-			trackerinfra.NewTracingCommentService(
-				commentdomain.NewCommentService(commentRepository),
-				tracer,
+			CommentHandler: trackerapi.NewCommentHandler(
+				trackerinfra.NewTracingCommentService(
+					commentdomain.NewCommentService(commentRepository),
+					tracer,
+				),
 			),
-		),
-		LabelHandler: api.NewLabelHandler(tracingLabelService),
-		UserHandler:  api.NewUserHandler(userdomain.NewUserService(userRepository)),
+			LabelHandler: trackerapi.NewLabelHandler(tracingLabelService),
+			UserHandler:  trackerapi.NewUserHandler(userdomain.NewUserService(userRepository)),
+		},
+		SearchHandler: searchapi.NewSearchHandler(),
 	}
 }

@@ -7,7 +7,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/wlindb/issue-tracker/internal/application/tracker/api/model"
+	"github.com/wlindb/issue-tracker/internal/application/api/model"
 	commentdomain "github.com/wlindb/issue-tracker/internal/domain/tracker/comment"
 )
 

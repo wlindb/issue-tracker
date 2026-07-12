@@ -7,7 +7,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/wlindb/issue-tracker/internal/application/tracker/api/model"
+	"github.com/wlindb/issue-tracker/internal/application/api/model"
 	issuedomain "github.com/wlindb/issue-tracker/internal/domain/tracker/issue"
 	"github.com/wlindb/issue-tracker/internal/domain/tracker/label"
 )
@@ -90,15 +90,6 @@ func (h *Handler) CreateIssue(ctx context.Context, req model.CreateIssueRequestO
 		return nil, fmt.Errorf("create issue: %w", err)
 	}
 	return model.CreateIssue201JSONResponse(issueFromDomain(issue)), nil
-}
-
-func (h *Handler) SearchIssues(_ context.Context, req model.SearchIssuesRequestObject) (model.SearchIssuesResponseObject, error) {
-	if req.Body == nil || req.Body.Query == "" {
-		return model.SearchIssues400JSONResponse{
-			BadRequestJSONResponse: newBadRequest("invalid_input", "query is required"),
-		}, nil
-	}
-	return model.SearchIssues501JSONResponse{NotImplementedJSONResponse: model.NotImplementedJSONResponse(notImplemented())}, nil
 }
 
 func (h *Handler) GetIssue(ctx context.Context, req model.GetIssueRequestObject) (model.GetIssueResponseObject, error) {
