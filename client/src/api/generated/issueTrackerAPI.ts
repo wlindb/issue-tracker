@@ -37,8 +37,6 @@ export interface User {
   id: string;
   email: string;
   name: string;
-  createdAt: string;
-  updatedAt: string;
 }
 
 export interface Project {
@@ -629,6 +627,18 @@ export const deleteComment = (
       );
     }
 
+/**
+ * @summary Create or update the authenticated user's profile from their JWT claims.
+ */
+export const upsertCurrentUser = (
+
+ ) => {
+      return customFetch<User>(
+      {url: `/api/v1/users/me`, method: 'POST'
+    },
+      );
+    }
+
 export type ListWorkspacesResult = NonNullable<Awaited<ReturnType<typeof listWorkspaces>>>
 export type CreateWorkspaceResult = NonNullable<Awaited<ReturnType<typeof createWorkspace>>>
 export type GetWorkspaceResult = NonNullable<Awaited<ReturnType<typeof getWorkspace>>>
@@ -654,3 +664,4 @@ export type AddIssueLabelResult = NonNullable<Awaited<ReturnType<typeof addIssue
 export type ListCommentsResult = NonNullable<Awaited<ReturnType<typeof listComments>>>
 export type CreateCommentResult = NonNullable<Awaited<ReturnType<typeof createComment>>>
 export type DeleteCommentResult = NonNullable<Awaited<ReturnType<typeof deleteComment>>>
+export type UpsertCurrentUserResult = NonNullable<Awaited<ReturnType<typeof upsertCurrentUser>>>
