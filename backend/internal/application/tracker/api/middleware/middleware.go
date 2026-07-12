@@ -54,7 +54,8 @@ func WorkspaceMembershipMiddleware(checker WorkspaceMemberChecker) echo.Middlewa
 }
 
 // UserIDMiddleware extracts the `sub` claim from the validated JWT (set by
-// JwtMiddleware) and injects it as a uuid.UUID into the request context.
+// JwtMiddleware) and injects it, along with the user's profile claims
+// (email, name), into the request context.
 // Must be applied after JwtMiddleware.
 func UserIDMiddleware() echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
@@ -76,10 +77,24 @@ func UserIDMiddleware() echo.MiddlewareFunc {
 				return echo.ErrUnauthorized
 			}
 			ctx := api.WithUserID(c.Request().Context(), id)
+			ctx = api.WithUserClaims(ctx, api.UserClaims{
+				Email: stringClaim(claims, "email"),
+				Name:  stringClaim(claims, "name"),
+			})
 			c.SetRequest(c.Request().WithContext(ctx))
 			return next(c)
 		}
 	}
+}
+
+// stringClaim returns claims[name] as a string, or the empty string if the
+// claim is absent or not a string.
+func stringClaim(claims jwt.MapClaims, name string) string {
+	value, ok := claims[name].(string)
+	if !ok {
+		return ""
+	}
+	return value
 }
 
 // JwtMiddleware returns an Echo middleware that validates Bearer JWTs against

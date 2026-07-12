@@ -14,6 +14,7 @@ import (
 	commentdomain "github.com/wlindb/issue-tracker/internal/domain/tracker/comment"
 	issuedomain "github.com/wlindb/issue-tracker/internal/domain/tracker/issue"
 	"github.com/wlindb/issue-tracker/internal/domain/tracker/label"
+	userdomain "github.com/wlindb/issue-tracker/internal/domain/tracker/user"
 	trackerdb "github.com/wlindb/issue-tracker/internal/infrastructure/tracker/generated"
 )
 
@@ -458,4 +459,32 @@ func Test_UpdateIssueParamsFromDomain_WithOptionalFields_MapsCorrectly(t *testin
 	assert.True(t, actual.AssigneeID.Valid)
 	assert.Equal(t, assigneeID, uuid.UUID(actual.AssigneeID.Bytes))
 	assert.Equal(t, now, actual.UpdatedAt.Time)
+}
+
+// — User mapper tests —
+
+func Test_userToDomain_Row_ReturnsDomainUser(t *testing.T) {
+	id := uuid.New()
+	row := trackerdb.User{
+		ID:    id,
+		Email: "jane@example.com",
+		Name:  "Jane Doe",
+	}
+
+	actual := userToDomain(row)
+
+	assert.Equal(t, id, actual.ID)
+	assert.Equal(t, "jane@example.com", actual.Email)
+	assert.Equal(t, "Jane Doe", actual.Name)
+}
+
+func Test_upsertUserParamsFromDomain_User_ReturnsParams(t *testing.T) {
+	id := uuid.New()
+	domainUser := userdomain.User{ID: id, Email: "jane@example.com", Name: "Jane Doe"}
+
+	actual := upsertUserParamsFromDomain(domainUser)
+
+	assert.Equal(t, id, actual.ID)
+	assert.Equal(t, "jane@example.com", actual.Email)
+	assert.Equal(t, "Jane Doe", actual.Name)
 }

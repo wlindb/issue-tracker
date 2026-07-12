@@ -74,6 +74,12 @@ type Project struct {
 	Identifier  string
 }
 
+type User struct {
+	ID    uuid.UUID
+	Email string
+	Name  string
+}
+
 type Workspace struct {
 	ID        uuid.UUID
 	Name      string

@@ -10,6 +10,7 @@ type Handler struct {
 	CommentHandler
 	IssueHandler
 	LabelHandler
+	UserHandler
 }
 
 var _ model.StrictServerInterface = (*Handler)(nil)

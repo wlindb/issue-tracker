@@ -10,6 +10,7 @@ import (
 	issuedomain "github.com/wlindb/issue-tracker/internal/domain/tracker/issue"
 	"github.com/wlindb/issue-tracker/internal/domain/tracker/label"
 	trackerdomain "github.com/wlindb/issue-tracker/internal/domain/tracker/project"
+	userdomain "github.com/wlindb/issue-tracker/internal/domain/tracker/user"
 	workspacedomain "github.com/wlindb/issue-tracker/internal/domain/tracker/workspace"
 )
 
@@ -176,4 +177,12 @@ func labelsFromDomain(labels []label.Label) []model.Label {
 		items[i] = labelFromDomain(l)
 	}
 	return items
+}
+
+func userFromDomain(domain userdomain.User) model.User {
+	return model.User{
+		Id:    domain.ID,
+		Email: domain.Email,
+		Name:  domain.Name,
+	}
 }
