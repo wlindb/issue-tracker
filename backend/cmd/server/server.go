@@ -9,9 +9,10 @@ import (
 	"go.opentelemetry.io/contrib/bridges/otelslog"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/labstack/echo/otelecho"
 
-	"github.com/wlindb/issue-tracker/internal/application/tracker/api"
+	"github.com/wlindb/issue-tracker/internal/application/api"
+	"github.com/wlindb/issue-tracker/internal/application/api/model"
+	trackerapi "github.com/wlindb/issue-tracker/internal/application/tracker/api"
 	apimiddleware "github.com/wlindb/issue-tracker/internal/application/tracker/api/middleware"
-	"github.com/wlindb/issue-tracker/internal/application/tracker/api/model"
 	"github.com/wlindb/issue-tracker/internal/config"
 )
 
@@ -22,13 +23,13 @@ func newServer(h *api.Handler, cfg *config.Config, workspaceChecker apimiddlewar
 	))
 
 	e := echo.New()
-	e.HTTPErrorHandler = api.HTTPErrorHandler
+	e.HTTPErrorHandler = trackerapi.HTTPErrorHandler
 	e.Use(otelecho.Middleware(cfg.OTELServiceName))
-	e.Use(api.RequestLogger(logger))
+	e.Use(trackerapi.RequestLogger(logger))
 	e.Use(echomiddleware.Recover())
 	e.Use(echomiddleware.CORS())
 
-	api.RegisterPublicRoutes(e)
+	trackerapi.RegisterPublicRoutes(e)
 
 	protected := e.Group("",
 		apimiddleware.JwtMiddleware(cfg.JWKSUrl),

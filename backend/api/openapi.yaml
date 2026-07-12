@@ -711,14 +711,14 @@ paths:
         "422": { $ref: "#/components/responses/UnprocessableEntity" }
         "500": { $ref: "#/components/responses/InternalServerError" }
 
-  /workspaces/{workspaceId}/issues/search:
+  /workspaces/{workspaceId}/search/issues:
     parameters:
       - { $ref: "#/components/parameters/WorkspaceIdParam" }
 
     post:
       operationId: searchIssues
       summary: Search issues by a query string.
-      tags: [issues]
+      tags: [search]
       requestBody:
         required: true
         content:
