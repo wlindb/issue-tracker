@@ -93,3 +93,11 @@ type WorkspaceMember struct {
 	UserID      uuid.UUID
 	CreatedAt   pgtype.Timestamptz
 }
+
+type WorkspaceMembersWithUser struct {
+	WorkspaceID uuid.UUID
+	UserID      uuid.UUID
+	CreatedAt   pgtype.Timestamptz
+	Email       string
+	Name        string
+}

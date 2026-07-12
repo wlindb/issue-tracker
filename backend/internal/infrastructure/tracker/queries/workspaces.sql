@@ -25,3 +25,9 @@ SELECT w.* FROM workspaces w
 JOIN workspace_members m ON m.workspace_id = w.id
 WHERE m.user_id = @user_id
 ORDER BY w.created_at DESC;
+
+-- name: ListWorkspaceMembers :many
+SELECT workspace_id, user_id, created_at, email, name
+FROM workspace_members_with_user
+WHERE workspace_id = @workspace_id
+ORDER BY created_at ASC;

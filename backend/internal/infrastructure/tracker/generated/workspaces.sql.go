@@ -91,6 +91,39 @@ func (q *Queries) IsMember(ctx context.Context, arg IsMemberParams) (bool, error
 	return is_member, err
 }
 
+const listWorkspaceMembers = `-- name: ListWorkspaceMembers :many
+SELECT workspace_id, user_id, created_at, email, name
+FROM workspace_members_with_user
+WHERE workspace_id = $1
+ORDER BY created_at ASC
+`
+
+func (q *Queries) ListWorkspaceMembers(ctx context.Context, workspaceID uuid.UUID) ([]WorkspaceMembersWithUser, error) {
+	rows, err := q.db.Query(ctx, listWorkspaceMembers, workspaceID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []WorkspaceMembersWithUser
+	for rows.Next() {
+		var i WorkspaceMembersWithUser
+		if err := rows.Scan(
+			&i.WorkspaceID,
+			&i.UserID,
+			&i.CreatedAt,
+			&i.Email,
+			&i.Name,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listWorkspacesForUser = `-- name: ListWorkspacesForUser :many
 SELECT w.id, w.name, w.owner_id, w.created_at, w.updated_at FROM workspaces w
 JOIN workspace_members m ON m.workspace_id = w.id

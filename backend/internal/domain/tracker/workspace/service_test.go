@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	userdomain "github.com/wlindb/issue-tracker/internal/domain/tracker/user"
 	"github.com/wlindb/issue-tracker/internal/domain/tracker/workspace"
 )
 
@@ -190,6 +191,38 @@ func Test_IsMember_RepositoryError_ReturnsWrappedError(t *testing.T) {
 
 	service := workspace.NewWorkspaceService(repository)
 	_, err := service.IsMember(context.Background(), workspaceID, userID)
+
+	require.Error(t, err)
+	assert.ErrorIs(t, err, repoErr)
+	repository.AssertExpectations(t)
+}
+
+func Test_ListMembers_ExistingWorkspace_ReturnsMembers(t *testing.T) {
+	repository := &mockWorkspaceRepository{}
+	workspaceID, userID := uuid.New(), uuid.New()
+	expected := workspace.WorkspaceMembers{
+		Members: []userdomain.User{{ID: userID, Email: "member@example.com", Name: "Member"}},
+	}
+
+	repository.On("ListMembers", mock.Anything, workspaceID).Return(expected, nil)
+
+	service := workspace.NewWorkspaceService(repository)
+	actual, err := service.ListMembers(context.Background(), workspaceID)
+
+	require.NoError(t, err)
+	assert.Equal(t, expected, actual)
+	repository.AssertExpectations(t)
+}
+
+func Test_ListMembers_RepositoryError_ReturnsWrappedError(t *testing.T) {
+	repository := &mockWorkspaceRepository{}
+	workspaceID := uuid.New()
+	repoErr := errors.New("db down")
+
+	repository.On("ListMembers", mock.Anything, workspaceID).Return(workspace.WorkspaceMembers{}, repoErr)
+
+	service := workspace.NewWorkspaceService(repository)
+	_, err := service.ListMembers(context.Background(), workspaceID)
 
 	require.Error(t, err)
 	assert.ErrorIs(t, err, repoErr)

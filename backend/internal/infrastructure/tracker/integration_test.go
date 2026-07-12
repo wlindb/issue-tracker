@@ -21,9 +21,11 @@ import (
 	issuedomain "github.com/wlindb/issue-tracker/internal/domain/tracker/issue"
 	"github.com/wlindb/issue-tracker/internal/domain/tracker/label"
 	projectdomain "github.com/wlindb/issue-tracker/internal/domain/tracker/project"
+	userdomain "github.com/wlindb/issue-tracker/internal/domain/tracker/user"
 	workspacedomain "github.com/wlindb/issue-tracker/internal/domain/tracker/workspace"
 	infradb "github.com/wlindb/issue-tracker/internal/infrastructure/db"
 	tracker "github.com/wlindb/issue-tracker/internal/infrastructure/tracker"
+	trackerdb "github.com/wlindb/issue-tracker/internal/infrastructure/tracker/generated"
 )
 
 type testContextKey string
@@ -122,9 +124,21 @@ func createTestWorkspace(t *testing.T) (uuid.UUID, context.Context) {
 	workspaceRepository := tracker.NewWorkspaceRepository(testPool)
 	workspaceID := uuid.New()
 	ownerID := uuid.New()
+	createTestUser(t, ownerID, "owner-"+ownerID.String()+"@example.com", "Test Owner")
 	_, err := workspaceRepository.Create(context.Background(), workspacedomain.Workspace{ID: workspaceID, OwnerID: ownerID, Name: "Test Workspace"})
 	require.NoError(t, err)
 	return workspaceID, withWorkspaceContext(workspaceID, ownerID)
+}
+
+func createTestUser(t *testing.T, id uuid.UUID, email string, name string) userdomain.User {
+	t.Helper()
+	row, err := trackerdb.New(testPool).UpsertUser(context.Background(), trackerdb.UpsertUserParams{
+		ID:    id,
+		Email: email,
+		Name:  name,
+	})
+	require.NoError(t, err)
+	return userdomain.User{ID: row.ID, Email: row.Email, Name: row.Name}
 }
 
 func createTestProject(t *testing.T, ctx context.Context) uuid.UUID {
@@ -844,14 +858,37 @@ func Test_GetIssue_NonMember_ReturnsNotFound(t *testing.T) {
 
 // — ListMembers integration tests —
 
-func Test_ListMembers_ExistingWorkspace_ReturnsEmptyMembers(t *testing.T) {
+func Test_ListMembers_ExistingWorkspace_ReturnsOwnerAsMember(t *testing.T) {
 	workspaceID, ctx := createTestWorkspace(t)
+	ownerID := ctx.Value(testUserIDKey).(uuid.UUID)
+	expectedOwner := userdomain.User{ID: ownerID, Email: "owner-" + ownerID.String() + "@example.com", Name: "Test Owner"}
 	repository := tracker.NewWorkspaceRepository(testPool)
 
 	actual, err := repository.ListMembers(ctx, workspaceID)
 
 	require.NoError(t, err)
-	assert.Empty(t, actual.Members)
+	require.Len(t, actual.Members, 1)
+	assert.Equal(t, expectedOwner, actual.Members[0])
+}
+
+func Test_ListMembers_MultipleMembers_ReturnsAllMembersOrderedByCreatedAt(t *testing.T) {
+	workspaceID, ctx := createTestWorkspace(t)
+	ownerID := ctx.Value(testUserIDKey).(uuid.UUID)
+	expectedOwner := userdomain.User{ID: ownerID, Email: "owner-" + ownerID.String() + "@example.com", Name: "Test Owner"}
+	secondMemberID := uuid.New()
+	expectedSecondMember := createTestUser(t, secondMemberID, "second-"+secondMemberID.String()+"@example.com", "Second Member")
+	require.NoError(t, trackerdb.New(testPool).InsertWorkspaceMember(ctx, trackerdb.InsertWorkspaceMemberParams{
+		WorkspaceID: workspaceID,
+		UserID:      secondMemberID,
+	}))
+	repository := tracker.NewWorkspaceRepository(testPool)
+
+	actual, err := repository.ListMembers(ctx, workspaceID)
+
+	require.NoError(t, err)
+	require.Len(t, actual.Members, 2)
+	assert.Equal(t, expectedOwner, actual.Members[0])
+	assert.Equal(t, expectedSecondMember, actual.Members[1])
 }
 
 func Test_ListMembers_NonExistentWorkspace_ReturnsErrWorkspaceNotFound(t *testing.T) {
