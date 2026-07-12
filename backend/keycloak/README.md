@@ -23,6 +23,7 @@ backend/keycloak/
         └── login/
             ├── theme.properties          # parent theme, CSS reference
             ├── login.ftl                 # main login template
+            ├── register.ftl              # registration page template
             └── resources/
                 └── css/
                     └── login.css         # all styling
@@ -68,6 +69,41 @@ Use a Kubernetes `ConfigMap` or `PersistentVolume` to mount the theme directory 
 
 Navigate to your application's login URL (or click *Not logged in? Sign in* from the Admin Console preview). You should see the Clerk-inspired card UI.
 
+## GitHub OAuth App (Sign in with GitHub)
+
+The realm is pre-configured with a GitHub identity provider. To enable it:
+
+### 1. Create a GitHub OAuth App
+
+1. Go to **GitHub → Settings → Developer settings → OAuth Apps → New OAuth App**.
+2. Fill in:
+   - **Application name**: `Issue Tracker (local dev)` (or any name)
+   - **Homepage URL**: `http://localhost:5173`
+   - **Authorization callback URL**: `http://localhost:8180/realms/issue-tracker/broker/github/endpoint`
+3. Click **Register application**, then generate a **Client Secret**.
+
+> **Note:** For any non-local deployment, replace `http://localhost:8180` in the callback URL with the actual Keycloak hostname.
+
+### 2. Add credentials to `.env`
+
+Create (or update) `backend/keycloak/.env` — this file is gitignored and never committed:
+
+```
+GITHUB_CLIENT_ID=<your-client-id>
+GITHUB_CLIENT_SECRET=<your-client-secret>
+```
+
+These values are passed to the Keycloak container via `docker-compose.yml` and resolve the `${env.GITHUB_CLIENT_ID}` / `${env.GITHUB_CLIENT_SECRET}` placeholders in `realm-export.json` at import time.
+
+### 3. Start the stack
+
+```bash
+cd backend/keycloak
+docker compose up
+```
+
+Confirm the container logs show a clean realm import with no unresolved `${env.*}` placeholders. A "Continue with GitHub" button will appear on the login page automatically.
+
 ## Customisation
 
 | Variable | Default | Purpose |
@@ -90,7 +126,9 @@ The SVG logo in `login.ftl` is a placeholder. Replace the `<svg>` inside `.cl-lo
 
 ### Adding more pages
 
-Keycloak has additional FreeMarker templates (`register.ftl`, `error.ftl`, `info.ftl`, etc.). Copy them from the base `keycloak` theme and apply the same card wrapper pattern used in `login.ftl`.
+Keycloak has additional FreeMarker templates (`error.ftl`, `info.ftl`, etc.). Copy them from the base `keycloak` theme and apply the same card wrapper pattern used in `login.ftl`.
+
+The registration page (`register.ftl`) has already been added to this theme — it mirrors the `login.ftl` structure, reusing all existing `cl-*` CSS classes.
 
 ## Keycloak compatibility
 

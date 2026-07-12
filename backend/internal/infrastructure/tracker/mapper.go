@@ -8,6 +8,7 @@ import (
 	issuedomain "github.com/wlindb/issue-tracker/internal/domain/tracker/issue"
 	"github.com/wlindb/issue-tracker/internal/domain/tracker/label"
 	projectdomain "github.com/wlindb/issue-tracker/internal/domain/tracker/project"
+	userdomain "github.com/wlindb/issue-tracker/internal/domain/tracker/user"
 	workspacedomain "github.com/wlindb/issue-tracker/internal/domain/tracker/workspace"
 	trackerdb "github.com/wlindb/issue-tracker/internal/infrastructure/tracker/generated"
 )
@@ -187,6 +188,22 @@ func workspacesToDomain(rows []trackerdb.Workspace) []workspacedomain.Workspace 
 	return workspaces
 }
 
+func workspaceMemberToDomain(row trackerdb.WorkspaceMembersWithUser) userdomain.User {
+	return userdomain.User{
+		ID:    row.UserID,
+		Email: row.Email,
+		Name:  row.Name,
+	}
+}
+
+func workspaceMembersToDomain(rows []trackerdb.WorkspaceMembersWithUser) workspacedomain.WorkspaceMembers {
+	members := make([]userdomain.User, len(rows))
+	for i, row := range rows {
+		members[i] = workspaceMemberToDomain(row)
+	}
+	return workspacedomain.WorkspaceMembers{Members: members}
+}
+
 func createCommentParamsFromDomain(c commentdomain.Comment) trackerdb.CreateCommentParams {
 	return trackerdb.CreateCommentParams{
 		ID:       c.ID,
@@ -229,4 +246,20 @@ func labelsToDomain(rows []trackerdb.Label) []label.Label {
 
 func getOrCreateLabelParams(id uuid.UUID, name string) trackerdb.GetOrCreateLabelParams {
 	return trackerdb.GetOrCreateLabelParams{ID: id, Name: name}
+}
+
+func userToDomain(row trackerdb.User) userdomain.User {
+	return userdomain.User{
+		ID:    row.ID,
+		Email: row.Email,
+		Name:  row.Name,
+	}
+}
+
+func upsertUserParamsFromDomain(user userdomain.User) trackerdb.UpsertUserParams {
+	return trackerdb.UpsertUserParams{
+		ID:    user.ID,
+		Email: user.Email,
+		Name:  user.Name,
+	}
 }

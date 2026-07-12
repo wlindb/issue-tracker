@@ -20,6 +20,7 @@ import (
 
 	"github.com/wlindb/issue-tracker/internal/application/tracker/api"
 	"github.com/wlindb/issue-tracker/internal/application/tracker/api/model"
+	userdomain "github.com/wlindb/issue-tracker/internal/domain/tracker/user"
 	workspacedomain "github.com/wlindb/issue-tracker/internal/domain/tracker/workspace"
 )
 
@@ -242,6 +243,32 @@ func Test_ListWorkspaceMembers_WorkspaceExists_Returns200WithEmptyList(t *testin
 	var got []model.WorkspaceMember
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &got))
 	assert.Empty(t, got)
+	service.AssertExpectations(t)
+}
+
+func Test_ListWorkspaceMembers_WorkspaceExists_Returns200WithMembers(t *testing.T) {
+	service := &mockWorkspaceService{}
+	workspaceID := uuid.New()
+	memberID := uuid.New()
+
+	service.On("ListMembers", mock.Anything, workspaceID).
+		Return(workspacedomain.WorkspaceMembers{
+			Members: []userdomain.User{{ID: memberID, Email: "member@example.com", Name: "Member"}},
+		}, nil)
+
+	e := newWorkspaceTestServer(t, service)
+	e.Use(injectUser(uuid.New()))
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/workspaces/"+workspaceID.String()+"/members", nil)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusOK, rec.Code)
+	var got []model.WorkspaceMember
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &got))
+	require.Len(t, got, 1)
+	assert.Equal(t, memberID, got[0].Id)
+	assert.Equal(t, "member@example.com", string(got[0].Email))
 	service.AssertExpectations(t)
 }
 

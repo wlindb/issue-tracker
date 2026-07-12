@@ -37,8 +37,6 @@ export interface User {
   id: string;
   email: string;
   name: string;
-  createdAt: string;
-  updatedAt: string;
 }
 
 export interface Project {
@@ -189,6 +187,10 @@ export interface CreateCommentRequest {
 
 export interface CreateLabelRequest {
   name: string;
+}
+
+export interface AddIssueLabelRequest {
+  id: string;
 }
 
 /**
@@ -566,6 +568,22 @@ export const updateIssueAssignee = (
     }
 
 /**
+ * @summary Attach a label to an issue.
+ */
+export const addIssueLabel = (
+    workspaceId: string,
+    issueId: string,
+    addIssueLabelRequest: AddIssueLabelRequest,
+ ) => {
+      return customFetch<Issue>(
+      {url: `/api/v1/workspaces/${workspaceId}/issues/${issueId}/labels`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: addIssueLabelRequest
+    },
+      );
+    }
+
+/**
  * @summary List comments on an issue.
  */
 export const listComments = (
@@ -609,6 +627,18 @@ export const deleteComment = (
       );
     }
 
+/**
+ * @summary Create or update the authenticated user's profile from their JWT claims.
+ */
+export const upsertCurrentUser = (
+
+ ) => {
+      return customFetch<User>(
+      {url: `/api/v1/users/me`, method: 'POST'
+    },
+      );
+    }
+
 export type ListWorkspacesResult = NonNullable<Awaited<ReturnType<typeof listWorkspaces>>>
 export type CreateWorkspaceResult = NonNullable<Awaited<ReturnType<typeof createWorkspace>>>
 export type GetWorkspaceResult = NonNullable<Awaited<ReturnType<typeof getWorkspace>>>
@@ -630,6 +660,8 @@ export type UpdateIssueDescriptionResult = NonNullable<Awaited<ReturnType<typeof
 export type UpdateIssueStatusResult = NonNullable<Awaited<ReturnType<typeof updateIssueStatus>>>
 export type UpdateIssuePriorityResult = NonNullable<Awaited<ReturnType<typeof updateIssuePriority>>>
 export type UpdateIssueAssigneeResult = NonNullable<Awaited<ReturnType<typeof updateIssueAssignee>>>
+export type AddIssueLabelResult = NonNullable<Awaited<ReturnType<typeof addIssueLabel>>>
 export type ListCommentsResult = NonNullable<Awaited<ReturnType<typeof listComments>>>
 export type CreateCommentResult = NonNullable<Awaited<ReturnType<typeof createComment>>>
 export type DeleteCommentResult = NonNullable<Awaited<ReturnType<typeof deleteComment>>>
+export type UpsertCurrentUserResult = NonNullable<Awaited<ReturnType<typeof upsertCurrentUser>>>

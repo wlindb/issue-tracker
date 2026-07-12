@@ -231,9 +231,21 @@ func (s *IssueService) AddLabel(ctx context.Context, issueID uuid.UUID, label la
 		return current, nil
 	}
 
-	if err := s.repository.AddLabel(ctx, issueID, label); err != nil {
-		return Issue{}, fmt.Errorf("add label: %w", err)
+	updated := current.AddLabel(label)
+
+	var result Issue
+	if err := s.unitOfWork.RunInTx(ctx, func(tx Repositories) error {
+		if err := tx.Issues.AddLabel(ctx, issueID, label); err != nil {
+			return fmt.Errorf("add label: %w", err)
+		}
+		result = updated
+		if err := result.EmitLabelAdded(ctx); err != nil {
+			return fmt.Errorf("emit label added: %w", err)
+		}
+		return nil
+	}); err != nil {
+		return Issue{}, fmt.Errorf("run in tx: %w", err)
 	}
 
-	return current.AddLabel(label), nil
+	return result, nil
 }

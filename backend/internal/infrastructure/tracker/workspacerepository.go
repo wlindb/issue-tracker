@@ -93,7 +93,12 @@ func (r *WorkspaceRepository) ListMembers(ctx context.Context, workspaceID uuid.
 		}
 		return workspacedomain.WorkspaceMembers{}, fmt.Errorf("list workspace members: %w", err)
 	}
-	return workspacedomain.WorkspaceMembers{}, nil
+
+	rows, err := r.queries.ListWorkspaceMembers(ctx, workspaceID)
+	if err != nil {
+		return workspacedomain.WorkspaceMembers{}, fmt.Errorf("list workspace members: %w", err)
+	}
+	return workspaceMembersToDomain(rows), nil
 }
 
 // IsMember reports whether userID is a member of workspaceID.

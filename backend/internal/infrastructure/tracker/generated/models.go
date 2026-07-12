@@ -74,6 +74,12 @@ type Project struct {
 	Identifier  string
 }
 
+type User struct {
+	ID    uuid.UUID
+	Email string
+	Name  string
+}
+
 type Workspace struct {
 	ID        uuid.UUID
 	Name      string
@@ -86,4 +92,12 @@ type WorkspaceMember struct {
 	WorkspaceID uuid.UUID
 	UserID      uuid.UUID
 	CreatedAt   pgtype.Timestamptz
+}
+
+type WorkspaceMembersWithUser struct {
+	WorkspaceID uuid.UUID
+	UserID      uuid.UUID
+	CreatedAt   pgtype.Timestamptz
+	Email       string
+	Name        string
 }

@@ -27,3 +27,15 @@ func injectUser(id uuid.UUID) echo.MiddlewareFunc {
 		}
 	}
 }
+
+// injectUserClaims returns an Echo middleware that injects fixed JWT profile
+// claims into the request context, simulating what UserIDMiddleware would do.
+func injectUserClaims(claims api.UserClaims) echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			ctx := api.WithUserClaims(c.Request().Context(), claims)
+			c.SetRequest(c.Request().WithContext(ctx))
+			return next(c)
+		}
+	}
+}

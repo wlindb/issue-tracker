@@ -3,7 +3,8 @@
   "enabled": true,
   "sslRequired": "none",
   "loginTheme": "clerk-inspired",
-  "registrationAllowed": false,
+  "registrationAllowed": true,
+  "verifyEmail": false,
   "loginWithEmailAllowed": true,
   "accessTokenLifespan": 300,
   "clients": [
@@ -32,6 +33,20 @@
       "protocol": "openid-connect",
       "redirectUris": ["http://localhost:5173/*"],
       "webOrigins": ["http://localhost:5173"]
+    }
+  ],
+  "identityProviders": [
+    {
+      "alias": "github",
+      "displayName": "GitHub",
+      "providerId": "github",
+      "enabled": true,
+      "trustEmail": true,
+      "config": {
+        "clientId": "${env.GITHUB_CLIENT_ID}",
+        "clientSecret": "${env.GITHUB_CLIENT_SECRET}",
+        "defaultScope": "user:email"
+      }
     }
   ],
   "users": [

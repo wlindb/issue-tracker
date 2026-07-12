@@ -4,12 +4,14 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
+	openapi_types "github.com/oapi-codegen/runtime/types"
 
 	"github.com/wlindb/issue-tracker/internal/application/tracker/api/model"
 	commentdomain "github.com/wlindb/issue-tracker/internal/domain/tracker/comment"
 	issuedomain "github.com/wlindb/issue-tracker/internal/domain/tracker/issue"
 	"github.com/wlindb/issue-tracker/internal/domain/tracker/label"
 	trackerdomain "github.com/wlindb/issue-tracker/internal/domain/tracker/project"
+	userdomain "github.com/wlindb/issue-tracker/internal/domain/tracker/user"
 	workspacedomain "github.com/wlindb/issue-tracker/internal/domain/tracker/workspace"
 )
 
@@ -63,7 +65,8 @@ func workspaceMembersFromDomain(domain workspacedomain.WorkspaceMembers) []model
 	items := make([]model.WorkspaceMember, len(domain.Members))
 	for i, m := range domain.Members {
 		items[i] = model.WorkspaceMember{
-			Id: m.UserID,
+			Id:    m.ID,
+			Email: openapi_types.Email(m.Email),
 		}
 	}
 	return items
@@ -176,4 +179,12 @@ func labelsFromDomain(labels []label.Label) []model.Label {
 		items[i] = labelFromDomain(l)
 	}
 	return items
+}
+
+func userFromDomain(domain userdomain.User) model.User {
+	return model.User{
+		Id:    domain.ID,
+		Email: domain.Email,
+		Name:  domain.Name,
+	}
 }

@@ -52,7 +52,7 @@ func serveJWKS(t *testing.T, pub *rsa.PublicKey) *httptest.Server {
 	return srv
 }
 
-func mintToken(t *testing.T, priv *rsa.PrivateKey, claims jwt.RegisteredClaims) string {
+func mintToken(t *testing.T, priv *rsa.PrivateKey, claims jwt.Claims) string {
 	t.Helper()
 	tok := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
 	signed, err := tok.SignedString(priv)
@@ -304,6 +304,47 @@ func Test_WorkspaceMembershipMiddleware_ValidMember_CallsNextAndSetsContext(t *t
 	require.Equal(t, http.StatusOK, rec.Code)
 	assert.Equal(t, workspaceID, contextWorkspaceID)
 	checker.AssertExpectations(t)
+}
+
+func newPingServerWithUserClaims(t *testing.T, jwksURL string) *echo.Echo {
+	t.Helper()
+	e := echo.New()
+	e.Use(middleware.JwtMiddleware(jwksURL))
+	e.Use(middleware.UserIDMiddleware())
+	e.GET("/ping", func(c echo.Context) error {
+		claims, err := api.UserClaimsFromContext(c.Request().Context())
+		if err != nil {
+			return c.String(http.StatusUnauthorized, err.Error())
+		}
+		return c.JSON(http.StatusOK, claims)
+	})
+	return e
+}
+
+func Test_UserIDMiddleware_PopulatesUserClaims(t *testing.T) {
+	key := generateTestKey(t)
+	srv := serveJWKS(t, &key.PublicKey)
+
+	claims := jwt.MapClaims{
+		"sub":   "00000000-0000-0000-0000-000000000001",
+		"exp":   time.Now().Add(24 * time.Hour).Unix(),
+		"email": "jane@example.com",
+		"name":  "Jane Doe",
+	}
+	token := mintToken(t, key, claims)
+
+	e := newPingServerWithUserClaims(t, srv.URL)
+	req := httptest.NewRequest(http.MethodGet, "/ping", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusOK, rec.Code)
+
+	var got api.UserClaims
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &got))
+	assert.Equal(t, "jane@example.com", got.Email)
+	assert.Equal(t, "Jane Doe", got.Name)
 }
 
 func Test_UserIDMiddleware_NonUUIDSub(t *testing.T) {

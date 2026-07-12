@@ -5,4 +5,5 @@ type key string
 const (
 	UserID      key = "userID"
 	WorkspaceID key = "workspaceID"
+	UserClaims  key = "userClaims"
 )

@@ -5,18 +5,21 @@ import {
   getIssue,
   getProject,
   listComments,
+  listWorkspaceMembers,
   createComment,
   updateIssueTitle,
   updateIssueDescription,
   updateIssueStatus,
   updateIssuePriority,
   updateIssueAssignee,
+  addIssueLabel,
   type Comment,
   type Issue,
   type IssueStatus,
   type IssuePriority,
   type Label,
   type Project,
+  type WorkspaceMember,
 } from '@/api/generated/issueTrackerAPI'
 import { useWorkspace } from '@/context/WorkspaceContext'
 import { useCommentCreatedEvents } from '@/hooks/useCommentCreatedEvents'
@@ -33,6 +36,7 @@ export function IssueDetailPage() {
   const [issue, setIssue] = useState<Issue | null>(null)
   const [project, setProject] = useState<Project | null>(null)
   const [comments, setComments] = useState<Comment[]>([])
+  const [members, setMembers] = useState<WorkspaceMember[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -42,13 +46,15 @@ export function IssueDetailPage() {
     async function load() {
       try {
         const fetchedIssue = await getIssue(workspaceId, issueId!)
-        const [fetchedProject, commentPage] = await Promise.all([
+        const [fetchedProject, commentPage, fetchedMembers] = await Promise.all([
           getProject(workspaceId, fetchedIssue.projectId),
           listComments(workspaceId, issueId!),
+          listWorkspaceMembers(workspaceId),
         ])
         setIssue(fetchedIssue)
         setProject(fetchedProject)
         setComments(commentPage.items)
+        setMembers(fetchedMembers)
       } catch {
         setError('Issue not found.')
       } finally {
@@ -98,9 +104,18 @@ export function IssueDetailPage() {
     setIssue(updated)
   }
 
-  function handleLabelsChange(labels: Label[]) {
-    if (!issue) return
-    setIssue({ ...issue, labels })
+  async function handleLabelsChange(labels: Label[]) {
+    if (!activeWorkspace || !issue) return
+    const addedLabel =
+      labels.length > issue.labels.length
+        ? labels.find((label) => !issue.labels.some((existing) => existing.id === label.id))
+        : undefined
+    if (!addedLabel) {
+      setIssue({ ...issue, labels })
+      return
+    }
+    const updated = await addIssueLabel(activeWorkspace.id, issue.id, { id: addedLabel.id })
+    setIssue(updated)
   }
 
   async function handleAddComment(body: string) {
@@ -163,7 +178,7 @@ export function IssueDetailPage() {
           <aside className="w-52 shrink-0">
             <IssueMetaSidebar
               issue={issue}
-              users={[]}
+              members={members}
               workspaceId={activeWorkspace.id}
               onStatusChange={handleStatusChange}
               onPriorityChange={handlePriorityChange}
