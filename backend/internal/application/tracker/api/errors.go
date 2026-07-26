@@ -6,7 +6,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 
-	"github.com/wlindb/issue-tracker/internal/application/tracker/api/model"
+	"github.com/wlindb/issue-tracker/internal/application/api/model"
 )
 
 // HTTPErrorHandler is a custom Echo error handler that formats all unhandled

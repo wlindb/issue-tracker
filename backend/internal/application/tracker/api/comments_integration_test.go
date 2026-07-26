@@ -15,8 +15,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	rootapi "github.com/wlindb/issue-tracker/internal/application/api"
+	"github.com/wlindb/issue-tracker/internal/application/api/model"
 	"github.com/wlindb/issue-tracker/internal/application/tracker/api"
-	"github.com/wlindb/issue-tracker/internal/application/tracker/api/model"
 	commentdomain "github.com/wlindb/issue-tracker/internal/domain/tracker/comment"
 	issuedomain "github.com/wlindb/issue-tracker/internal/domain/tracker/issue"
 	"github.com/wlindb/issue-tracker/internal/domain/tracker/label"
@@ -83,7 +84,7 @@ func newCommentIntegrationServer(t *testing.T, f commentIntegrationFixture) *ech
 	}
 	e := echo.New()
 	e.Use(injectWorkspace(f.workspaceID, f.userID))
-	strict := model.NewStrictHandler(h, nil)
+	strict := model.NewStrictHandler(&rootapi.Handler{Handler: *h}, nil)
 	model.RegisterHandlersWithBaseURL(e, strict, "/api/v1")
 	return e
 }

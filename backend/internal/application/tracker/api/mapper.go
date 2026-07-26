@@ -6,7 +6,7 @@ import (
 	"github.com/google/uuid"
 	openapi_types "github.com/oapi-codegen/runtime/types"
 
-	"github.com/wlindb/issue-tracker/internal/application/tracker/api/model"
+	"github.com/wlindb/issue-tracker/internal/application/api/model"
 	commentdomain "github.com/wlindb/issue-tracker/internal/domain/tracker/comment"
 	issuedomain "github.com/wlindb/issue-tracker/internal/domain/tracker/issue"
 	"github.com/wlindb/issue-tracker/internal/domain/tracker/label"

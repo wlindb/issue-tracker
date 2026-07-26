@@ -293,9 +293,6 @@ type InternalServerError = Error
 // NotFound defines model for NotFound.
 type NotFound = Error
 
-// NotImplemented defines model for NotImplemented.
-type NotImplemented = Error
-
 // Unauthorized defines model for Unauthorized.
 type Unauthorized = Error
 
@@ -335,9 +332,6 @@ type CreateWorkspaceJSONRequestBody = CreateWorkspaceRequest
 // CreateIssueJSONRequestBody defines body for CreateIssue for application/json ContentType.
 type CreateIssueJSONRequestBody = CreateIssueRequest
 
-// SearchIssuesJSONRequestBody defines body for SearchIssues for application/json ContentType.
-type SearchIssuesJSONRequestBody = SearchIssueRequest
-
 // UpdateIssueAssigneeJSONRequestBody defines body for UpdateIssueAssignee for application/json ContentType.
 type UpdateIssueAssigneeJSONRequestBody = UpdateIssueAssigneeRequest
 
@@ -368,6 +362,9 @@ type CreateProjectJSONRequestBody = CreateProjectRequest
 // UpdateProjectJSONRequestBody defines body for UpdateProject for application/json ContentType.
 type UpdateProjectJSONRequestBody = UpdateProjectRequest
 
+// SearchIssuesJSONRequestBody defines body for SearchIssues for application/json ContentType.
+type SearchIssuesJSONRequestBody = SearchIssueRequest
+
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 	// Create or update the authenticated user's profile from their JWT claims.
@@ -391,9 +388,6 @@ type ServerInterface interface {
 	// Create a new issue.
 	// (POST /workspaces/{workspaceId}/issues)
 	CreateIssue(ctx echo.Context, workspaceId WorkspaceIdParam) error
-	// Search issues by a query string.
-	// (POST /workspaces/{workspaceId}/issues/search)
-	SearchIssues(ctx echo.Context, workspaceId WorkspaceIdParam) error
 	// Delete an issue and its comments.
 	// (DELETE /workspaces/{workspaceId}/issues/{issueId})
 	DeleteIssue(ctx echo.Context, workspaceId WorkspaceIdParam, issueId IssueIdParam) error
@@ -448,6 +442,9 @@ type ServerInterface interface {
 	// Replace a project's mutable fields.
 	// (PUT /workspaces/{workspaceId}/projects/{projectId})
 	UpdateProject(ctx echo.Context, workspaceId WorkspaceIdParam, projectId ProjectIdParam) error
+	// Search issues by a query string.
+	// (POST /workspaces/{workspaceId}/search/issues)
+	SearchIssues(ctx echo.Context, workspaceId WorkspaceIdParam) error
 }
 
 // ServerInterfaceWrapper converts echo contexts to parameters.
@@ -609,24 +606,6 @@ func (w *ServerInterfaceWrapper) CreateIssue(ctx echo.Context) error {
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.CreateIssue(ctx, workspaceId)
-	return err
-}
-
-// SearchIssues converts echo context to params.
-func (w *ServerInterfaceWrapper) SearchIssues(ctx echo.Context) error {
-	var err error
-	// ------------- Path parameter "workspaceId" -------------
-	var workspaceId WorkspaceIdParam
-
-	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", ctx.Param("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter workspaceId: %s", err))
-	}
-
-	ctx.Set(BearerAuthScopes, []string{})
-
-	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.SearchIssues(ctx, workspaceId)
 	return err
 }
 
@@ -1099,6 +1078,24 @@ func (w *ServerInterfaceWrapper) UpdateProject(ctx echo.Context) error {
 	return err
 }
 
+// SearchIssues converts echo context to params.
+func (w *ServerInterfaceWrapper) SearchIssues(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceIdParam
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", ctx.Param("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter workspaceId: %s", err))
+	}
+
+	ctx.Set(BearerAuthScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.SearchIssues(ctx, workspaceId)
+	return err
+}
+
 // This is a simple interface which specifies echo.Route addition functions which
 // are present on both echo.Echo and echo.Group, since we want to allow using
 // either of them for path registration
@@ -1134,7 +1131,6 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 	router.DELETE(baseURL+"/workspaces/:workspaceId/comments/:commentId", wrapper.DeleteComment)
 	router.GET(baseURL+"/workspaces/:workspaceId/issues", wrapper.ListIssues)
 	router.POST(baseURL+"/workspaces/:workspaceId/issues", wrapper.CreateIssue)
-	router.POST(baseURL+"/workspaces/:workspaceId/issues/search", wrapper.SearchIssues)
 	router.DELETE(baseURL+"/workspaces/:workspaceId/issues/:issueId", wrapper.DeleteIssue)
 	router.GET(baseURL+"/workspaces/:workspaceId/issues/:issueId", wrapper.GetIssue)
 	router.PUT(baseURL+"/workspaces/:workspaceId/issues/:issueId/assigneeId", wrapper.UpdateIssueAssignee)
@@ -1153,6 +1149,7 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 	router.DELETE(baseURL+"/workspaces/:workspaceId/projects/:projectId", wrapper.DeleteProject)
 	router.GET(baseURL+"/workspaces/:workspaceId/projects/:projectId", wrapper.GetProject)
 	router.PUT(baseURL+"/workspaces/:workspaceId/projects/:projectId", wrapper.UpdateProject)
+	router.POST(baseURL+"/workspaces/:workspaceId/search/issues", wrapper.SearchIssues)
 
 }
 
@@ -1163,8 +1160,6 @@ type ForbiddenJSONResponse Error
 type InternalServerErrorJSONResponse Error
 
 type NotFoundJSONResponse Error
-
-type NotImplementedJSONResponse Error
 
 type UnauthorizedJSONResponse Error
 
@@ -1499,33 +1494,6 @@ type CreateIssue500JSONResponse struct {
 func (response CreateIssue500JSONResponse) VisitCreateIssueResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(500)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
-type SearchIssuesRequestObject struct {
-	WorkspaceId WorkspaceIdParam `json:"workspaceId"`
-	Body        *SearchIssuesJSONRequestBody
-}
-
-type SearchIssuesResponseObject interface {
-	VisitSearchIssuesResponse(w http.ResponseWriter) error
-}
-
-type SearchIssues400JSONResponse struct{ BadRequestJSONResponse }
-
-func (response SearchIssues400JSONResponse) VisitSearchIssuesResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(400)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
-type SearchIssues501JSONResponse struct{ NotImplementedJSONResponse }
-
-func (response SearchIssues501JSONResponse) VisitSearchIssuesResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(501)
 
 	return json.NewEncoder(w).Encode(response)
 }
@@ -2603,6 +2571,44 @@ func (response UpdateProject500JSONResponse) VisitUpdateProjectResponse(w http.R
 	return json.NewEncoder(w).Encode(response)
 }
 
+type SearchIssuesRequestObject struct {
+	WorkspaceId WorkspaceIdParam `json:"workspaceId"`
+	Body        *SearchIssuesJSONRequestBody
+}
+
+type SearchIssuesResponseObject interface {
+	VisitSearchIssuesResponse(w http.ResponseWriter) error
+}
+
+type SearchIssues200JSONResponse IssuePage
+
+func (response SearchIssues200JSONResponse) VisitSearchIssuesResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type SearchIssues400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response SearchIssues400JSONResponse) VisitSearchIssuesResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type SearchIssues422JSONResponse struct {
+	UnprocessableEntityJSONResponse
+}
+
+func (response SearchIssues422JSONResponse) VisitSearchIssuesResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(422)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
 	// Create or update the authenticated user's profile from their JWT claims.
@@ -2626,9 +2632,6 @@ type StrictServerInterface interface {
 	// Create a new issue.
 	// (POST /workspaces/{workspaceId}/issues)
 	CreateIssue(ctx context.Context, request CreateIssueRequestObject) (CreateIssueResponseObject, error)
-	// Search issues by a query string.
-	// (POST /workspaces/{workspaceId}/issues/search)
-	SearchIssues(ctx context.Context, request SearchIssuesRequestObject) (SearchIssuesResponseObject, error)
 	// Delete an issue and its comments.
 	// (DELETE /workspaces/{workspaceId}/issues/{issueId})
 	DeleteIssue(ctx context.Context, request DeleteIssueRequestObject) (DeleteIssueResponseObject, error)
@@ -2683,6 +2686,9 @@ type StrictServerInterface interface {
 	// Replace a project's mutable fields.
 	// (PUT /workspaces/{workspaceId}/projects/{projectId})
 	UpdateProject(ctx context.Context, request UpdateProjectRequestObject) (UpdateProjectResponseObject, error)
+	// Search issues by a query string.
+	// (POST /workspaces/{workspaceId}/search/issues)
+	SearchIssues(ctx context.Context, request SearchIssuesRequestObject) (SearchIssuesResponseObject, error)
 }
 
 type StrictHandlerFunc = strictecho.StrictEchoHandlerFunc
@@ -2874,37 +2880,6 @@ func (sh *strictHandler) CreateIssue(ctx echo.Context, workspaceId WorkspaceIdPa
 		return err
 	} else if validResponse, ok := response.(CreateIssueResponseObject); ok {
 		return validResponse.VisitCreateIssueResponse(ctx.Response())
-	} else if response != nil {
-		return fmt.Errorf("unexpected response type: %T", response)
-	}
-	return nil
-}
-
-// SearchIssues operation middleware
-func (sh *strictHandler) SearchIssues(ctx echo.Context, workspaceId WorkspaceIdParam) error {
-	var request SearchIssuesRequestObject
-
-	request.WorkspaceId = workspaceId
-
-	var body SearchIssuesJSONRequestBody
-	if err := ctx.Bind(&body); err != nil {
-		return err
-	}
-	request.Body = &body
-
-	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
-		return sh.ssi.SearchIssues(ctx.Request().Context(), request.(SearchIssuesRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "SearchIssues")
-	}
-
-	response, err := handler(ctx, request)
-
-	if err != nil {
-		return err
-	} else if validResponse, ok := response.(SearchIssuesResponseObject); ok {
-		return validResponse.VisitSearchIssuesResponse(ctx.Response())
 	} else if response != nil {
 		return fmt.Errorf("unexpected response type: %T", response)
 	}
@@ -3437,55 +3412,86 @@ func (sh *strictHandler) UpdateProject(ctx echo.Context, workspaceId WorkspaceId
 	return nil
 }
 
+// SearchIssues operation middleware
+func (sh *strictHandler) SearchIssues(ctx echo.Context, workspaceId WorkspaceIdParam) error {
+	var request SearchIssuesRequestObject
+
+	request.WorkspaceId = workspaceId
+
+	var body SearchIssuesJSONRequestBody
+	if err := ctx.Bind(&body); err != nil {
+		return err
+	}
+	request.Body = &body
+
+	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.SearchIssues(ctx.Request().Context(), request.(SearchIssuesRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "SearchIssues")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(SearchIssuesResponseObject); ok {
+		return validResponse.VisitSearchIssuesResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
+}
+
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
-	"MZ38ONcR8/8CAAD//1Z3x9hhZQAA",
+	"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",
+	"//4r0opSZQAA",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

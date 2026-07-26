@@ -16,8 +16,9 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	rootapi "github.com/wlindb/issue-tracker/internal/application/api"
+	"github.com/wlindb/issue-tracker/internal/application/api/model"
 	"github.com/wlindb/issue-tracker/internal/application/tracker/api"
-	"github.com/wlindb/issue-tracker/internal/application/tracker/api/model"
 	labeldomain "github.com/wlindb/issue-tracker/internal/domain/tracker/label"
 )
 
@@ -40,7 +41,7 @@ func newLabelTestServer(t *testing.T, service api.LabelService) *echo.Echo {
 	t.Helper()
 	e := echo.New()
 	h := &api.Handler{LabelHandler: api.NewLabelHandler(service)}
-	strict := model.NewStrictHandler(h, nil)
+	strict := model.NewStrictHandler(&rootapi.Handler{Handler: *h}, nil)
 	model.RegisterHandlersWithBaseURL(e, strict, "/api/v1")
 	return e
 }

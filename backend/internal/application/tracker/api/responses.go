@@ -1,6 +1,6 @@
 package api
 
-import "github.com/wlindb/issue-tracker/internal/application/tracker/api/model"
+import "github.com/wlindb/issue-tracker/internal/application/api/model"
 
 // newUnauthorized constructs an UnauthorizedJSONResponse with the given error
 // code and message.  It is embedded in per-endpoint 401 response types.
