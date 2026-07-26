@@ -101,7 +101,7 @@ func Test_Find_MatchingDescription_ReturnsIssueDocuments(t *testing.T) {
 	actual, err := repository.Find(context.Background(), "database")
 
 	require.NoError(t, err)
-	assert.NotEmpty(t, actual)
+	assert.NotEmpty(t, actual.Documents)
 }
 
 func Test_Find_NoMatch_ReturnsEmptySlice(t *testing.T) {

@@ -36,14 +36,14 @@ func (r *IssueDocumentRepository) Update(ctx context.Context, document issuedocu
 	return issueDocumentToDomain(row), nil
 }
 
-func (r *IssueDocumentRepository) Find(ctx context.Context, description string) ([]issuedocumentdomain.IssueDocument, error) {
+func (r *IssueDocumentRepository) Find(ctx context.Context, description string) (issuedocumentdomain.IssueDocuments, error) {
 	queries := searchdb.New(r.db)
 	rows, err := queries.FindIssueDocumentsByDescription(ctx, description)
 	if err != nil {
-		return []issuedocumentdomain.IssueDocument{}, fmt.Errorf("find issue documents by description: %w", err)
+		return issuedocumentdomain.IssueDocuments{}, fmt.Errorf("find issue documents by description: %w", err)
 	}
 	if len(rows) == 0 {
-		return []issuedocumentdomain.IssueDocument{}, nil
+		return issuedocumentdomain.IssueDocuments{}, nil
 	}
 	return issueDocumentsToDomain(rows), nil
 }

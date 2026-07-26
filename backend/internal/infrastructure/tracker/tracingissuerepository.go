@@ -14,6 +14,12 @@ import (
 
 var _ issuedomain.IssueRepository = (*TracingIssueRepository)(nil)
 
+// issueRepositoryWithGetByIDs is satisfied by repositories that additionally support GetByIDs,
+// a method outside issuedomain.IssueRepository but required by the application layer.
+type issueRepositoryWithGetByIDs interface {
+	GetByIDs(ctx context.Context, ids []uuid.UUID) ([]issuedomain.Issue, error)
+}
+
 // TracingIssueRepository wraps an IssueRepository and adds an OTel child span to each operation.
 type TracingIssueRepository struct {
 	inner  issuedomain.IssueRepository
@@ -60,6 +66,28 @@ func (r *TracingIssueRepository) GetIssue(ctx context.Context, id uuid.UUID) (is
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
 		return issuedomain.Issue{}, fmt.Errorf("get issue: %w", err)
+	}
+	return result, nil
+}
+
+// GetByIDs delegates to inner if it supports GetByIDs, adding an OTel child span.
+func (r *TracingIssueRepository) GetByIDs(ctx context.Context, ids []uuid.UUID) ([]issuedomain.Issue, error) {
+	ctx, span := r.tracer.Start(ctx, "tracker.IssueRepository.GetByIDs")
+	defer span.End()
+
+	repository, ok := r.inner.(issueRepositoryWithGetByIDs)
+	if !ok {
+		err := fmt.Errorf("get issues by ids: inner repository does not implement GetByIDs")
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+		return nil, err
+	}
+
+	result, err := repository.GetByIDs(ctx, ids)
+	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+		return nil, fmt.Errorf("get issues by ids: %w", err)
 	}
 	return result, nil
 }

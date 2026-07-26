@@ -57,6 +57,20 @@ func (r *IssueRepository) GetIssue(ctx context.Context, id uuid.UUID) (issuedoma
 	return issueToDomain(row, []label.Label{}), nil
 }
 
+// GetByIDs retrieves issues matching the given IDs. IDs that do not exist, or do not
+// belong to the caller's workspace, are silently omitted from the result — no error.
+func (r *IssueRepository) GetByIDs(ctx context.Context, ids []uuid.UUID) ([]issuedomain.Issue, error) {
+	queries := trackerdb.New(r.db)
+	rows, err := queries.GetIssuesByIDs(ctx, ids)
+	if err != nil {
+		return []issuedomain.Issue{}, fmt.Errorf("get issues by ids: %w", err)
+	}
+	if len(rows) == 0 {
+		return []issuedomain.Issue{}, nil
+	}
+	return issuesToDomain(rows), nil
+}
+
 // Update persists mutable fields of an existing issue and returns the updated domain model.
 // Returns ErrUpdateConflict if the issue was modified since it was read (optimistic locking).
 func (r *IssueRepository) Update(ctx context.Context, issue issuedomain.Issue) (issuedomain.Issue, error) {

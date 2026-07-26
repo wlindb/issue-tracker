@@ -128,7 +128,7 @@ func issueFromDomain(d issuedomain.Issue) model.Issue {
 	}
 }
 
-func issuesFromDomain(domain []issuedomain.Issue) []model.Issue {
+func IssuesFromDomain(domain []issuedomain.Issue) []model.Issue {
 	items := make([]model.Issue, len(domain))
 	for i, issue := range domain {
 		items[i] = issueFromDomain(issue)

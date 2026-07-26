@@ -26,6 +26,7 @@ import (
 	"github.com/wlindb/issue-tracker/internal/application/auth"
 	"github.com/wlindb/issue-tracker/internal/application/embedding"
 	searchapi "github.com/wlindb/issue-tracker/internal/application/search"
+	"github.com/wlindb/issue-tracker/internal/application/tracker"
 	trackerapi "github.com/wlindb/issue-tracker/internal/application/tracker/api"
 	"github.com/wlindb/issue-tracker/internal/config"
 	commentdomain "github.com/wlindb/issue-tracker/internal/domain/tracker/comment"
@@ -35,6 +36,7 @@ import (
 	userdomain "github.com/wlindb/issue-tracker/internal/domain/tracker/user"
 	workspacedomain "github.com/wlindb/issue-tracker/internal/domain/tracker/workspace"
 	"github.com/wlindb/issue-tracker/internal/infrastructure/db"
+	searchinfra "github.com/wlindb/issue-tracker/internal/infrastructure/search"
 	trackerinfra "github.com/wlindb/issue-tracker/internal/infrastructure/tracker"
 	keycloakpkg "github.com/wlindb/issue-tracker/internal/pkg/keycloak"
 	embeddednats "github.com/wlindb/issue-tracker/internal/pkg/nats"
@@ -61,29 +63,17 @@ func run() error {
 	}
 	defer otelCloser()
 
-	// Run migrations as the superuser before creating the restricted app pool.
-	// Migrations may create roles (e.g. appuser) that the app pool depends on.
-	migrationPool, err := db.New(ctx, cfg.DatabaseURL)
-	if err != nil {
-		return fmt.Errorf("database (migration pool): %w", err)
-	}
-	if err := trackerinfra.Migrate(ctx, migrationPool); err != nil {
-		migrationPool.Close()
-		return fmt.Errorf("tracker migrate: %w", err)
-	}
-	migrationPool.Close()
-
-	pool, err := db.New(ctx, cfg.DatabaseURL,
-		db.WithAppSessionVars(
-			trackerapi.WorkspaceIDFromContext,
-			trackerapi.UserIDFromContext,
-		),
-		db.WithAppRole("appuser"),
-	)
+	pool, err := newTrackerPool(cfg.DatabaseURL)
 	if err != nil {
 		return fmt.Errorf("database: %w", err)
 	}
 	defer pool.Close()
+
+	searchPool, err := newSearchPool(cfg.SearchDatabaseURL)
+	if err != nil {
+		return fmt.Errorf("database (search): %w", err)
+	}
+	defer searchPool.Close()
 
 	tracer := otel.Tracer(cfg.OTELServiceName)
 
@@ -105,7 +95,7 @@ func run() error {
 		return fmt.Errorf("nats auth callout: %w", err)
 	}
 
-	h := newHandler(pool, tracer, workspaceService)
+	h := newHandler(pool, searchPool, tracer, workspaceService)
 
 	e, err := newServer(h, cfg, workspaceService)
 	if err != nil {
@@ -241,7 +231,58 @@ func newEventHandlers(connection *nats.Conn) error {
 	return nil
 }
 
-func newHandler(pool *pgxpool.Pool, tracer trace.Tracer, workspaceService *workspacedomain.WorkspaceService) *api.Handler {
+// newTrackerPool migrates and opens the tracker module's database as the restricted appuser
+// role. Migrations run as the superuser first, since they may create roles (e.g. appuser)
+// that the app pool depends on.
+func newTrackerPool(databaseURL string) (*pgxpool.Pool, error) {
+	ctx := context.Background()
+
+	migrationPool, err := db.New(ctx, databaseURL)
+	if err != nil {
+		return nil, fmt.Errorf("migration pool: %w", err)
+	}
+	if err := trackerinfra.Migrate(ctx, migrationPool); err != nil {
+		migrationPool.Close()
+		return nil, fmt.Errorf("migrate: %w", err)
+	}
+	migrationPool.Close()
+
+	pool, err := db.New(ctx, databaseURL,
+		db.WithAppSessionVars(
+			trackerapi.WorkspaceIDFromContext,
+			trackerapi.UserIDFromContext,
+		),
+		db.WithAppRole("appuser"),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("pool: %w", err)
+	}
+	return pool, nil
+}
+
+// newSearchPool migrates and opens the search module's own database, independent of the
+// tracker pool. The search schema has no RLS/role setup, so no session-var/role options are needed.
+func newSearchPool(searchDatabaseURL string) (*pgxpool.Pool, error) {
+	ctx := context.Background()
+
+	searchMigrationPool, err := db.New(ctx, searchDatabaseURL)
+	if err != nil {
+		return nil, fmt.Errorf("migration pool: %w", err)
+	}
+	if err := searchinfra.Migrate(ctx, searchMigrationPool); err != nil {
+		searchMigrationPool.Close()
+		return nil, fmt.Errorf("migrate: %w", err)
+	}
+	searchMigrationPool.Close()
+
+	searchPool, err := db.New(ctx, searchDatabaseURL)
+	if err != nil {
+		return nil, fmt.Errorf("pool: %w", err)
+	}
+	return searchPool, nil
+}
+
+func newHandler(pool *pgxpool.Pool, searchPool *pgxpool.Pool, tracer trace.Tracer, workspaceService *workspacedomain.WorkspaceService) *api.Handler {
 	projectRepository := trackerinfra.NewTracingProjectRepository(
 		trackerinfra.NewProjectRepository(pool),
 		tracer,
@@ -267,6 +308,11 @@ func newHandler(pool *pgxpool.Pool, tracer trace.Tracer, workspaceService *works
 	labelService := label.NewLabelService(tracingLabelRepository)
 	tracingLabelService := trackerinfra.NewTracingLabelService(labelService, tracer)
 
+	issueDocumentRepository := searchinfra.NewIssueDocumentRepository(searchPool)
+	issueApplicationService := tracker.NewIssueService(issueRepository)
+
+	searchService := searchapi.NewSearcher(issueDocumentRepository, &issueApplicationService)
+
 	return &api.Handler{
 		Handler: trackerapi.Handler{
 			WorkspaceHandler: trackerapi.NewWorkspaceHandler(workspaceService),
@@ -291,6 +337,6 @@ func newHandler(pool *pgxpool.Pool, tracer trace.Tracer, workspaceService *works
 			LabelHandler: trackerapi.NewLabelHandler(tracingLabelService),
 			UserHandler:  trackerapi.NewUserHandler(userdomain.NewUserService(userRepository)),
 		},
-		SearchHandler: searchapi.NewSearchHandler(),
+		SearchHandler: searchapi.NewSearchHandler(searchService),
 	}
 }

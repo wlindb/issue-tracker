@@ -58,7 +58,7 @@ func TestMain(m *testing.M) {
 		fmt.Fprintf(os.Stderr, "start postgres: connect migration pool: %v\n", err)
 		os.Exit(1)
 	}
-	if err := tracker.Migrate(ctx, migrationPool); err != nil {
+	if err = tracker.Migrate(ctx, migrationPool); err != nil {
 		fmt.Fprintf(os.Stderr, "migrate: %v\n", err)
 		os.Exit(1)
 	}
@@ -230,7 +230,7 @@ func Test_List_WithLimit_ReturnsLimitedProjects(t *testing.T) {
 	repository := tracker.NewProjectRepository(testPool)
 	_, ctx := createTestWorkspace(t)
 
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		id := uuid.New()
 		_, err := repository.Create(ctx, projectdomain.Project{
 			ID:         id,
@@ -558,7 +558,7 @@ func Test_ListIssues_WithIssues_ReturnsAllIssues(t *testing.T) {
 	_, ctx := createTestWorkspace(t)
 	projectID := createTestProject(t, ctx)
 
-	for idx := 0; idx < 3; idx++ {
+	for idx := range 3 {
 		_, err := repository.CreateIssue(ctx, issuedomain.Issue{
 			ID:         uuid.New(),
 			Identifier: fmt.Sprintf("list-all-%d-%s", idx, uuid.New().String()[:8]),
@@ -854,6 +854,61 @@ func Test_GetIssue_NonMember_ReturnsNotFound(t *testing.T) {
 
 	require.Error(t, err)
 	assert.ErrorIs(t, err, issuedomain.ErrIssueNotFound)
+}
+
+// — GetByIDs integration tests —
+
+func Test_GetByIDs_ExistingIssues_ReturnsIssues(t *testing.T) {
+	repository := tracker.NewIssueRepository(testPool)
+	_, ctx := createTestWorkspace(t)
+	projectID := createTestProject(t, ctx)
+	first := createTestIssue(t, ctx, projectID)
+	second := createTestIssue(t, ctx, projectID)
+
+	actual, err := repository.GetByIDs(ctx, []uuid.UUID{first.ID, second.ID})
+
+	require.NoError(t, err)
+	require.Len(t, actual, 2)
+	ids := []uuid.UUID{actual[0].ID, actual[1].ID}
+	assert.Contains(t, ids, first.ID)
+	assert.Contains(t, ids, second.ID)
+}
+
+func Test_GetByIDs_PartialMatch_ReturnsFoundIssueOnly(t *testing.T) {
+	repository := tracker.NewIssueRepository(testPool)
+	_, ctx := createTestWorkspace(t)
+	projectID := createTestProject(t, ctx)
+	created := createTestIssue(t, ctx, projectID)
+
+	actual, err := repository.GetByIDs(ctx, []uuid.UUID{created.ID, uuid.New()})
+
+	require.NoError(t, err)
+	require.Len(t, actual, 1)
+	assert.Equal(t, created.ID, actual[0].ID)
+}
+
+func Test_GetByIDs_NonExistentIDs_ReturnsEmptySlice(t *testing.T) {
+	repository := tracker.NewIssueRepository(testPool)
+	_, ctx := createTestWorkspace(t)
+
+	actual, err := repository.GetByIDs(ctx, []uuid.UUID{uuid.New(), uuid.New()})
+
+	require.NoError(t, err)
+	assert.NotNil(t, actual)
+	assert.Empty(t, actual)
+}
+
+func Test_GetByIDs_CrossWorkspaceIsolation_ExcludesOtherWorkspaceIssues(t *testing.T) {
+	repository := tracker.NewIssueRepository(testPool)
+	_, ctxA := createTestWorkspace(t)
+	_, ctxB := createTestWorkspace(t)
+	projectID := createTestProject(t, ctxA)
+	created := createTestIssue(t, ctxA, projectID)
+
+	actual, err := repository.GetByIDs(ctxB, []uuid.UUID{created.ID})
+
+	require.NoError(t, err)
+	assert.Empty(t, actual)
 }
 
 // — ListMembers integration tests —

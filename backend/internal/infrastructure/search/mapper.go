@@ -16,12 +16,12 @@ func issueDocumentToDomain(row searchdb.IssueDocument) issuedocumentdomain.Issue
 	}
 }
 
-func issueDocumentsToDomain(rows []searchdb.IssueDocument) []issuedocumentdomain.IssueDocument {
+func issueDocumentsToDomain(rows []searchdb.IssueDocument) issuedocumentdomain.IssueDocuments {
 	documents := make([]issuedocumentdomain.IssueDocument, len(rows))
 	for i, row := range rows {
 		documents[i] = issueDocumentToDomain(row)
 	}
-	return documents
+	return issuedocumentdomain.IssueDocuments{Documents: documents}
 }
 
 func createIssueDocumentParamsFromDomain(document issuedocumentdomain.IssueDocument) searchdb.CreateIssueDocumentParams {

@@ -18,6 +18,11 @@ SELECT * FROM issues
 WHERE id = @id
   AND workspace_id = current_setting('app.workspace_id')::uuid;
 
+-- name: GetIssuesByIDs :many
+SELECT * FROM issues
+WHERE id = ANY(@ids::uuid[])
+  AND workspace_id = current_setting('app.workspace_id')::uuid;
+
 -- name: UpdateIssue :one
 UPDATE issues
 SET title       = @title,

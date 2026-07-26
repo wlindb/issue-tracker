@@ -320,6 +320,114 @@ func Test_Update_QueryError_ReturnsWrappedError(t *testing.T) {
 	mockDatabase.AssertExpectations(t)
 }
 
+// — GetByIDs unit tests —
+
+func Test_GetByIDs_Success_ReturnsDomainIssues(t *testing.T) {
+	projectID := uuid.New()
+	now := time.Now().UTC()
+
+	issueID1, issueID2 := uuid.New(), uuid.New()
+	returnedRows := []trackerdb.Issue{
+		{
+			ID:         issueID1,
+			Identifier: "issue-1",
+			Title:      "First issue",
+			Status:     "backlog",
+			Priority:   "none",
+			ProjectID:  projectID,
+			ReporterID: uuid.New(),
+			CreatedAt:  pgtype.Timestamptz{Time: now, Valid: true},
+			UpdatedAt:  pgtype.Timestamptz{Time: now, Valid: true},
+		},
+		{
+			ID:         issueID2,
+			Identifier: "issue-2",
+			Title:      "Second issue",
+			Status:     "todo",
+			Priority:   "high",
+			ProjectID:  projectID,
+			ReporterID: uuid.New(),
+			CreatedAt:  pgtype.Timestamptz{Time: now, Valid: true},
+			UpdatedAt:  pgtype.Timestamptz{Time: now, Valid: true},
+		},
+	}
+
+	mockDatabase := new(mockDBTX)
+	mockDatabase.On("Query", mock.Anything, mock.Anything, mock.Anything).
+		Return(&mockRows{issues: returnedRows}, nil)
+	repository := &IssueRepository{db: mockDatabase}
+
+	actual, err := repository.GetByIDs(context.Background(), []uuid.UUID{issueID1, issueID2})
+
+	require.NoError(t, err)
+	require.Len(t, actual, 2)
+	assert.Equal(t, "First issue", actual[0].Title)
+	assert.Equal(t, "Second issue", actual[1].Title)
+	mockDatabase.AssertExpectations(t)
+}
+
+func Test_GetByIDs_PartialMatch_ReturnsFoundSubset(t *testing.T) {
+	projectID := uuid.New()
+	now := time.Now().UTC()
+	foundID := uuid.New()
+
+	returnedRows := []trackerdb.Issue{
+		{
+			ID:         foundID,
+			Identifier: "issue-1",
+			Title:      "Found issue",
+			Status:     "backlog",
+			Priority:   "none",
+			ProjectID:  projectID,
+			ReporterID: uuid.New(),
+			CreatedAt:  pgtype.Timestamptz{Time: now, Valid: true},
+			UpdatedAt:  pgtype.Timestamptz{Time: now, Valid: true},
+		},
+	}
+
+	mockDatabase := new(mockDBTX)
+	mockDatabase.On("Query", mock.Anything, mock.Anything, mock.Anything).
+		Return(&mockRows{issues: returnedRows}, nil)
+	repository := &IssueRepository{db: mockDatabase}
+
+	actual, err := repository.GetByIDs(context.Background(), []uuid.UUID{foundID, uuid.New()})
+
+	require.NoError(t, err)
+	require.Len(t, actual, 1)
+	assert.Equal(t, foundID, actual[0].ID)
+	mockDatabase.AssertExpectations(t)
+}
+
+func Test_GetByIDs_EmptyResult_ReturnsEmptySlice(t *testing.T) {
+	mockDatabase := new(mockDBTX)
+	mockDatabase.On("Query", mock.Anything, mock.Anything, mock.Anything).
+		Return(&mockRows{}, nil)
+	repository := &IssueRepository{db: mockDatabase}
+
+	actual, err := repository.GetByIDs(context.Background(), []uuid.UUID{uuid.New()})
+
+	require.NoError(t, err)
+	assert.NotNil(t, actual)
+	assert.Empty(t, actual)
+	mockDatabase.AssertExpectations(t)
+}
+
+func Test_GetByIDs_QueryError_ReturnsWrappedError(t *testing.T) {
+	dbErr := errors.New("connection refused")
+
+	mockDatabase := new(mockDBTX)
+	mockDatabase.On("Query", mock.Anything, mock.Anything, mock.Anything).
+		Return(nil, dbErr)
+	repository := &IssueRepository{db: mockDatabase}
+
+	_, err := repository.GetByIDs(context.Background(), []uuid.UUID{uuid.New()})
+
+	require.Error(t, err)
+	assert.ErrorIs(t, err, dbErr)
+	assert.Contains(t, err.Error(), "get issues by ids")
+	mockDatabase.AssertExpectations(t)
+}
+
 // — AddLabel unit tests —
 
 func Test_AddLabel_Success_ReturnsNil(t *testing.T) {

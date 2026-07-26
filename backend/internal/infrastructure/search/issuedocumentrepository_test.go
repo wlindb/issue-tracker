@@ -74,6 +74,7 @@ func (r *mockIssueDocumentRows) Next() bool {
 	r.index++
 	return r.index <= len(r.documents)
 }
+
 func (r *mockIssueDocumentRows) Scan(dest ...any) error {
 	return (&mockIssueDocumentRow{document: r.documents[r.index-1]}).Scan(dest...)
 }
@@ -204,9 +205,9 @@ func Test_Find_Success_ReturnsDomainIssueDocuments(t *testing.T) {
 	actual, err := repository.Find(context.Background(), "backend")
 
 	require.NoError(t, err)
-	require.Len(t, actual, 2)
-	assert.Equal(t, firstID, actual[0].ID)
-	assert.Equal(t, secondID, actual[1].ID)
+	require.Len(t, actual.Documents, 2)
+	assert.Equal(t, firstID, actual.Documents[0].ID)
+	assert.Equal(t, secondID, actual.Documents[1].ID)
 	mockDatabase.AssertExpectations(t)
 }
 

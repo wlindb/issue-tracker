@@ -7,10 +7,11 @@ import (
 )
 
 type Config struct {
-	DatabaseURL     string
-	ServerAddr      string
-	JWKSUrl         string
-	OTELServiceName string
+	DatabaseURL       string
+	SearchDatabaseURL string
+	ServerAddr        string
+	JWKSUrl           string
+	OTELServiceName   string
 	// NATSPort is the port the embedded NATS server listens on for external clients.
 	// 0 means loopback-only on a random port (internal use only).
 	NATSPort int
@@ -23,6 +24,11 @@ func Load() (*Config, error) {
 	databaseURL := os.Getenv("DATABASE_URL")
 	if databaseURL == "" {
 		return nil, fmt.Errorf("DATABASE_URL is required")
+	}
+
+	searchDatabaseURL := os.Getenv("SEARCH_DATABASE_URL")
+	if searchDatabaseURL == "" {
+		return nil, fmt.Errorf("SEARCH_DATABASE_URL is required")
 	}
 
 	serverAddr := os.Getenv("SERVER_ADDR")
@@ -60,6 +66,7 @@ func Load() (*Config, error) {
 
 	return &Config{
 		DatabaseURL:       databaseURL,
+		SearchDatabaseURL: searchDatabaseURL,
 		ServerAddr:        serverAddr,
 		JWKSUrl:           jwksURL,
 		OTELServiceName:   serviceName,

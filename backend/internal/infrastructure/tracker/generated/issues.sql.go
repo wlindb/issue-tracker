@@ -117,6 +117,45 @@ func (q *Queries) GetIssue(ctx context.Context, id uuid.UUID) (Issue, error) {
 	return i, err
 }
 
+const getIssuesByIDs = `-- name: GetIssuesByIDs :many
+SELECT id, identifier, title, description, status, priority, assignee_id, project_id, reporter_id, created_at, updated_at, workspace_id FROM issues
+WHERE id = ANY($1::uuid[])
+  AND workspace_id = current_setting('app.workspace_id')::uuid
+`
+
+func (q *Queries) GetIssuesByIDs(ctx context.Context, ids []uuid.UUID) ([]Issue, error) {
+	rows, err := q.db.Query(ctx, getIssuesByIDs, ids)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Issue
+	for rows.Next() {
+		var i Issue
+		if err := rows.Scan(
+			&i.ID,
+			&i.Identifier,
+			&i.Title,
+			&i.Description,
+			&i.Status,
+			&i.Priority,
+			&i.AssigneeID,
+			&i.ProjectID,
+			&i.ReporterID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.WorkspaceID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listIssues = `-- name: ListIssues :many
 SELECT id, identifier, title, description, status, priority, assignee_id, project_id, reporter_id, created_at, updated_at, workspace_id FROM issues
 WHERE project_id = $1
