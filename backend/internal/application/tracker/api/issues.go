@@ -58,7 +58,7 @@ func (h *Handler) ListIssues(ctx context.Context, req model.ListIssuesRequestObj
 		return nil, fmt.Errorf("list issues: %w", err)
 	}
 	return model.ListIssues200JSONResponse{
-		Items:      issuesFromDomain(page.Items),
+		Items:      IssuesFromDomain(page.Items),
 		NextCursor: page.NextCursor,
 	}, nil
 }

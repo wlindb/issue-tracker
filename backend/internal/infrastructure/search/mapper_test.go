@@ -42,7 +42,7 @@ func Test_issueDocumentsToDomain_Empty_ReturnsEmptySlice(t *testing.T) {
 	actual := issueDocumentsToDomain([]searchdb.IssueDocument{})
 
 	assert.NotNil(t, actual)
-	assert.Empty(t, actual)
+	assert.Empty(t, actual.Documents)
 }
 
 func Test_issueDocumentsToDomain_MultipleRows_ReturnsMappedIssueDocuments(t *testing.T) {
@@ -69,11 +69,11 @@ func Test_issueDocumentsToDomain_MultipleRows_ReturnsMappedIssueDocuments(t *tes
 
 	actual := issueDocumentsToDomain(rows)
 
-	require.Len(t, actual, 2)
-	assert.Equal(t, firstID, actual[0].ID)
-	assert.Equal(t, "First", actual[0].Title)
-	assert.Equal(t, secondID, actual[1].ID)
-	assert.Equal(t, "Second", actual[1].Title)
+	require.Len(t, actual.Documents, 2)
+	assert.Equal(t, firstID, actual.Documents[0].ID)
+	assert.Equal(t, "First", actual.Documents[0].Title)
+	assert.Equal(t, secondID, actual.Documents[1].ID)
+	assert.Equal(t, "Second", actual.Documents[1].Title)
 }
 
 func Test_createIssueDocumentParamsFromDomain_IssueDocument_ReturnsParams(t *testing.T) {

@@ -3,6 +3,7 @@
 package search_test
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	rootapi "github.com/wlindb/issue-tracker/internal/application/api"
@@ -20,10 +22,22 @@ import (
 
 var testWorkspaceID = uuid.MustParse("00000000-0000-0000-0000-000000000099")
 
-func newSearchTestServer(t *testing.T) *echo.Echo {
+type mockSearchService struct {
+	mock.Mock
+}
+
+func (m *mockSearchService) SearchIssues(ctx context.Context, description string) ([]model.Issue, error) {
+	args := m.Called(ctx, description)
+	if i, ok := args.Get(0).([]model.Issue); ok {
+		return i, args.Error(1)
+	}
+	return nil, args.Error(1)
+}
+
+func newSearchTestServer(t *testing.T, service search.SearchService) *echo.Echo {
 	t.Helper()
 	e := echo.New()
-	h := &rootapi.Handler{SearchHandler: search.NewSearchHandler()}
+	h := &rootapi.Handler{SearchHandler: search.NewSearchHandler(service)}
 	strict := model.NewStrictHandler(h, nil)
 	model.RegisterHandlersWithBaseURL(e, strict, "/api/v1")
 	return e
@@ -34,7 +48,9 @@ func searchIssuesPath() string {
 }
 
 func Test_SearchIssues_MissingBody_ReturnsBadRequest(t *testing.T) {
-	e := newSearchTestServer(t)
+	service := &mockSearchService{}
+
+	e := newSearchTestServer(t, service)
 
 	req := httptest.NewRequest(http.MethodPost, searchIssuesPath(), nil)
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
@@ -42,10 +58,13 @@ func Test_SearchIssues_MissingBody_ReturnsBadRequest(t *testing.T) {
 	e.ServeHTTP(rec, req)
 
 	require.Equal(t, http.StatusBadRequest, rec.Code)
+	service.AssertNotCalled(t, "SearchIssues")
 }
 
 func Test_SearchIssues_MissingQuery_ReturnsBadRequest(t *testing.T) {
-	e := newSearchTestServer(t)
+	service := &mockSearchService{}
+
+	e := newSearchTestServer(t, service)
 
 	req := httptest.NewRequest(http.MethodPost, searchIssuesPath(), strings.NewReader(`{}`))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
@@ -53,10 +72,13 @@ func Test_SearchIssues_MissingQuery_ReturnsBadRequest(t *testing.T) {
 	e.ServeHTTP(rec, req)
 
 	require.Equal(t, http.StatusBadRequest, rec.Code)
+	service.AssertNotCalled(t, "SearchIssues")
 }
 
 func Test_SearchIssues_EmptyQuery_ReturnsBadRequest(t *testing.T) {
-	e := newSearchTestServer(t)
+	service := &mockSearchService{}
+
+	e := newSearchTestServer(t, service)
 
 	req := httptest.NewRequest(http.MethodPost, searchIssuesPath(), strings.NewReader(`{"query":""}`))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
@@ -64,10 +86,15 @@ func Test_SearchIssues_EmptyQuery_ReturnsBadRequest(t *testing.T) {
 	e.ServeHTTP(rec, req)
 
 	require.Equal(t, http.StatusBadRequest, rec.Code)
+	service.AssertNotCalled(t, "SearchIssues")
 }
 
 func Test_SearchIssues_ValidQuery_ReturnsEmptyIssuePage(t *testing.T) {
-	e := newSearchTestServer(t)
+	service := &mockSearchService{}
+	service.On("SearchIssues", mock.Anything, mock.Anything).
+		Return([]model.Issue{}, nil)
+
+	e := newSearchTestServer(t, service)
 
 	req := httptest.NewRequest(http.MethodPost, searchIssuesPath(), strings.NewReader(`{"query":"bug"}`))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
@@ -80,4 +107,5 @@ func Test_SearchIssues_ValidQuery_ReturnsEmptyIssuePage(t *testing.T) {
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &actual))
 	require.Empty(t, actual.Items)
 	require.Nil(t, actual.NextCursor)
+	service.AssertExpectations(t)
 }

@@ -1,3 +1,4 @@
+// Package issuedocument
 package issuedocument
 
 import (
@@ -7,7 +8,18 @@ import (
 	"github.com/google/uuid"
 )
 
-// IssueDocument is a search-indexed representation of an issue.
+type IssueDocuments struct {
+	Documents []IssueDocument
+}
+
+func (documents IssueDocuments) IDs() []uuid.UUID {
+	ids := make([]uuid.UUID, len(documents.Documents))
+	for i, id := range documents.Documents {
+		ids[i] = id.ID
+	}
+	return ids
+}
+
 type IssueDocument struct {
 	ID          uuid.UUID
 	WorkspaceID uuid.UUID
@@ -21,5 +33,5 @@ type IssueDocument struct {
 type IssueDocumentRepository interface {
 	Create(ctx context.Context, document IssueDocument) (IssueDocument, error)
 	Update(ctx context.Context, document IssueDocument) (IssueDocument, error)
-	Find(ctx context.Context, description string) ([]IssueDocument, error)
+	Find(ctx context.Context, description string) (IssueDocuments, error)
 }
