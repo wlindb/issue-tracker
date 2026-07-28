@@ -24,7 +24,6 @@ import (
 
 	"github.com/wlindb/issue-tracker/internal/application/api"
 	"github.com/wlindb/issue-tracker/internal/application/auth"
-	"github.com/wlindb/issue-tracker/internal/application/embedding"
 	searchapi "github.com/wlindb/issue-tracker/internal/application/search"
 	"github.com/wlindb/issue-tracker/internal/application/tracker"
 	trackerapi "github.com/wlindb/issue-tracker/internal/application/tracker/api"
@@ -83,7 +82,7 @@ func run() error {
 	}
 	defer setup.closer()
 
-	if err := newEventHandlers(setup.connection); err != nil {
+	if err = newEventHandlers(setup.connection); err != nil {
 		return err
 	}
 
@@ -91,7 +90,7 @@ func run() error {
 		trackerinfra.NewTracingWorkspaceRepository(trackerinfra.NewWorkspaceRepository(pool), tracer),
 	)
 
-	if err := newNATSAuthCallout(setup, workspaceService, cfg.JWKSUrl); err != nil {
+	if err = newNATSAuthCallout(setup, workspaceService, cfg.JWKSUrl); err != nil {
 		return fmt.Errorf("nats auth callout: %w", err)
 	}
 
@@ -218,13 +217,6 @@ func mustGenerateRandomHex(length int) string {
 }
 
 func newEventHandlers(connection *nats.Conn) error {
-	if _, err := embedding.NewEmbeddingHandler(
-		embedding.WithIssueCreated(
-			embeddednats.NewNATSEventSubscriber[model.IssueCreatedEvent](connection, embeddednats.IssueCreatedSubjectAll),
-		),
-	); err != nil {
-		return fmt.Errorf("create embedding handler: %w", err)
-	}
 	if _, err := searchapi.NewSearchEventHandler(
 		searchapi.WithIssueCreated(
 			embeddednats.NewNATSEventSubscriber[model.IssueCreatedEvent](connection, embeddednats.IssueCreatedSubjectAll),
@@ -254,7 +246,7 @@ func newTrackerPool(databaseURL string) (*pgxpool.Pool, error) {
 	if err != nil {
 		return nil, fmt.Errorf("migration pool: %w", err)
 	}
-	if err := trackerinfra.Migrate(ctx, migrationPool); err != nil {
+	if err = trackerinfra.Migrate(ctx, migrationPool); err != nil {
 		migrationPool.Close()
 		return nil, fmt.Errorf("migrate: %w", err)
 	}
@@ -282,7 +274,7 @@ func newSearchPool(searchDatabaseURL string) (*pgxpool.Pool, error) {
 	if err != nil {
 		return nil, fmt.Errorf("migration pool: %w", err)
 	}
-	if err := searchinfra.Migrate(ctx, searchMigrationPool); err != nil {
+	if err = searchinfra.Migrate(ctx, searchMigrationPool); err != nil {
 		searchMigrationPool.Close()
 		return nil, fmt.Errorf("migrate: %w", err)
 	}
