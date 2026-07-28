@@ -265,8 +265,6 @@ func newTrackerPool(databaseURL string) (*pgxpool.Pool, error) {
 	return pool, nil
 }
 
-// newSearchPool migrates and opens the search module's own database, independent of the
-// tracker pool. The search schema has no RLS/role setup, so no session-var/role options are needed.
 func newSearchPool(searchDatabaseURL string) (*pgxpool.Pool, error) {
 	ctx := context.Background()
 
@@ -280,7 +278,12 @@ func newSearchPool(searchDatabaseURL string) (*pgxpool.Pool, error) {
 	}
 	searchMigrationPool.Close()
 
-	searchPool, err := db.New(ctx, searchDatabaseURL)
+	searchPool, err := db.New(ctx, searchDatabaseURL,
+		db.WithAppSessionVars(
+			trackerapi.WorkspaceIDFromContext,
+			trackerapi.UserIDFromContext,
+		),
+	)
 	if err != nil {
 		return nil, fmt.Errorf("pool: %w", err)
 	}

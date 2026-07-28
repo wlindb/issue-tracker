@@ -13,24 +13,19 @@ import (
 
 const createIssueDocument = `-- name: CreateIssueDocument :one
 INSERT INTO issue_documents (id, workspace_id, title, description, created_at, updated_at)
-VALUES ($1, $2, $3, $4, NOW(), NOW())
+VALUES ($1, current_setting('app.workspace_id')::uuid, $2, $3, NOW(), NOW())
+ON CONFLICT (id) DO NOTHING
 RETURNING id, workspace_id, title, description, created_at, updated_at
 `
 
 type CreateIssueDocumentParams struct {
 	ID          uuid.UUID
-	WorkspaceID uuid.UUID
 	Title       string
 	Description string
 }
 
 func (q *Queries) CreateIssueDocument(ctx context.Context, arg CreateIssueDocumentParams) (IssueDocument, error) {
-	row := q.db.QueryRow(ctx, createIssueDocument,
-		arg.ID,
-		arg.WorkspaceID,
-		arg.Title,
-		arg.Description,
-	)
+	row := q.db.QueryRow(ctx, createIssueDocument, arg.ID, arg.Title, arg.Description)
 	var i IssueDocument
 	err := row.Scan(
 		&i.ID,

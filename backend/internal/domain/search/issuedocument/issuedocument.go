@@ -22,10 +22,8 @@ func (documents IssueDocuments) IDs() []uuid.UUID {
 
 type IssueDocument struct {
 	ID          uuid.UUID
-	WorkspaceID uuid.UUID
 	Title       string
 	Description string
-	CreatedAt   time.Time
 	UpdatedAt   time.Time
 }
 

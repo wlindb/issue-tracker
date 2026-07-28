@@ -9,6 +9,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
@@ -17,6 +18,20 @@ import (
 	infradb "github.com/wlindb/issue-tracker/internal/infrastructure/db"
 	"github.com/wlindb/issue-tracker/internal/infrastructure/search"
 )
+
+type testContextKey string
+
+const (
+	testWorkspaceIDKey testContextKey = "workspace_id"
+	testUserIDKey      testContextKey = "user_id"
+)
+
+func withWorkspaceContext(workspaceID uuid.UUID, userID uuid.UUID) context.Context {
+	ctx := context.Background()
+	ctx = context.WithValue(ctx, testWorkspaceIDKey, workspaceID)
+	ctx = context.WithValue(ctx, testUserIDKey, userID)
+	return ctx
+}
 
 var testPool *pgxpool.Pool
 
@@ -39,7 +54,24 @@ func TestMain(m *testing.M) {
 	}
 	migrationPool.Close()
 
-	testPool, err = infradb.New(ctx, dsn)
+	testPool, err = infradb.New(ctx, dsn,
+		infradb.WithAppSessionVars(
+			func(ctx context.Context) (uuid.UUID, error) {
+				id, ok := ctx.Value(testWorkspaceIDKey).(uuid.UUID)
+				if !ok || id == uuid.Nil {
+					return uuid.Nil, errors.New("missing workspace ID")
+				}
+				return id, nil
+			},
+			func(ctx context.Context) (uuid.UUID, error) {
+				id, ok := ctx.Value(testUserIDKey).(uuid.UUID)
+				if !ok || id == uuid.Nil {
+					return uuid.Nil, errors.New("missing user ID")
+				}
+				return id, nil
+			},
+		),
+	)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "start postgres: connect app pool: %v\n", err)
 		os.Exit(1)
