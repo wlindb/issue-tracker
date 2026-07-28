@@ -225,6 +225,19 @@ func newEventHandlers(connection *nats.Conn) error {
 	); err != nil {
 		return fmt.Errorf("create embedding handler: %w", err)
 	}
+	if _, err := searchapi.NewSearchEventHandler(
+		searchapi.WithIssueCreated(
+			embeddednats.NewNATSEventSubscriber[model.IssueCreatedEvent](connection, embeddednats.IssueCreatedSubjectAll),
+		),
+		searchapi.WithIssueTitleUpdated(
+			embeddednats.NewNATSEventSubscriber[model.IssueTitleUpdatedEvent](connection, embeddednats.IssueTitleUpdatedSubjectAll),
+		),
+		searchapi.WithIssueDescriptionUpdated(
+			embeddednats.NewNATSEventSubscriber[model.IssueDescriptionUpdatedEvent](connection, embeddednats.IssueDescriptionUpdatedSubjectAll),
+		),
+	); err != nil {
+		return fmt.Errorf("create search event handler: %w", err)
+	}
 	if err := trackerinfra.NewEventPublisher(connection); err != nil {
 		return fmt.Errorf("create event publisher: %w", err)
 	}
