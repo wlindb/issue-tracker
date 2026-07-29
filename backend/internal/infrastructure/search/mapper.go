@@ -8,10 +8,8 @@ import (
 func issueDocumentToDomain(row searchdb.IssueDocument) issuedocumentdomain.IssueDocument {
 	return issuedocumentdomain.IssueDocument{
 		ID:          row.ID,
-		WorkspaceID: row.WorkspaceID,
 		Title:       row.Title,
 		Description: row.Description,
-		CreatedAt:   row.CreatedAt.Time,
 		UpdatedAt:   row.UpdatedAt.Time,
 	}
 }
@@ -27,7 +25,6 @@ func issueDocumentsToDomain(rows []searchdb.IssueDocument) issuedocumentdomain.I
 func createIssueDocumentParamsFromDomain(document issuedocumentdomain.IssueDocument) searchdb.CreateIssueDocumentParams {
 	return searchdb.CreateIssueDocumentParams{
 		ID:          document.ID,
-		WorkspaceID: document.WorkspaceID,
 		Title:       document.Title,
 		Description: document.Description,
 	}

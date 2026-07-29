@@ -31,10 +31,8 @@ func Test_issueDocumentToDomain_Row_ReturnsDomainIssueDocument(t *testing.T) {
 	actual := issueDocumentToDomain(row)
 
 	assert.Equal(t, id, actual.ID)
-	assert.Equal(t, workspaceID, actual.WorkspaceID)
 	assert.Equal(t, "Fix bug", actual.Title)
 	assert.Equal(t, "detailed description", actual.Description)
-	assert.Equal(t, now, actual.CreatedAt)
 	assert.Equal(t, now, actual.UpdatedAt)
 }
 
@@ -78,10 +76,8 @@ func Test_issueDocumentsToDomain_MultipleRows_ReturnsMappedIssueDocuments(t *tes
 
 func Test_createIssueDocumentParamsFromDomain_IssueDocument_ReturnsParams(t *testing.T) {
 	id := uuid.New()
-	workspaceID := uuid.New()
 	domainDocument := issuedocumentdomain.IssueDocument{
 		ID:          id,
-		WorkspaceID: workspaceID,
 		Title:       "Title",
 		Description: "Description",
 	}
@@ -89,7 +85,6 @@ func Test_createIssueDocumentParamsFromDomain_IssueDocument_ReturnsParams(t *tes
 	actual := createIssueDocumentParamsFromDomain(domainDocument)
 
 	assert.Equal(t, id, actual.ID)
-	assert.Equal(t, workspaceID, actual.WorkspaceID)
 	assert.Equal(t, "Title", actual.Title)
 	assert.Equal(t, "Description", actual.Description)
 }
@@ -98,7 +93,6 @@ func Test_updateIssueDocumentParamsFromDomain_IssueDocument_ReturnsParams(t *tes
 	id := uuid.New()
 	domainDocument := issuedocumentdomain.IssueDocument{
 		ID:          id,
-		WorkspaceID: uuid.New(),
 		Title:       "Updated title",
 		Description: "Updated description",
 	}

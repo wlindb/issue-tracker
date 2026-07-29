@@ -103,7 +103,6 @@ func Test_Create_Success_ReturnsDomainIssueDocument(t *testing.T) {
 
 	actual, err := repository.Create(context.Background(), issuedocumentdomain.IssueDocument{
 		ID:          id,
-		WorkspaceID: workspaceID,
 		Title:       "Fix bug",
 		Description: "detailed description",
 	})
@@ -112,6 +111,38 @@ func Test_Create_Success_ReturnsDomainIssueDocument(t *testing.T) {
 	assert.Equal(t, id, actual.ID)
 	assert.Equal(t, "Fix bug", actual.Title)
 	assert.Equal(t, "detailed description", actual.Description)
+	mockDatabase.AssertExpectations(t)
+}
+
+func Test_Create_DuplicateID_ReturnsExistingDocumentNoError(t *testing.T) {
+	id := uuid.New()
+	now := time.Now().UTC()
+	existingRow := searchdb.IssueDocument{
+		ID:          id,
+		Title:       "Original title",
+		Description: "Original description",
+		CreatedAt:   pgtype.Timestamptz{Time: now, Valid: true},
+		UpdatedAt:   pgtype.Timestamptz{Time: now, Valid: true},
+	}
+
+	mockDatabase := new(mockDBTX)
+	mockDatabase.On("QueryRow", mock.Anything, mock.Anything, mock.Anything).
+		Return(&mockIssueDocumentRow{err: pgx.ErrNoRows}).Once()
+	mockDatabase.On("QueryRow", mock.Anything, mock.Anything, mock.Anything).
+		Return(&mockIssueDocumentRow{document: existingRow}).Once()
+
+	repository := &IssueDocumentRepository{db: mockDatabase}
+
+	actual, err := repository.Create(context.Background(), issuedocumentdomain.IssueDocument{
+		ID:          id,
+		Title:       "Retried title",
+		Description: "Retried description",
+	})
+
+	require.NoError(t, err)
+	assert.Equal(t, id, actual.ID)
+	assert.Equal(t, "Original title", actual.Title)
+	assert.Equal(t, "Original description", actual.Description)
 	mockDatabase.AssertExpectations(t)
 }
 
