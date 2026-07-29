@@ -453,8 +453,8 @@ export const searchIssues = (
     workspaceId: string,
     searchIssueRequest: SearchIssueRequest,
  ) => {
-      return customFetch<unknown>(
-      {url: `/api/v1/workspaces/${workspaceId}/issues/search`, method: 'POST',
+      return customFetch<IssuePage>(
+      {url: `/api/v1/workspaces/${workspaceId}/search/issues`, method: 'POST',
       headers: {'Content-Type': 'application/json', },
       data: searchIssueRequest
     },

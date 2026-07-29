@@ -1,5 +1,5 @@
-import { useMemo } from 'react'
-import { type Issue } from '@/api/generated/issueTrackerAPI'
+import { useEffect, useState } from 'react'
+import { searchIssues, type Issue } from '@/api/generated/issueTrackerAPI'
 import { useDebounce } from './useDebounce'
 
 const DEBOUNCE_MS = 300
@@ -7,28 +7,52 @@ const DEBOUNCE_MS = 300
 interface UseIssueSearchResult {
   results: Issue[]
   isPending: boolean
+  error: string | null
 }
 
 /**
- * Searches issues by query string.
- *
- * Currently performs client-side filtering. To switch to a backend search,
- * replace the `useMemo` block with a data-fetching call (e.g. useQuery) using
- * `debouncedQuery` as the search parameter. The returned interface is unchanged.
+ * Searches workspace issues by title via the backend, debounced.
  */
-export function useIssueSearch(issues: Issue[], query: string): UseIssueSearchResult {
+export function useIssueSearch(workspaceId: string, query: string): UseIssueSearchResult {
   const debouncedQuery = useDebounce(query, DEBOUNCE_MS)
   const isPending = query !== debouncedQuery
+  const [results, setResults] = useState<Issue[]>([])
+  const [error, setError] = useState<string | null>(null)
+  const hasActiveQuery = Boolean(workspaceId && debouncedQuery)
 
-  const results = useMemo(() => {
-    const normalized = debouncedQuery.trim().toLowerCase()
-    if (!normalized) return issues
+  useEffect(() => {
+    if (!workspaceId || !debouncedQuery) {
+      return
+    }
 
-    return issues.filter(
-      (issue) =>
-        issue.title.toLowerCase().includes(normalized),
-    )
-  }, [issues, debouncedQuery])
+    let cancelled = false
 
-  return { results, isPending }
+    const search = async () => {
+      try {
+        const page = await searchIssues(workspaceId, { query: debouncedQuery })
+        if (cancelled) {
+          return
+        }
+        setResults(page.items)
+        setError(null)
+      } catch {
+        if (cancelled) {
+          return
+        }
+        setError('Failed to search issues.')
+      }
+    }
+
+    search()
+
+    return () => {
+      cancelled = true
+    }
+  }, [workspaceId, debouncedQuery])
+
+  return {
+    results: hasActiveQuery ? results : [],
+    isPending,
+    error: hasActiveQuery ? error : null,
+  }
 }
