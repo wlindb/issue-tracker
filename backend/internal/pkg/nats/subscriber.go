@@ -10,24 +10,26 @@ import (
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 
+	key "github.com/wlindb/issue-tracker/internal/pkg/context"
 	"github.com/wlindb/issue-tracker/internal/pkg/domain/event"
 )
 
 type NATSEventSubscriber[T any] struct {
 	connection *natsgo.Conn
-	subject    string
+	subject    WorkspaceSubject
 }
 
-func NewNATSEventSubscriber[T any](connection *natsgo.Conn, subject string) NATSEventSubscriber[T] {
+func NewNATSEventSubscriber[T any](connection *natsgo.Conn, subject WorkspaceSubject) NATSEventSubscriber[T] {
 	return NATSEventSubscriber[T]{connection: connection, subject: subject}
 }
 
 func (s NATSEventSubscriber[T]) Subscribe(handler event.Subscriber[T]) error {
 	tracer := otel.Tracer("nats-subscriber")
+	allSubject := s.subject.All()
 
-	_, err := s.connection.Subscribe(s.subject, func(message *natsgo.Msg) {
+	_, err := s.connection.Subscribe(allSubject, func(message *natsgo.Msg) {
 		ctx := otel.GetTextMapPropagator().Extract(context.Background(), natsHeaderCarrier(message.Header))
-		ctx, span := tracer.Start(ctx, s.subject, trace.WithSpanKind(trace.SpanKindConsumer))
+		ctx, span := tracer.Start(ctx, allSubject, trace.WithSpanKind(trace.SpanKindConsumer))
 		defer span.End()
 
 		var event T
@@ -37,6 +39,14 @@ func (s NATSEventSubscriber[T]) Subscribe(handler event.Subscriber[T]) error {
 			return
 		}
 
+		workspaceID, err := s.subject.WorkspaceID(message.Subject)
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, "failed to parse workspace id")
+			return
+		}
+		ctx = context.WithValue(ctx, key.WorkspaceID, workspaceID)
+
 		if err := handler(ctx, event); err != nil {
 			span.RecordError(err)
 			span.SetStatus(codes.Error, "handler error")
@@ -44,7 +54,7 @@ func (s NATSEventSubscriber[T]) Subscribe(handler event.Subscriber[T]) error {
 		}
 	})
 	if err != nil {
-		return fmt.Errorf("subscribe subject %s: %w", s.subject, err)
+		return fmt.Errorf("subscribe subject %s: %w", allSubject, err)
 	}
 
 	return nil

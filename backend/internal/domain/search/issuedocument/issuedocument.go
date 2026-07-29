@@ -27,6 +27,15 @@ type IssueDocument struct {
 	UpdatedAt   time.Time
 }
 
+func NewIssueDocument(id uuid.UUID, title string, description string, updatedAt time.Time) IssueDocument {
+	return IssueDocument{
+		ID:          id,
+		Title:       title,
+		Description: description,
+		UpdatedAt:   updatedAt,
+	}
+}
+
 // IssueDocumentRepository defines the persistence interface for issue documents.
 type IssueDocumentRepository interface {
 	Create(ctx context.Context, document IssueDocument) (IssueDocument, error)
