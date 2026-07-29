@@ -28,6 +28,7 @@ import (
 	"github.com/wlindb/issue-tracker/internal/application/tracker"
 	trackerapi "github.com/wlindb/issue-tracker/internal/application/tracker/api"
 	"github.com/wlindb/issue-tracker/internal/config"
+	issuedocumentdomain "github.com/wlindb/issue-tracker/internal/domain/search/issuedocument"
 	commentdomain "github.com/wlindb/issue-tracker/internal/domain/tracker/comment"
 	"github.com/wlindb/issue-tracker/internal/domain/tracker/issue"
 	"github.com/wlindb/issue-tracker/internal/domain/tracker/label"
@@ -74,6 +75,8 @@ func run() error {
 	}
 	defer searchPool.Close()
 
+	issueDocumentRepository := searchinfra.NewIssueDocumentRepository(searchPool)
+
 	tracer := otel.Tracer(cfg.OTELServiceName)
 
 	setup, err := newNATSConnection(cfg.NATSPort, cfg.NATSWebSocketPort)
@@ -82,7 +85,7 @@ func run() error {
 	}
 	defer setup.closer()
 
-	if err = newEventHandlers(setup.connection); err != nil {
+	if err = newEventHandlers(setup.connection, issueDocumentRepository); err != nil {
 		return err
 	}
 
@@ -94,7 +97,7 @@ func run() error {
 		return fmt.Errorf("nats auth callout: %w", err)
 	}
 
-	h := newHandler(pool, searchPool, tracer, workspaceService)
+	h := newHandler(pool, issueDocumentRepository, tracer, workspaceService)
 
 	e, err := newServer(h, cfg, workspaceService)
 	if err != nil {
@@ -216,16 +219,17 @@ func mustGenerateRandomHex(length int) string {
 	return hex.EncodeToString(bytes)
 }
 
-func newEventHandlers(connection *nats.Conn) error {
+func newEventHandlers(connection *nats.Conn, issueDocumentRepository issuedocumentdomain.IssueDocumentRepository) error {
 	if _, err := searchapi.NewSearchEventHandler(
+		issueDocumentRepository,
 		searchapi.WithIssueCreated(
-			embeddednats.NewNATSEventSubscriber[model.IssueCreatedEvent](connection, embeddednats.IssueCreatedSubjectAll),
+			embeddednats.NewNATSEventSubscriber[model.IssueCreatedEvent](connection, embeddednats.IssueCreatedSubject),
 		),
 		searchapi.WithIssueTitleUpdated(
-			embeddednats.NewNATSEventSubscriber[model.IssueTitleUpdatedEvent](connection, embeddednats.IssueTitleUpdatedSubjectAll),
+			embeddednats.NewNATSEventSubscriber[model.IssueTitleUpdatedEvent](connection, embeddednats.IssueTitleUpdatedSubject),
 		),
 		searchapi.WithIssueDescriptionUpdated(
-			embeddednats.NewNATSEventSubscriber[model.IssueDescriptionUpdatedEvent](connection, embeddednats.IssueDescriptionUpdatedSubjectAll),
+			embeddednats.NewNATSEventSubscriber[model.IssueDescriptionUpdatedEvent](connection, embeddednats.IssueDescriptionUpdatedSubject),
 		),
 	); err != nil {
 		return fmt.Errorf("create search event handler: %w", err)
@@ -290,7 +294,7 @@ func newSearchPool(searchDatabaseURL string) (*pgxpool.Pool, error) {
 	return searchPool, nil
 }
 
-func newHandler(pool *pgxpool.Pool, searchPool *pgxpool.Pool, tracer trace.Tracer, workspaceService *workspacedomain.WorkspaceService) *api.Handler {
+func newHandler(pool *pgxpool.Pool, issueDocumentRepository issuedocumentdomain.IssueDocumentRepository, tracer trace.Tracer, workspaceService *workspacedomain.WorkspaceService) *api.Handler {
 	projectRepository := trackerinfra.NewTracingProjectRepository(
 		trackerinfra.NewProjectRepository(pool),
 		tracer,
@@ -316,7 +320,6 @@ func newHandler(pool *pgxpool.Pool, searchPool *pgxpool.Pool, tracer trace.Trace
 	labelService := label.NewLabelService(tracingLabelRepository)
 	tracingLabelService := trackerinfra.NewTracingLabelService(labelService, tracer)
 
-	issueDocumentRepository := searchinfra.NewIssueDocumentRepository(searchPool)
 	issueApplicationService := tracker.NewIssueService(issueRepository)
 
 	searchService := searchapi.NewSearcher(issueDocumentRepository, &issueApplicationService)

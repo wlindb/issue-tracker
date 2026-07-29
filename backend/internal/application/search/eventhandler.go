@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 
+	"github.com/wlindb/issue-tracker/internal/domain/search/issuedocument"
 	"github.com/wlindb/issue-tracker/internal/pkg/domain/event"
 	"github.com/wlindb/issue-tracker/internal/pkg/tracker/model"
 )
@@ -29,11 +30,13 @@ func WithIssueDescriptionUpdated(subscriber event.SubscriberOf[model.IssueDescri
 	}
 }
 
-type SearchEventHandler struct{}
+type SearchEventHandler struct {
+	issueDocumentRepository issuedocument.IssueDocumentRepository
+}
 
-func NewSearchEventHandler(opts ...EventOption) (SearchEventHandler, error) {
+func NewSearchEventHandler(issueDocumentRepository issuedocument.IssueDocumentRepository, opts ...EventOption) (SearchEventHandler, error) {
 	var zero SearchEventHandler
-	handler := SearchEventHandler{}
+	handler := SearchEventHandler{issueDocumentRepository: issueDocumentRepository}
 	for _, opt := range opts {
 		if err := opt(&handler); err != nil {
 			return zero, fmt.Errorf("search event handler option: %w", err)
@@ -42,15 +45,17 @@ func NewSearchEventHandler(opts ...EventOption) (SearchEventHandler, error) {
 	return handler, nil
 }
 
-func (h SearchEventHandler) HandleIssueCreated(_ context.Context, event model.IssueCreatedEvent) error {
-	slog.Info("issue created",
-		"issue_id", event.Payload.ID,
-		"reporter_id", event.Payload.ReporterID,
-		"title", event.Payload.Title,
-		"status", event.Payload.Status,
-		"priority", event.Payload.Priority,
-		"occurred_at", event.OccurredAt,
-	)
+func (h SearchEventHandler) HandleIssueCreated(ctx context.Context, event model.IssueCreatedEvent) error {
+	var description string
+	if event.Payload.Description != nil {
+		description = *event.Payload.Description
+	}
+
+	document := issuedocument.NewIssueDocument(event.Payload.ID, event.Payload.Title, description, event.OccurredAt)
+	if _, err := h.issueDocumentRepository.Create(ctx, document); err != nil {
+		slog.Error("create issue document", "error", err.Error())
+		return fmt.Errorf("create issue document: %w", err)
+	}
 
 	return nil
 }

@@ -25,6 +25,47 @@ func Test_WorkspaceSubject_Subject_ValidWorkspaceID_ReturnsWorkspaceScopedSubjec
 	assert.Equal(t, expected, actual)
 }
 
+func Test_WorkspaceSubject_WorkspaceID_ValidSubject_ReturnsWorkspaceID(t *testing.T) {
+	expected := uuid.MustParse("00000000-0000-0000-0000-000000000003")
+	subject := embeddednats.IssueCreatedSubject.Subject(expected)
+
+	actual, err := embeddednats.IssueCreatedSubject.WorkspaceID(subject)
+
+	require.NoError(t, err)
+	assert.Equal(t, expected, actual)
+}
+
+func Test_WorkspaceSubject_WorkspaceID_MismatchedSubject_ReturnsError(t *testing.T) {
+	_, err := embeddednats.IssueCreatedSubject.WorkspaceID("workspaces.not-a-uuid.issues.created.extra")
+
+	require.Error(t, err)
+}
+
+func Test_WorkspaceSubject_All_ReturnsWildcardSubject(t *testing.T) {
+	expected := "workspaces.*.issues.created"
+
+	actual := embeddednats.IssueCreatedSubject.All()
+
+	assert.Equal(t, expected, actual)
+}
+
+func Test_IssueCommentSubject_WorkspaceID_ValidSubject_ReturnsWorkspaceID(t *testing.T) {
+	expected := uuid.MustParse("00000000-0000-0000-0000-000000000004")
+	issueID := uuid.MustParse("00000000-0000-0000-0000-000000000005")
+	subject := embeddednats.CommentCreatedSubject.Subject(expected, issueID)
+
+	actual, err := embeddednats.CommentCreatedSubject.WorkspaceID(subject)
+
+	require.NoError(t, err)
+	assert.Equal(t, expected, actual)
+}
+
+func Test_IssueCommentSubject_WorkspaceID_MismatchedSubject_ReturnsError(t *testing.T) {
+	_, err := embeddednats.CommentCreatedSubject.WorkspaceID("workspaces.not-a-uuid.issues.created")
+
+	require.Error(t, err)
+}
+
 func Test_NATSEventPublisher_Publish_WithSubjectAndPayload_PublishesMessage(t *testing.T) {
 	server, err := embeddednats.StartEmbeddedServer()
 	require.NoError(t, err)

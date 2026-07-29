@@ -1,7 +1,9 @@
 package embeddednats
 
 import (
+	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -14,73 +16,103 @@ const readyTimeout = 5 * time.Second
 // AuthCalloutSubject is the NATS system subject the server publishes auth callout requests to.
 const AuthCalloutSubject = "$SYS.REQ.USER.AUTH"
 
-// WorkspaceSubject builds workspace-scoped NATS subjects from a format pattern.
+const workspacePrefix = "workspaces"
+
 type WorkspaceSubject struct {
-	subject string
+	postfix string
 }
 
 // Subject formats the NATS subject string for the given workspace ID.
 func (s WorkspaceSubject) Subject(workspaceID uuid.UUID) string {
-	return fmt.Sprintf(s.subject, workspaceID)
+	return fmt.Sprintf("%s.%s.%s", workspacePrefix, workspaceID, s.postfix)
+}
+
+// WorkspaceID extracts the workspace ID from a concrete subject matching this pattern.
+func (s WorkspaceSubject) WorkspaceID(subject string) (uuid.UUID, error) {
+	return parseWorkspaceID(subject)
+}
+
+// All returns the wildcard subject used by internal consumers to subscribe across all workspaces.
+func (s WorkspaceSubject) All() string {
+	return fmt.Sprintf("%s.*.%s", workspacePrefix, s.postfix)
 }
 
 // IssueCreatedSubject is the workspace-scoped subject pattern for issue created events.
-var IssueCreatedSubject = WorkspaceSubject{subject: "workspaces.%s.issues.created"}
+var IssueCreatedSubject = WorkspaceSubject{postfix: "issues.created"}
 
 // IssueCreatedSubjectAll is the wildcard subject for internal consumers.
 const IssueCreatedSubjectAll = "workspaces.*.issues.created"
 
 // IssueStatusUpdatedSubject is the workspace-scoped subject pattern for issue status updated events.
-var IssueStatusUpdatedSubject = WorkspaceSubject{subject: "workspaces.%s.issues.status_updated"}
+var IssueStatusUpdatedSubject = WorkspaceSubject{postfix: "issues.status_updated"}
 
 // IssueStatusUpdatedSubjectAll is the wildcard subject for internal consumers.
 const IssueStatusUpdatedSubjectAll = "workspaces.*.issues.status_updated"
 
 // IssuePriorityUpdatedSubject is the workspace-scoped subject pattern for issue priority updated events.
-var IssuePriorityUpdatedSubject = WorkspaceSubject{subject: "workspaces.%s.issues.priority_updated"}
+var IssuePriorityUpdatedSubject = WorkspaceSubject{postfix: "issues.priority_updated"}
 
 // IssuePriorityUpdatedSubjectAll is the wildcard subject for internal consumers.
 const IssuePriorityUpdatedSubjectAll = "workspaces.*.issues.priority_updated"
 
 // IssueTitleUpdatedSubject is the workspace-scoped subject pattern for issue title updated events.
-var IssueTitleUpdatedSubject = WorkspaceSubject{subject: "workspaces.%s.issues.title_updated"}
+var IssueTitleUpdatedSubject = WorkspaceSubject{postfix: "issues.title_updated"}
 
 // IssueTitleUpdatedSubjectAll is the wildcard subject for internal consumers.
 const IssueTitleUpdatedSubjectAll = "workspaces.*.issues.title_updated"
 
 // IssueAssigneeUpdatedSubject is the workspace-scoped subject pattern for issue assignee updated events.
-var IssueAssigneeUpdatedSubject = WorkspaceSubject{subject: "workspaces.%s.issues.assignee_updated"}
+var IssueAssigneeUpdatedSubject = WorkspaceSubject{postfix: "issues.assignee_updated"}
 
 // IssueAssigneeUpdatedSubjectAll is the wildcard subject for internal consumers.
 const IssueAssigneeUpdatedSubjectAll = "workspaces.*.issues.assignee_updated"
 
 // IssueDescriptionUpdatedSubject is the workspace-scoped subject pattern for issue description updated events.
-var IssueDescriptionUpdatedSubject = WorkspaceSubject{subject: "workspaces.%s.issues.description_updated"}
+var IssueDescriptionUpdatedSubject = WorkspaceSubject{postfix: "issues.description_updated"}
 
 // IssueDescriptionUpdatedSubjectAll is the wildcard subject for internal consumers.
 const IssueDescriptionUpdatedSubjectAll = "workspaces.*.issues.description_updated"
 
 // IssueLabelAddedSubject is the workspace-scoped subject pattern for issue label added events.
-var IssueLabelAddedSubject = WorkspaceSubject{subject: "workspaces.%s.issues.label.added"}
+var IssueLabelAddedSubject = WorkspaceSubject{postfix: "issues.label.added"}
 
 // CommentCreatedSubject is the workspace-and-issue-scoped subject pattern for comment created events.
-var CommentCreatedSubject = IssueCommentSubject{subject: "workspaces.%s.issues.%s.comments.created"}
+var CommentCreatedSubject = IssueCommentSubject{postfix: "comments.created"}
 
 // CommentCreatedSubjectAll is the wildcard subject for internal consumers.
 const CommentCreatedSubjectAll = "workspaces.*.issues.*.comments.created"
 
 // IssueCommentSubject builds workspace-and-issue-scoped NATS subjects from a format pattern.
 type IssueCommentSubject struct {
-	subject string
+	postfix string
 }
 
 // Subject formats the NATS subject string for the given workspace and issue IDs.
 func (s IssueCommentSubject) Subject(workspaceID, issueID uuid.UUID) string {
-	return fmt.Sprintf(s.subject, workspaceID, issueID)
+	return fmt.Sprintf("workspaces.%s.issues.%s.%s", workspaceID, issueID, s.postfix)
+}
+
+// WorkspaceID extracts the workspace ID (the first placeholder) from a concrete subject matching this pattern.
+func (s IssueCommentSubject) WorkspaceID(subject string) (uuid.UUID, error) {
+	return parseWorkspaceID(subject)
+}
+
+func parseWorkspaceID(subject string) (uuid.UUID, error) {
+	id, _, ok := strings.Cut(strings.TrimPrefix(subject, "workspaces."), ".")
+	if !ok {
+		return uuid.UUID{}, errors.New("invalid subject")
+	}
+
+	workspaceID, err := uuid.Parse(id)
+	if err != nil {
+		return uuid.UUID{}, fmt.Errorf("parse workspace id: %w", err)
+	}
+
+	return workspaceID, nil
 }
 
 // ProjectCreatedSubject is the workspace-scoped subject pattern for project created events.
-var ProjectCreatedSubject = WorkspaceSubject{subject: "workspaces.%s.projects.created"}
+var ProjectCreatedSubject = WorkspaceSubject{postfix: "projects.created"}
 
 // ProjectCreatedSubjectAll is the wildcard subject for internal consumers.
 const ProjectCreatedSubjectAll = "workspaces.*.projects.created"
