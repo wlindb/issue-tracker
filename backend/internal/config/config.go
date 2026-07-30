@@ -14,6 +14,8 @@ type Config struct {
 	OTELServiceName      string
 	GeminiAPIKey         string
 	GeminiEmbeddingModel string
+	ResendAPIKey         string
+	ResendFromEmail      string
 	// NATSPort is the port the embedded NATS server listens on for external clients.
 	// 0 means loopback-only on a random port (internal use only).
 	NATSPort int
@@ -53,6 +55,16 @@ func Load() (*Config, error) {
 		return nil, fmt.Errorf("GEMINI_EMBEDDING_MODEL is required")
 	}
 
+	resendAPIKey := os.Getenv("RESEND_API_KEY")
+	if resendAPIKey == "" {
+		return nil, fmt.Errorf("RESEND_API_KEY is required")
+	}
+
+	resendFromEmail := os.Getenv("RESEND_FROM_EMAIL")
+	if resendFromEmail == "" {
+		return nil, fmt.Errorf("RESEND_FROM_EMAIL is required")
+	}
+
 	serviceName := os.Getenv("OTEL_SERVICE_NAME")
 	if serviceName == "" {
 		serviceName = "issue-tracker"
@@ -84,6 +96,8 @@ func Load() (*Config, error) {
 		OTELServiceName:      serviceName,
 		GeminiAPIKey:         geminiAPIKey,
 		GeminiEmbeddingModel: geminiEmbeddingModel,
+		ResendAPIKey:         resendAPIKey,
+		ResendFromEmail:      resendFromEmail,
 		NATSPort:             natsPort,
 		NATSWebSocketPort:    natsWebSocketPort,
 	}, nil

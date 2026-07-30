@@ -19,6 +19,7 @@ require (
 	github.com/oapi-codegen/runtime v1.2.0
 	github.com/pgvector/pgvector-go v0.3.0
 	github.com/pressly/goose/v3 v3.27.0
+	github.com/resend/resend-go/v2 v2.15.0
 	github.com/sqlc-dev/sqlc v1.30.0
 	github.com/stretchr/testify v1.11.1
 	github.com/testcontainers/testcontainers-go v0.42.0
