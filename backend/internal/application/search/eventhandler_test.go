@@ -13,7 +13,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/wlindb/issue-tracker/internal/application/search"
-	"github.com/wlindb/issue-tracker/internal/domain/search/issuedocument"
 	"github.com/wlindb/issue-tracker/internal/pkg/domain/event"
 	trackermodel "github.com/wlindb/issue-tracker/internal/pkg/tracker/model"
 )
@@ -35,40 +34,21 @@ func (s *failingSubscriber[T]) Subscribe(_ event.Subscriber[T]) error {
 	return s.err
 }
 
-type mockIssueDocumentRepository struct {
+type mockIssueDocumentService struct {
 	mock.Mock
 }
 
-func (m *mockIssueDocumentRepository) Create(ctx context.Context, document issuedocument.IssueDocument) (issuedocument.IssueDocument, error) {
-	args := m.Called(ctx, document)
-	if d, ok := args.Get(0).(issuedocument.IssueDocument); ok {
-		return d, args.Error(1)
-	}
-	return issuedocument.IssueDocument{}, args.Error(1)
-}
-
-func (m *mockIssueDocumentRepository) Update(ctx context.Context, document issuedocument.IssueDocument) (issuedocument.IssueDocument, error) {
-	args := m.Called(ctx, document)
-	if d, ok := args.Get(0).(issuedocument.IssueDocument); ok {
-		return d, args.Error(1)
-	}
-	return issuedocument.IssueDocument{}, args.Error(1)
-}
-
-func (m *mockIssueDocumentRepository) Find(ctx context.Context, description string) (issuedocument.IssueDocuments, error) {
-	args := m.Called(ctx, description)
-	if d, ok := args.Get(0).(issuedocument.IssueDocuments); ok {
-		return d, args.Error(1)
-	}
-	return issuedocument.IssueDocuments{}, args.Error(1)
+func (m *mockIssueDocumentService) Create(ctx context.Context, id uuid.UUID, title string, description string, updatedAt time.Time) error {
+	args := m.Called(ctx, id, title, description, updatedAt)
+	return args.Error(0)
 }
 
 func Test_NewSearchEventHandler_WithIssueCreated_SubscribesHandleIssueCreated(t *testing.T) {
 	subscriber := &fakeSubscriber[trackermodel.IssueCreatedEvent]{}
-	repository := &mockIssueDocumentRepository{}
-	repository.On("Create", mock.Anything, mock.Anything).Return(issuedocument.IssueDocument{}, nil)
+	service := &mockIssueDocumentService{}
+	service.On("Create", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
-	_, err := search.NewSearchEventHandler(repository, search.WithIssueCreated(subscriber))
+	_, err := search.NewSearchEventHandler(service, search.WithIssueCreated(subscriber))
 	require.NoError(t, err)
 	require.NotNil(t, subscriber.handler)
 
@@ -85,9 +65,9 @@ func Test_NewSearchEventHandler_WithIssueCreated_SubscribesHandleIssueCreated(t 
 
 func Test_NewSearchEventHandler_WithIssueTitleUpdated_SubscribesHandleIssueTitleUpdated(t *testing.T) {
 	subscriber := &fakeSubscriber[trackermodel.IssueTitleUpdatedEvent]{}
-	repository := &mockIssueDocumentRepository{}
+	service := &mockIssueDocumentService{}
 
-	_, err := search.NewSearchEventHandler(repository, search.WithIssueTitleUpdated(subscriber))
+	_, err := search.NewSearchEventHandler(service, search.WithIssueTitleUpdated(subscriber))
 	require.NoError(t, err)
 	require.NotNil(t, subscriber.handler)
 
@@ -103,9 +83,9 @@ func Test_NewSearchEventHandler_WithIssueTitleUpdated_SubscribesHandleIssueTitle
 
 func Test_NewSearchEventHandler_WithIssueDescriptionUpdated_SubscribesHandleIssueDescriptionUpdated(t *testing.T) {
 	subscriber := &fakeSubscriber[trackermodel.IssueDescriptionUpdatedEvent]{}
-	repository := &mockIssueDocumentRepository{}
+	service := &mockIssueDocumentService{}
 
-	_, err := search.NewSearchEventHandler(repository, search.WithIssueDescriptionUpdated(subscriber))
+	_, err := search.NewSearchEventHandler(service, search.WithIssueDescriptionUpdated(subscriber))
 	require.NoError(t, err)
 	require.NotNil(t, subscriber.handler)
 
@@ -123,22 +103,21 @@ func Test_NewSearchEventHandler_WithIssueDescriptionUpdated_SubscribesHandleIssu
 func Test_NewSearchEventHandler_SubscribeError_ReturnsError(t *testing.T) {
 	expected := errors.New("subscribe failed")
 	subscriber := &failingSubscriber[trackermodel.IssueCreatedEvent]{err: expected}
-	repository := &mockIssueDocumentRepository{}
+	service := &mockIssueDocumentService{}
 
-	_, err := search.NewSearchEventHandler(repository, search.WithIssueCreated(subscriber))
+	_, err := search.NewSearchEventHandler(service, search.WithIssueCreated(subscriber))
 	require.ErrorIs(t, err, expected)
 }
 
 func Test_HandleIssueCreated_ValidEvent_CreatesIssueDocument(t *testing.T) {
-	repository := &mockIssueDocumentRepository{}
+	service := &mockIssueDocumentService{}
 	occurredAt := time.Now()
 	issueID := uuid.New()
 	description := "test description"
 
-	expected := issuedocument.NewIssueDocument(issueID, "test issue", description, occurredAt)
-	repository.On("Create", mock.Anything, expected).Return(expected, nil)
+	service.On("Create", mock.Anything, issueID, "test issue", description, occurredAt).Return(nil)
 
-	handler, err := search.NewSearchEventHandler(repository)
+	handler, err := search.NewSearchEventHandler(service)
 	require.NoError(t, err)
 
 	err = handler.HandleIssueCreated(context.Background(), trackermodel.IssueCreatedEvent{
@@ -151,18 +130,17 @@ func Test_HandleIssueCreated_ValidEvent_CreatesIssueDocument(t *testing.T) {
 	})
 
 	require.NoError(t, err)
-	repository.AssertExpectations(t)
+	service.AssertExpectations(t)
 }
 
 func Test_HandleIssueCreated_NilDescription_CreatesIssueDocumentWithEmptyDescription(t *testing.T) {
-	repository := &mockIssueDocumentRepository{}
+	service := &mockIssueDocumentService{}
 	occurredAt := time.Now()
 	issueID := uuid.New()
 
-	expected := issuedocument.NewIssueDocument(issueID, "test issue", "", occurredAt)
-	repository.On("Create", mock.Anything, expected).Return(expected, nil)
+	service.On("Create", mock.Anything, issueID, "test issue", "", occurredAt).Return(nil)
 
-	handler, err := search.NewSearchEventHandler(repository)
+	handler, err := search.NewSearchEventHandler(service)
 	require.NoError(t, err)
 
 	err = handler.HandleIssueCreated(context.Background(), trackermodel.IssueCreatedEvent{
@@ -174,15 +152,15 @@ func Test_HandleIssueCreated_NilDescription_CreatesIssueDocumentWithEmptyDescrip
 	})
 
 	require.NoError(t, err)
-	repository.AssertExpectations(t)
+	service.AssertExpectations(t)
 }
 
 func Test_HandleIssueCreated_RepositoryError_ReturnsError(t *testing.T) {
-	repository := &mockIssueDocumentRepository{}
+	service := &mockIssueDocumentService{}
 	expected := errors.New("create failed")
-	repository.On("Create", mock.Anything, mock.Anything).Return(issuedocument.IssueDocument{}, expected)
+	service.On("Create", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(expected)
 
-	handler, err := search.NewSearchEventHandler(repository)
+	handler, err := search.NewSearchEventHandler(service)
 	require.NoError(t, err)
 
 	err = handler.HandleIssueCreated(context.Background(), trackermodel.IssueCreatedEvent{
