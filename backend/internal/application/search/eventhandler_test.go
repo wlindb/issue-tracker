@@ -43,6 +43,16 @@ func (m *mockIssueDocumentService) Create(ctx context.Context, id uuid.UUID, tit
 	return args.Error(0)
 }
 
+func (m *mockIssueDocumentService) UpdateTitle(ctx context.Context, id uuid.UUID, title string) error {
+	args := m.Called(ctx, id, title)
+	return args.Error(0)
+}
+
+func (m *mockIssueDocumentService) UpdateDescription(ctx context.Context, id uuid.UUID, description string) error {
+	args := m.Called(ctx, id, description)
+	return args.Error(0)
+}
+
 func Test_NewSearchEventHandler_WithIssueCreated_SubscribesHandleIssueCreated(t *testing.T) {
 	subscriber := &fakeSubscriber[trackermodel.IssueCreatedEvent]{}
 	service := &mockIssueDocumentService{}
@@ -66,6 +76,7 @@ func Test_NewSearchEventHandler_WithIssueCreated_SubscribesHandleIssueCreated(t 
 func Test_NewSearchEventHandler_WithIssueTitleUpdated_SubscribesHandleIssueTitleUpdated(t *testing.T) {
 	subscriber := &fakeSubscriber[trackermodel.IssueTitleUpdatedEvent]{}
 	service := &mockIssueDocumentService{}
+	service.On("UpdateTitle", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
 	_, err := search.NewSearchEventHandler(service, search.WithIssueTitleUpdated(subscriber))
 	require.NoError(t, err)
@@ -84,6 +95,7 @@ func Test_NewSearchEventHandler_WithIssueTitleUpdated_SubscribesHandleIssueTitle
 func Test_NewSearchEventHandler_WithIssueDescriptionUpdated_SubscribesHandleIssueDescriptionUpdated(t *testing.T) {
 	subscriber := &fakeSubscriber[trackermodel.IssueDescriptionUpdatedEvent]{}
 	service := &mockIssueDocumentService{}
+	service.On("UpdateDescription", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
 	_, err := search.NewSearchEventHandler(service, search.WithIssueDescriptionUpdated(subscriber))
 	require.NoError(t, err)
@@ -168,6 +180,103 @@ func Test_HandleIssueCreated_RepositoryError_ReturnsError(t *testing.T) {
 		Payload: trackermodel.Issue{
 			ID:    uuid.New(),
 			Title: "test issue",
+		},
+	})
+
+	require.ErrorIs(t, err, expected)
+}
+
+func Test_HandleIssueTitleUpdated_ValidEvent_UpdatesIssueDocumentTitle(t *testing.T) {
+	service := &mockIssueDocumentService{}
+	issueID := uuid.New()
+	service.On("UpdateTitle", mock.Anything, issueID, "new title").Return(nil)
+
+	handler, err := search.NewSearchEventHandler(service)
+	require.NoError(t, err)
+
+	err = handler.HandleIssueTitleUpdated(context.Background(), trackermodel.IssueTitleUpdatedEvent{
+		OccurredAt: time.Now(),
+		Payload: trackermodel.Issue{
+			ID:    issueID,
+			Title: "new title",
+		},
+	})
+
+	require.NoError(t, err)
+	service.AssertExpectations(t)
+}
+
+func Test_HandleIssueTitleUpdated_ServiceError_ReturnsError(t *testing.T) {
+	service := &mockIssueDocumentService{}
+	expected := errors.New("update title failed")
+	service.On("UpdateTitle", mock.Anything, mock.Anything, mock.Anything).Return(expected)
+
+	handler, err := search.NewSearchEventHandler(service)
+	require.NoError(t, err)
+
+	err = handler.HandleIssueTitleUpdated(context.Background(), trackermodel.IssueTitleUpdatedEvent{
+		OccurredAt: time.Now(),
+		Payload: trackermodel.Issue{
+			ID:    uuid.New(),
+			Title: "new title",
+		},
+	})
+
+	require.ErrorIs(t, err, expected)
+}
+
+func Test_HandleIssueDescriptionUpdated_ValidEvent_UpdatesIssueDocumentDescription(t *testing.T) {
+	service := &mockIssueDocumentService{}
+	issueID := uuid.New()
+	description := "new description"
+	service.On("UpdateDescription", mock.Anything, issueID, description).Return(nil)
+
+	handler, err := search.NewSearchEventHandler(service)
+	require.NoError(t, err)
+
+	err = handler.HandleIssueDescriptionUpdated(context.Background(), trackermodel.IssueDescriptionUpdatedEvent{
+		OccurredAt: time.Now(),
+		Payload: trackermodel.Issue{
+			ID:          issueID,
+			Description: &description,
+		},
+	})
+
+	require.NoError(t, err)
+	service.AssertExpectations(t)
+}
+
+func Test_HandleIssueDescriptionUpdated_NilDescription_UpdatesWithEmptyDescription(t *testing.T) {
+	service := &mockIssueDocumentService{}
+	issueID := uuid.New()
+	service.On("UpdateDescription", mock.Anything, issueID, "").Return(nil)
+
+	handler, err := search.NewSearchEventHandler(service)
+	require.NoError(t, err)
+
+	err = handler.HandleIssueDescriptionUpdated(context.Background(), trackermodel.IssueDescriptionUpdatedEvent{
+		OccurredAt: time.Now(),
+		Payload: trackermodel.Issue{
+			ID: issueID,
+		},
+	})
+
+	require.NoError(t, err)
+	service.AssertExpectations(t)
+}
+
+func Test_HandleIssueDescriptionUpdated_ServiceError_ReturnsError(t *testing.T) {
+	service := &mockIssueDocumentService{}
+	expected := errors.New("update description failed")
+	service.On("UpdateDescription", mock.Anything, mock.Anything, mock.Anything).Return(expected)
+
+	handler, err := search.NewSearchEventHandler(service)
+	require.NoError(t, err)
+
+	err = handler.HandleIssueDescriptionUpdated(context.Background(), trackermodel.IssueDescriptionUpdatedEvent{
+		OccurredAt: time.Now(),
+		Payload: trackermodel.Issue{
+			ID: uuid.New(),
 		},
 	})
 

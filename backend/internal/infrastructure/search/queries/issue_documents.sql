@@ -18,6 +18,7 @@ SET title       = @title,
     description = @description,
     updated_at  = NOW()
 WHERE id = @id
+  AND updated_at = @updated_at
 RETURNING *;
 
 -- name: FindIssueDocumentsByDescription :many

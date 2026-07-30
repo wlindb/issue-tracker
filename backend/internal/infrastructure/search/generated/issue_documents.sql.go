@@ -9,6 +9,7 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createIssueDocument = `-- name: CreateIssueDocument :one
@@ -128,6 +129,7 @@ SET title       = $1,
     description = $2,
     updated_at  = NOW()
 WHERE id = $3
+  AND updated_at = $4
 RETURNING id, workspace_id, title, description, created_at, updated_at
 `
 
@@ -135,10 +137,16 @@ type UpdateIssueDocumentParams struct {
 	Title       string
 	Description string
 	ID          uuid.UUID
+	UpdatedAt   pgtype.Timestamptz
 }
 
 func (q *Queries) UpdateIssueDocument(ctx context.Context, arg UpdateIssueDocumentParams) (IssueDocument, error) {
-	row := q.db.QueryRow(ctx, updateIssueDocument, arg.Title, arg.Description, arg.ID)
+	row := q.db.QueryRow(ctx, updateIssueDocument,
+		arg.Title,
+		arg.Description,
+		arg.ID,
+		arg.UpdatedAt,
+	)
 	var i IssueDocument
 	err := row.Scan(
 		&i.ID,

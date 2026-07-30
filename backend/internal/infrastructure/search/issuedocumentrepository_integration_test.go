@@ -78,7 +78,7 @@ func Test_Update_ExistingDocument_SuccessfulUpdate(t *testing.T) {
 	assert.True(t, actual.UpdatedAt.After(created.UpdatedAt) || actual.UpdatedAt.Equal(created.UpdatedAt))
 }
 
-func Test_Update_NonExistentDocument_ReturnsError(t *testing.T) {
+func Test_Update_NonExistentDocument_ReturnsErrUpdateConflict(t *testing.T) {
 	repository := search.NewIssueDocumentRepository(testPool)
 
 	_, err := repository.Update(withWorkspaceContext(uuid.New(), uuid.New()), issuedocumentdomain.IssueDocument{
@@ -88,6 +88,56 @@ func Test_Update_NonExistentDocument_ReturnsError(t *testing.T) {
 	})
 
 	require.Error(t, err)
+	assert.ErrorIs(t, err, issuedocumentdomain.ErrUpdateConflict)
+}
+
+func Test_Update_StaleEntity_ReturnsErrUpdateConflict(t *testing.T) {
+	repository := search.NewIssueDocumentRepository(testPool)
+	ctx := withWorkspaceContext(uuid.New(), uuid.New())
+	created, err := repository.Create(ctx, issuedocumentdomain.IssueDocument{
+		ID:          uuid.New(),
+		Title:       "Original title",
+		Description: "Original description",
+	})
+	require.NoError(t, err)
+
+	firstUpdate := created
+	firstUpdate.Title = "First update"
+	_, err = repository.Update(ctx, firstUpdate)
+	require.NoError(t, err)
+
+	staleUpdate := created
+	staleUpdate.Title = "Second update"
+	_, err = repository.Update(ctx, staleUpdate)
+
+	require.Error(t, err)
+	assert.ErrorIs(t, err, issuedocumentdomain.ErrUpdateConflict)
+}
+
+func Test_Get_ExistingDocument_ReturnsDocument(t *testing.T) {
+	repository := search.NewIssueDocumentRepository(testPool)
+	ctx := withWorkspaceContext(uuid.New(), uuid.New())
+	created, err := repository.Create(ctx, issuedocumentdomain.IssueDocument{
+		ID:          uuid.New(),
+		Title:       "Fix bug",
+		Description: "A detailed bug description",
+	})
+	require.NoError(t, err)
+
+	actual, err := repository.Get(ctx, created.ID)
+
+	require.NoError(t, err)
+	assert.Equal(t, created.ID, actual.ID)
+	assert.Equal(t, "Fix bug", actual.Title)
+}
+
+func Test_Get_NonExistentDocument_ReturnsErrIssueDocumentNotFound(t *testing.T) {
+	repository := search.NewIssueDocumentRepository(testPool)
+
+	_, err := repository.Get(withWorkspaceContext(uuid.New(), uuid.New()), uuid.New())
+
+	require.Error(t, err)
+	assert.ErrorIs(t, err, issuedocumentdomain.ErrIssueDocumentNotFound)
 }
 
 func Test_Find_MatchingDescription_ReturnsIssueDocuments(t *testing.T) {

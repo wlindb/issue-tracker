@@ -1,6 +1,8 @@
 package search
 
 import (
+	"github.com/jackc/pgx/v5/pgtype"
+
 	issuedocumentdomain "github.com/wlindb/issue-tracker/internal/domain/search/issuedocument"
 	searchdb "github.com/wlindb/issue-tracker/internal/infrastructure/search/generated"
 )
@@ -35,5 +37,6 @@ func updateIssueDocumentParamsFromDomain(document issuedocumentdomain.IssueDocum
 		ID:          document.ID,
 		Title:       document.Title,
 		Description: document.Description,
+		UpdatedAt:   pgtype.Timestamptz{Time: document.UpdatedAt, Valid: true},
 	}
 }

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
 	issuedocumentdomain "github.com/wlindb/issue-tracker/internal/domain/search/issuedocument"
@@ -38,11 +39,30 @@ func (r *IssueDocumentRepository) Create(ctx context.Context, document issuedocu
 	return issueDocumentToDomain(existing), nil
 }
 
+// Update persists changes to an issue document using optimistic locking on updated_at.
+// Returns ErrUpdateConflict if the document was modified, or no longer exists, since it was read.
 func (r *IssueDocumentRepository) Update(ctx context.Context, document issuedocumentdomain.IssueDocument) (issuedocumentdomain.IssueDocument, error) {
 	queries := searchdb.New(r.db)
 	row, err := queries.UpdateIssueDocument(ctx, updateIssueDocumentParamsFromDomain(document))
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return issuedocumentdomain.IssueDocument{}, fmt.Errorf("update issue document: %w", issuedocumentdomain.ErrUpdateConflict)
+		}
 		return issuedocumentdomain.IssueDocument{}, fmt.Errorf("update issue document: %w", err)
+	}
+	return issueDocumentToDomain(row), nil
+}
+
+// Get retrieves a single issue document by its ID.
+// Returns ErrIssueDocumentNotFound if no document with the given ID exists.
+func (r *IssueDocumentRepository) Get(ctx context.Context, id uuid.UUID) (issuedocumentdomain.IssueDocument, error) {
+	queries := searchdb.New(r.db)
+	row, err := queries.GetIssueDocument(ctx, id)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return issuedocumentdomain.IssueDocument{}, fmt.Errorf("get issue document: %w", issuedocumentdomain.ErrIssueDocumentNotFound)
+		}
+		return issuedocumentdomain.IssueDocument{}, fmt.Errorf("get issue document: %w", err)
 	}
 	return issueDocumentToDomain(row), nil
 }
