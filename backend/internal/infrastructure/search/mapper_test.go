@@ -91,10 +91,12 @@ func Test_createIssueDocumentParamsFromDomain_IssueDocument_ReturnsParams(t *tes
 
 func Test_updateIssueDocumentParamsFromDomain_IssueDocument_ReturnsParams(t *testing.T) {
 	id := uuid.New()
+	now := time.Now().UTC()
 	domainDocument := issuedocumentdomain.IssueDocument{
 		ID:          id,
 		Title:       "Updated title",
 		Description: "Updated description",
+		UpdatedAt:   now,
 	}
 
 	actual := updateIssueDocumentParamsFromDomain(domainDocument)
@@ -102,4 +104,6 @@ func Test_updateIssueDocumentParamsFromDomain_IssueDocument_ReturnsParams(t *tes
 	assert.Equal(t, id, actual.ID)
 	assert.Equal(t, "Updated title", actual.Title)
 	assert.Equal(t, "Updated description", actual.Description)
+	assert.Equal(t, now, actual.UpdatedAt.Time)
+	assert.True(t, actual.UpdatedAt.Valid)
 }

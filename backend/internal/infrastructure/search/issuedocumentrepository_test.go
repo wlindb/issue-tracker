@@ -215,6 +215,81 @@ func Test_Update_QueryError_ReturnsWrappedError(t *testing.T) {
 	mockDatabase.AssertExpectations(t)
 }
 
+func Test_Update_NoRowsAffected_ReturnsErrUpdateConflict(t *testing.T) {
+	mockDatabase := new(mockDBTX)
+	mockDatabase.On("QueryRow", mock.Anything, mock.Anything, mock.Anything).
+		Return(&mockIssueDocumentRow{err: pgx.ErrNoRows})
+
+	repository := &IssueDocumentRepository{db: mockDatabase}
+
+	_, err := repository.Update(context.Background(), issuedocumentdomain.IssueDocument{ID: uuid.New()})
+
+	require.Error(t, err)
+	assert.ErrorIs(t, err, issuedocumentdomain.ErrUpdateConflict)
+	mockDatabase.AssertExpectations(t)
+}
+
+// — Get unit tests —
+
+func Test_Get_Success_ReturnsDomainIssueDocument(t *testing.T) {
+	id := uuid.New()
+	workspaceID := uuid.New()
+	now := time.Now().UTC()
+
+	returnedRow := searchdb.IssueDocument{
+		ID:          id,
+		WorkspaceID: workspaceID,
+		Title:       "Fix bug",
+		Description: "detailed description",
+		CreatedAt:   pgtype.Timestamptz{Time: now, Valid: true},
+		UpdatedAt:   pgtype.Timestamptz{Time: now, Valid: true},
+	}
+
+	mockDatabase := new(mockDBTX)
+	mockDatabase.On("QueryRow", mock.Anything, mock.Anything, mock.Anything).
+		Return(&mockIssueDocumentRow{document: returnedRow})
+
+	repository := &IssueDocumentRepository{db: mockDatabase}
+
+	actual, err := repository.Get(context.Background(), id)
+
+	require.NoError(t, err)
+	assert.Equal(t, id, actual.ID)
+	assert.Equal(t, "Fix bug", actual.Title)
+	mockDatabase.AssertExpectations(t)
+}
+
+func Test_Get_NotFound_ReturnsErrIssueDocumentNotFound(t *testing.T) {
+	mockDatabase := new(mockDBTX)
+	mockDatabase.On("QueryRow", mock.Anything, mock.Anything, mock.Anything).
+		Return(&mockIssueDocumentRow{err: pgx.ErrNoRows})
+
+	repository := &IssueDocumentRepository{db: mockDatabase}
+
+	_, err := repository.Get(context.Background(), uuid.New())
+
+	require.Error(t, err)
+	assert.ErrorIs(t, err, issuedocumentdomain.ErrIssueDocumentNotFound)
+	mockDatabase.AssertExpectations(t)
+}
+
+func Test_Get_QueryError_ReturnsWrappedError(t *testing.T) {
+	dbErr := errors.New("connection refused")
+
+	mockDatabase := new(mockDBTX)
+	mockDatabase.On("QueryRow", mock.Anything, mock.Anything, mock.Anything).
+		Return(&mockIssueDocumentRow{err: dbErr})
+
+	repository := &IssueDocumentRepository{db: mockDatabase}
+
+	_, err := repository.Get(context.Background(), uuid.New())
+
+	require.Error(t, err)
+	assert.ErrorIs(t, err, dbErr)
+	assert.Contains(t, err.Error(), "get issue document")
+	mockDatabase.AssertExpectations(t)
+}
+
 // — Find unit tests —
 
 func Test_Find_Success_ReturnsDomainIssueDocuments(t *testing.T) {
