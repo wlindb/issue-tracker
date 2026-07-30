@@ -4,13 +4,20 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"time"
 
-	"github.com/wlindb/issue-tracker/internal/domain/search/issuedocument"
+	"github.com/google/uuid"
+
 	"github.com/wlindb/issue-tracker/internal/pkg/domain/event"
 	"github.com/wlindb/issue-tracker/internal/pkg/tracker/model"
 )
 
 type EventOption func(*SearchEventHandler) error
+
+// IssueDocumentService is what the handler needs from the domain.
+type IssueDocumentService interface {
+	Create(ctx context.Context, id uuid.UUID, title string, description string, updatedAt time.Time) error
+}
 
 func WithIssueCreated(subscriber event.SubscriberOf[model.IssueCreatedEvent]) EventOption {
 	return func(h *SearchEventHandler) error {
@@ -31,12 +38,12 @@ func WithIssueDescriptionUpdated(subscriber event.SubscriberOf[model.IssueDescri
 }
 
 type SearchEventHandler struct {
-	issueDocumentRepository issuedocument.IssueDocumentRepository
+	issueDocumentService IssueDocumentService
 }
 
-func NewSearchEventHandler(issueDocumentRepository issuedocument.IssueDocumentRepository, opts ...EventOption) (SearchEventHandler, error) {
+func NewSearchEventHandler(issueDocumentService IssueDocumentService, opts ...EventOption) (SearchEventHandler, error) {
 	var zero SearchEventHandler
-	handler := SearchEventHandler{issueDocumentRepository: issueDocumentRepository}
+	handler := SearchEventHandler{issueDocumentService: issueDocumentService}
 	for _, opt := range opts {
 		if err := opt(&handler); err != nil {
 			return zero, fmt.Errorf("search event handler option: %w", err)
@@ -51,10 +58,9 @@ func (h SearchEventHandler) HandleIssueCreated(ctx context.Context, event model.
 		description = *event.Payload.Description
 	}
 
-	document := issuedocument.NewIssueDocument(event.Payload.ID, event.Payload.Title, description, event.OccurredAt)
-	if _, err := h.issueDocumentRepository.Create(ctx, document); err != nil {
+	if err := h.issueDocumentService.Create(ctx, event.Payload.ID, event.Payload.Title, description, event.OccurredAt); err != nil {
 		slog.Error("create issue document", "error", err.Error())
-		return fmt.Errorf("create issue document: %w", err)
+		return err //nolint:wrapcheck // domain service already returns a wrapped, contextual error
 	}
 
 	return nil

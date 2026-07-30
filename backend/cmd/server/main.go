@@ -76,6 +76,7 @@ func run() error {
 	defer searchPool.Close()
 
 	issueDocumentRepository := searchinfra.NewIssueDocumentRepository(searchPool)
+	issueDocumentService := issuedocumentdomain.NewIssueDocumentService(issueDocumentRepository)
 
 	tracer := otel.Tracer(cfg.OTELServiceName)
 
@@ -85,7 +86,7 @@ func run() error {
 	}
 	defer setup.closer()
 
-	if err = newEventHandlers(setup.connection, issueDocumentRepository); err != nil {
+	if err = newEventHandlers(setup.connection, issueDocumentService); err != nil {
 		return err
 	}
 
@@ -219,9 +220,9 @@ func mustGenerateRandomHex(length int) string {
 	return hex.EncodeToString(bytes)
 }
 
-func newEventHandlers(connection *nats.Conn, issueDocumentRepository issuedocumentdomain.IssueDocumentRepository) error {
+func newEventHandlers(connection *nats.Conn, issueDocumentService *issuedocumentdomain.IssueDocumentService) error {
 	if _, err := searchapi.NewSearchEventHandler(
-		issueDocumentRepository,
+		issueDocumentService,
 		searchapi.WithIssueCreated(
 			embeddednats.NewNATSEventSubscriber[model.IssueCreatedEvent](connection, embeddednats.IssueCreatedSubject),
 		),
