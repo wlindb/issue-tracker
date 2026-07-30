@@ -11,9 +11,17 @@ import (
 // ErrEmptyContent is returned when both title and description are empty.
 var ErrEmptyContent = errors.New("title and description are both empty")
 
+// ErrEmptyQuery is returned when the query is empty.
+var ErrEmptyQuery = errors.New("query is empty")
+
 // EmbeddingGenerator generates vector embeddings for issue content.
 type EmbeddingGenerator interface {
 	GenerateEmbedding(ctx context.Context, title, description string) ([]float32, error)
+}
+
+// QueryEmbeddingGenerator generates vector embeddings for search queries.
+type QueryEmbeddingGenerator interface {
+	GenerateQueryEmbedding(ctx context.Context, query string) ([]float32, error)
 }
 
 // GeminiEmbeddingGenerator generates embeddings using the Google Gemini API.
@@ -66,8 +74,26 @@ func (g *GeminiEmbeddingGenerator) GenerateEmbedding(ctx context.Context, title,
 
 	combined := buildContent(title, description)
 
-	result, err := g.client.Models.EmbedContent(ctx, g.model, genai.Text(combined), &genai.EmbedContentConfig{
-		TaskType: "RETRIEVAL_DOCUMENT",
+	return g.embed(ctx, combined, "RETRIEVAL_DOCUMENT")
+}
+
+// GenerateQueryEmbedding returns a vector embedding for the given search query.
+// It returns ErrEmptyQuery if the query is empty.
+func (g *GeminiEmbeddingGenerator) GenerateQueryEmbedding(ctx context.Context, query string) ([]float32, error) {
+	var zero []float32
+
+	if query == "" {
+		return zero, ErrEmptyQuery
+	}
+
+	return g.embed(ctx, query, "RETRIEVAL_QUERY")
+}
+
+func (g *GeminiEmbeddingGenerator) embed(ctx context.Context, content, taskType string) ([]float32, error) {
+	var zero []float32
+
+	result, err := g.client.Models.EmbedContent(ctx, g.model, genai.Text(content), &genai.EmbedContentConfig{
+		TaskType: taskType,
 	})
 	if err != nil {
 		return zero, fmt.Errorf("generate embedding: %w", err)

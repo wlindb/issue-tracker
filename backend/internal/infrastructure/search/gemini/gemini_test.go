@@ -77,3 +77,36 @@ func Test_GenerateEmbedding_ServerError_ReturnsError(t *testing.T) {
 
 	require.Error(t, err)
 }
+
+func Test_GenerateQueryEmbedding_ValidQuery_ReturnsVector(t *testing.T) {
+	expected := []float32{0.1, 0.2, 0.3, 0.4}
+	server := embeddingServer(t, http.StatusOK, expected)
+
+	generator := newTestGenerator(t, server)
+
+	actual, err := generator.GenerateQueryEmbedding(context.Background(), "Test query")
+
+	require.NoError(t, err)
+	assert.Equal(t, expected, actual)
+}
+
+func Test_GenerateQueryEmbedding_EmptyQuery_ReturnsError(t *testing.T) {
+	server := embeddingServer(t, http.StatusOK, nil)
+
+	generator := newTestGenerator(t, server)
+
+	_, err := generator.GenerateQueryEmbedding(context.Background(), "")
+
+	require.Error(t, err)
+	assert.True(t, errors.Is(err, gemini.ErrEmptyQuery))
+}
+
+func Test_GenerateQueryEmbedding_ServerError_ReturnsError(t *testing.T) {
+	server := embeddingServer(t, http.StatusInternalServerError, nil)
+
+	generator := newTestGenerator(t, server)
+
+	_, err := generator.GenerateQueryEmbedding(context.Background(), "Test query")
+
+	require.Error(t, err)
+}
