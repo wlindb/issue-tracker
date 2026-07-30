@@ -7,11 +7,13 @@ import (
 )
 
 type Config struct {
-	DatabaseURL       string
-	SearchDatabaseURL string
-	ServerAddr        string
-	JWKSUrl           string
-	OTELServiceName   string
+	DatabaseURL          string
+	SearchDatabaseURL    string
+	ServerAddr           string
+	JWKSUrl              string
+	OTELServiceName      string
+	GeminiAPIKey         string
+	GeminiEmbeddingModel string
 	// NATSPort is the port the embedded NATS server listens on for external clients.
 	// 0 means loopback-only on a random port (internal use only).
 	NATSPort int
@@ -41,6 +43,16 @@ func Load() (*Config, error) {
 		return nil, fmt.Errorf("JWKS_URL is required")
 	}
 
+	geminiAPIKey := os.Getenv("GEMINI_API_KEY")
+	if geminiAPIKey == "" {
+		return nil, fmt.Errorf("GEMINI_API_KEY is required")
+	}
+
+	geminiEmbeddingModel := os.Getenv("GEMINI_EMBEDDING_MODEL")
+	if geminiEmbeddingModel == "" {
+		return nil, fmt.Errorf("GEMINI_EMBEDDING_MODEL is required")
+	}
+
 	serviceName := os.Getenv("OTEL_SERVICE_NAME")
 	if serviceName == "" {
 		serviceName = "issue-tracker"
@@ -65,12 +77,14 @@ func Load() (*Config, error) {
 	}
 
 	return &Config{
-		DatabaseURL:       databaseURL,
-		SearchDatabaseURL: searchDatabaseURL,
-		ServerAddr:        serverAddr,
-		JWKSUrl:           jwksURL,
-		OTELServiceName:   serviceName,
-		NATSPort:          natsPort,
-		NATSWebSocketPort: natsWebSocketPort,
+		DatabaseURL:          databaseURL,
+		SearchDatabaseURL:    searchDatabaseURL,
+		ServerAddr:           serverAddr,
+		JWKSUrl:              jwksURL,
+		OTELServiceName:      serviceName,
+		GeminiAPIKey:         geminiAPIKey,
+		GeminiEmbeddingModel: geminiEmbeddingModel,
+		NATSPort:             natsPort,
+		NATSWebSocketPort:    natsWebSocketPort,
 	}, nil
 }
