@@ -54,4 +54,5 @@ type WorkspaceRepository interface {
 	List(ctx context.Context, userID uuid.UUID) ([]Workspace, error)
 	ListMembers(ctx context.Context, workspaceID uuid.UUID) (WorkspaceMembers, error)
 	IsMember(ctx context.Context, workspaceID uuid.UUID, userID uuid.UUID) (bool, error)
+	AddMember(ctx context.Context, workspaceID uuid.UUID, userID uuid.UUID) error
 }

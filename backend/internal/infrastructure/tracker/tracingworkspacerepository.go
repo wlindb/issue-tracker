@@ -88,3 +88,15 @@ func (r *TracingWorkspaceRepository) IsMember(ctx context.Context, workspaceID u
 	}
 	return member, nil
 }
+
+func (r *TracingWorkspaceRepository) AddMember(ctx context.Context, workspaceID uuid.UUID, userID uuid.UUID) error {
+	ctx, span := r.tracer.Start(ctx, "tracker.WorkspaceRepository.AddMember")
+	defer span.End()
+
+	if err := r.inner.AddMember(ctx, workspaceID, userID); err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+		return fmt.Errorf("add workspace member: %w", err)
+	}
+	return nil
+}

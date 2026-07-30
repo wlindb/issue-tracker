@@ -54,3 +54,10 @@ func (s *WorkspaceService) IsMember(ctx context.Context, workspaceID uuid.UUID, 
 	}
 	return member, nil
 }
+
+func (s *WorkspaceService) AddMember(ctx context.Context, workspaceID uuid.UUID, userID uuid.UUID) error {
+	if err := s.repository.AddMember(ctx, workspaceID, userID); err != nil {
+		return fmt.Errorf("add workspace member: %w", err)
+	}
+	return nil
+}
