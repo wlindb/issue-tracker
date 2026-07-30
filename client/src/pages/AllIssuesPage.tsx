@@ -24,7 +24,8 @@ export function AllIssuesPage() {
   const [query, setQuery] = useState('')
   const { activeWorkspace } = useWorkspace()
 
-  const { results, isPending } = useIssueSearch(issues, query)
+  const { results, isPending, error: searchError } = useIssueSearch(activeWorkspace?.id ?? '', query)
+  const displayedIssues = query ? results : issues
   const upsertIssue = (nextIssue: Issue) =>
     setIssues((previous) => {
       const existingIndex = previous.findIndex((existing) => existing.id === nextIssue.id)
@@ -103,7 +104,7 @@ export function AllIssuesPage() {
         <div>
           <h1 className="text-lg font-semibold">All Issues</h1>
           <p className="text-sm text-muted-foreground">
-            {query ? `${results.length} of ${issues.length} issues` : `${issues.length} issues total`}
+            {query ? `${displayedIssues.length} of ${issues.length} issues` : `${issues.length} issues total`}
           </p>
         </div>
         <Button
@@ -128,6 +129,7 @@ export function AllIssuesPage() {
             className={cn('pl-8', isPending && 'opacity-60')}
           />
         </div>
+        {searchError && <p className="mt-1.5 text-xs text-destructive">{searchError}</p>}
       </div>
 
       {creating && (
@@ -141,7 +143,7 @@ export function AllIssuesPage() {
       <div className="py-2">
         {loading ? (
           <p className="px-6 py-8 text-sm text-muted-foreground">Loading…</p>
-        ) : results.length === 0 ? (
+        ) : displayedIssues.length === 0 ? (
           query ? (
             <p className="px-6 py-8 text-sm text-muted-foreground">
               No issues match &ldquo;{query}&rdquo;.
@@ -150,7 +152,7 @@ export function AllIssuesPage() {
             <p className="px-6 py-8 text-sm text-muted-foreground">No issues yet.</p>
           )
         ) : (
-          results.map((issue) => <IssueRow key={issue.id} issue={issue} />)
+          displayedIssues.map((issue) => <IssueRow key={issue.id} issue={issue} />)
         )}
       </div>
     </div>
