@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	pgvector "github.com/pgvector/pgvector-go/pgx"
 )
 
 // WithAppSessionVars returns a pool configurator that sets app.workspace_id and
@@ -72,6 +73,15 @@ func WithAppRole(role string) func(*pgxpool.Config) {
 			}
 			return true
 		}
+	}
+}
+
+// WithVectorTypes returns a pool configurator that registers pgvector's Vector
+// type with pgx on every new connection, so vector columns can be scanned into
+// and from pgvector.Vector values.
+func WithVectorTypes() func(*pgxpool.Config) {
+	return func(config *pgxpool.Config) {
+		config.AfterConnect = pgvector.RegisterTypes
 	}
 }
 

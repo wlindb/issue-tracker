@@ -37,6 +37,7 @@ import (
 	workspacedomain "github.com/wlindb/issue-tracker/internal/domain/tracker/workspace"
 	"github.com/wlindb/issue-tracker/internal/infrastructure/db"
 	searchinfra "github.com/wlindb/issue-tracker/internal/infrastructure/search"
+	"github.com/wlindb/issue-tracker/internal/infrastructure/search/gemini"
 	trackerinfra "github.com/wlindb/issue-tracker/internal/infrastructure/tracker"
 	keycloakpkg "github.com/wlindb/issue-tracker/internal/pkg/keycloak"
 	embeddednats "github.com/wlindb/issue-tracker/internal/pkg/nats"
@@ -75,8 +76,13 @@ func run() error {
 	}
 	defer searchPool.Close()
 
+	embeddingGenerator, err := gemini.NewGeminiEmbeddingGenerator(ctx, cfg.GeminiAPIKey, cfg.GeminiEmbeddingModel)
+	if err != nil {
+		return fmt.Errorf("create gemini embedding generator: %w", err)
+	}
+
 	issueDocumentRepository := searchinfra.NewIssueDocumentRepository(searchPool)
-	issueDocumentService := issuedocumentdomain.NewIssueDocumentService(issueDocumentRepository)
+	issueDocumentService := issuedocumentdomain.NewIssueDocumentService(issueDocumentRepository, embeddingGenerator)
 
 	tracer := otel.Tracer(cfg.OTELServiceName)
 
@@ -288,6 +294,7 @@ func newSearchPool(searchDatabaseURL string) (*pgxpool.Pool, error) {
 			trackerapi.WorkspaceIDFromContext,
 			trackerapi.UserIDFromContext,
 		),
+		db.WithVectorTypes(),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("pool: %w", err)

@@ -9,15 +9,21 @@ import (
 )
 
 type IssueDocumentService struct {
-	repository IssueDocumentRepository
+	repository         IssueDocumentRepository
+	embeddingGenerator EmbeddingGenerator
 }
 
-func NewIssueDocumentService(repository IssueDocumentRepository) *IssueDocumentService {
-	return &IssueDocumentService{repository: repository}
+func NewIssueDocumentService(repository IssueDocumentRepository, embeddingGenerator EmbeddingGenerator) *IssueDocumentService {
+	return &IssueDocumentService{repository: repository, embeddingGenerator: embeddingGenerator}
 }
 
 func (s *IssueDocumentService) Create(ctx context.Context, id uuid.UUID, title string, description string, updatedAt time.Time) error {
-	document := NewIssueDocument(id, title, description, updatedAt)
+	embedding, err := s.embeddingGenerator.GenerateEmbedding(ctx, title, description)
+	if err != nil {
+		return fmt.Errorf("generate embedding: %w", err)
+	}
+
+	document := NewIssueDocument(id, title, description, updatedAt, embedding)
 
 	if _, err := s.repository.Create(ctx, document); err != nil {
 		return fmt.Errorf("create issue document: %w", err)

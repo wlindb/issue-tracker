@@ -15,3 +15,14 @@ sql:
               type: "UUID"
           - db_type: "pg_catalog.timestamptz"
             go_type: "time.Time"
+          - column: "issue_documents.embedding"
+            go_type:
+              import: "github.com/pgvector/pgvector-go"
+              package: "pgvector"
+              type: "Vector"
+              pointer: true
+          - db_type: "vector"
+            go_type:
+              import: "github.com/pgvector/pgvector-go"
+              package: "pgvector"
+              type: "Vector"

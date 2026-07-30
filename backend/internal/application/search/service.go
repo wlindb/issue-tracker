@@ -3,6 +3,7 @@ package search
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	"github.com/google/uuid"
 
@@ -42,6 +43,9 @@ func (service Searcher) SearchIssues(ctx context.Context, description string) ([
 	if err != nil {
 		return zero, fmt.Errorf("GetByIDs: %w", err)
 	}
+	slices.SortFunc(issues, func(a, b model.Issue) int {
+		return documents.CompareRank(a.Id, b.Id)
+	})
 
 	return issues, nil
 }
