@@ -12,8 +12,8 @@ import (
 )
 
 type Searcher struct {
-	issueDocumentRepository issuedocument.IssueDocumentRepository
-	issueRepository         IssueRepository
+	issueDocumentFinder IssueDocumentFinder
+	issueRepository     IssueRepository
 }
 
 var _ SearchService = (*Searcher)(nil)
@@ -22,19 +22,23 @@ type IssueRepository interface {
 	GetByIDs(ctx context.Context, ids []uuid.UUID) ([]model.Issue, error)
 }
 
+type IssueDocumentFinder interface {
+	Find(ctx context.Context, description string) (issuedocument.IssueDocuments, error)
+}
+
 func NewSearcher(
-	issueDocumentRepository issuedocument.IssueDocumentRepository,
+	issueDocumentFinder IssueDocumentFinder,
 	issueRepository IssueRepository,
 ) *Searcher {
 	return &Searcher{
-		issueDocumentRepository: issueDocumentRepository,
-		issueRepository:         issueRepository,
+		issueDocumentFinder: issueDocumentFinder,
+		issueRepository:     issueRepository,
 	}
 }
 
 func (service Searcher) SearchIssues(ctx context.Context, description string) ([]model.Issue, error) {
 	var zero []model.Issue
-	documents, err := service.issueDocumentRepository.Find(ctx, description)
+	documents, err := service.issueDocumentFinder.Find(ctx, description)
 	if err != nil {
 		return zero, fmt.Errorf("find: %w", err)
 	}

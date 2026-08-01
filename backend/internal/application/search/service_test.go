@@ -17,29 +17,11 @@ import (
 	"github.com/wlindb/issue-tracker/internal/domain/search/issuedocument"
 )
 
-type mockIssueDocumentRepository struct {
+type mockIssueDocumentFinder struct {
 	mock.Mock
 }
 
-func (m *mockIssueDocumentRepository) Create(ctx context.Context, document issuedocument.IssueDocument) (issuedocument.IssueDocument, error) {
-	args := m.Called(ctx, document)
-	result, _ := args.Get(0).(issuedocument.IssueDocument)
-	return result, args.Error(1)
-}
-
-func (m *mockIssueDocumentRepository) Update(ctx context.Context, document issuedocument.IssueDocument) (issuedocument.IssueDocument, error) {
-	args := m.Called(ctx, document)
-	result, _ := args.Get(0).(issuedocument.IssueDocument)
-	return result, args.Error(1)
-}
-
-func (m *mockIssueDocumentRepository) Get(ctx context.Context, id uuid.UUID) (issuedocument.IssueDocument, error) {
-	args := m.Called(ctx, id)
-	result, _ := args.Get(0).(issuedocument.IssueDocument)
-	return result, args.Error(1)
-}
-
-func (m *mockIssueDocumentRepository) Find(ctx context.Context, description string) (issuedocument.IssueDocuments, error) {
+func (m *mockIssueDocumentFinder) Find(ctx context.Context, description string) (issuedocument.IssueDocuments, error) {
 	args := m.Called(ctx, description)
 	result, _ := args.Get(0).(issuedocument.IssueDocuments)
 	return result, args.Error(1)
@@ -63,16 +45,16 @@ func Test_SearchIssues_UnorderedRepositoryResult_ReturnsIssuesInFindRankOrder(t 
 		{ID: thirdID},
 	})
 
-	documentRepository := &mockIssueDocumentRepository{}
+	documentFinder := &mockIssueDocumentFinder{}
 	issueRepository := &mockIssueRepository{}
-	documentRepository.On("Find", mock.Anything, "query").Return(documents, nil)
+	documentFinder.On("Find", mock.Anything, "query").Return(documents, nil)
 	issueRepository.On("GetByIDs", mock.Anything, documents.IDs()).Return([]model.Issue{
 		{Id: firstID, Title: "First"},
 		{Id: thirdID, Title: "Third"},
 		{Id: secondID, Title: "Second"},
 	}, nil)
 
-	service := search.NewSearcher(documentRepository, issueRepository)
+	service := search.NewSearcher(documentFinder, issueRepository)
 
 	actual, err := service.SearchIssues(context.Background(), "query")
 
@@ -85,11 +67,11 @@ func Test_SearchIssues_UnorderedRepositoryResult_ReturnsIssuesInFindRankOrder(t 
 
 func Test_SearchIssues_FindRepositoryError_ReturnsWrappedError(t *testing.T) {
 	findErr := errors.New("find failed")
-	documentRepository := &mockIssueDocumentRepository{}
+	documentFinder := &mockIssueDocumentFinder{}
 	issueRepository := &mockIssueRepository{}
-	documentRepository.On("Find", mock.Anything, "query").Return(issuedocument.IssueDocuments{}, findErr)
+	documentFinder.On("Find", mock.Anything, "query").Return(issuedocument.IssueDocuments{}, findErr)
 
-	service := search.NewSearcher(documentRepository, issueRepository)
+	service := search.NewSearcher(documentFinder, issueRepository)
 
 	_, err := service.SearchIssues(context.Background(), "query")
 
@@ -102,12 +84,12 @@ func Test_SearchIssues_FindRepositoryError_ReturnsWrappedError(t *testing.T) {
 func Test_SearchIssues_GetByIDsRepositoryError_ReturnsWrappedError(t *testing.T) {
 	getErr := errors.New("get by ids failed")
 	documents := issuedocument.NewIssueDocuments([]issuedocument.IssueDocument{{ID: uuid.New()}})
-	documentRepository := &mockIssueDocumentRepository{}
+	documentFinder := &mockIssueDocumentFinder{}
 	issueRepository := &mockIssueRepository{}
-	documentRepository.On("Find", mock.Anything, "query").Return(documents, nil)
+	documentFinder.On("Find", mock.Anything, "query").Return(documents, nil)
 	issueRepository.On("GetByIDs", mock.Anything, documents.IDs()).Return(nil, getErr)
 
-	service := search.NewSearcher(documentRepository, issueRepository)
+	service := search.NewSearcher(documentFinder, issueRepository)
 
 	_, err := service.SearchIssues(context.Background(), "query")
 

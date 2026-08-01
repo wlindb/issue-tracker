@@ -65,10 +65,5 @@ type IssueDocumentRepository interface {
 	Create(ctx context.Context, document IssueDocument) (IssueDocument, error)
 	Update(ctx context.Context, document IssueDocument) (IssueDocument, error)
 	Get(ctx context.Context, id uuid.UUID) (IssueDocument, error)
-	Find(ctx context.Context, description string) (IssueDocuments, error)
-}
-
-// EmbeddingGenerator generates a vector embedding for issue content.
-type EmbeddingGenerator interface {
-	GenerateEmbedding(ctx context.Context, title, description string) ([]float32, error)
+	Find(ctx context.Context, description string, embedding []float32) (IssueDocuments, error)
 }

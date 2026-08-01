@@ -32,8 +32,8 @@ func (m *mockIssueDocumentRepository) Update(ctx context.Context, document issue
 	return result, args.Error(1)
 }
 
-func (m *mockIssueDocumentRepository) Find(ctx context.Context, description string) (issuedocument.IssueDocuments, error) {
-	args := m.Called(ctx, description)
+func (m *mockIssueDocumentRepository) Find(ctx context.Context, description string, embedding []float32) (issuedocument.IssueDocuments, error) {
+	args := m.Called(ctx, description, embedding)
 	result, _ := args.Get(0).(issuedocument.IssueDocuments)
 	return result, args.Error(1)
 }
@@ -50,6 +50,12 @@ type mockEmbeddingGenerator struct {
 
 func (m *mockEmbeddingGenerator) GenerateEmbedding(ctx context.Context, title, description string) ([]float32, error) {
 	args := m.Called(ctx, title, description)
+	result, _ := args.Get(0).([]float32)
+	return result, args.Error(1)
+}
+
+func (m *mockEmbeddingGenerator) GenerateQueryEmbedding(ctx context.Context, query string) ([]float32, error) {
+	args := m.Called(ctx, query)
 	result, _ := args.Get(0).([]float32)
 	return result, args.Error(1)
 }
@@ -232,4 +238,63 @@ func Test_UpdateDescription_UpdateRepositoryError_ReturnsWrappedError(t *testing
 	err := service.UpdateDescription(context.Background(), id, "new description")
 	require.Error(t, err)
 	assert.ErrorIs(t, err, issuedocument.ErrUpdateConflict)
+}
+
+func Test_Find_ValidDescription_ReturnsIssueDocuments(t *testing.T) {
+	repository := &mockIssueDocumentRepository{}
+	embeddingGenerator := &mockEmbeddingGenerator{}
+	service := issuedocument.NewIssueDocumentService(repository, embeddingGenerator)
+
+	description := "database timeout"
+	embedding := []float32{0.1, 0.2, 0.3}
+	expected := issuedocument.NewIssueDocuments([]issuedocument.IssueDocument{{ID: uuid.New()}, {ID: uuid.New()}})
+
+	embeddingGenerator.On("GenerateQueryEmbedding", mock.Anything, description).Return(embedding, nil)
+	repository.On("Find", mock.Anything, description, embedding).Return(expected, nil)
+
+	actual, err := service.Find(context.Background(), description)
+
+	require.NoError(t, err)
+	assert.Equal(t, expected, actual)
+	embeddingGenerator.AssertExpectations(t)
+	repository.AssertExpectations(t)
+}
+
+func Test_Find_QueryEmbeddingGenerationError_ReturnsError(t *testing.T) {
+	repository := &mockIssueDocumentRepository{}
+	embeddingGenerator := &mockEmbeddingGenerator{}
+	service := issuedocument.NewIssueDocumentService(repository, embeddingGenerator)
+
+	description := "database timeout"
+	embeddingErr := errors.New("query embedding failed")
+	embeddingGenerator.On("GenerateQueryEmbedding", mock.Anything, description).Return(nil, embeddingErr)
+
+	_, err := service.Find(context.Background(), description)
+
+	require.Error(t, err)
+	assert.ErrorIs(t, err, embeddingErr)
+	assert.ErrorContains(t, err, "generate query embedding")
+	repository.AssertNotCalled(t, "Find", mock.Anything, mock.Anything, mock.Anything)
+	embeddingGenerator.AssertExpectations(t)
+}
+
+func Test_Find_RepositoryError_ReturnsError(t *testing.T) {
+	repository := &mockIssueDocumentRepository{}
+	embeddingGenerator := &mockEmbeddingGenerator{}
+	service := issuedocument.NewIssueDocumentService(repository, embeddingGenerator)
+
+	description := "database timeout"
+	embedding := []float32{0.1, 0.2, 0.3}
+	repositoryErr := errors.New("find failed")
+
+	embeddingGenerator.On("GenerateQueryEmbedding", mock.Anything, description).Return(embedding, nil)
+	repository.On("Find", mock.Anything, description, embedding).Return(issuedocument.IssueDocuments{}, repositoryErr)
+
+	_, err := service.Find(context.Background(), description)
+
+	require.Error(t, err)
+	assert.ErrorIs(t, err, repositoryErr)
+	assert.ErrorContains(t, err, "find issue documents")
+	embeddingGenerator.AssertExpectations(t)
+	repository.AssertExpectations(t)
 }
