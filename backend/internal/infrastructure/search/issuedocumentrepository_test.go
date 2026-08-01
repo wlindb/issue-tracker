@@ -12,6 +12,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/pgvector/pgvector-go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -55,6 +56,7 @@ func (r *mockIssueDocumentRow) Scan(dest ...any) error {
 	*(dest[3].(*string)) = r.document.Description
 	*(dest[4].(*pgtype.Timestamptz)) = r.document.CreatedAt
 	*(dest[5].(*pgtype.Timestamptz)) = r.document.UpdatedAt
+	*(dest[6].(**pgvector.Vector)) = r.document.Embedding
 	return nil
 }
 
@@ -85,6 +87,8 @@ func Test_Create_Success_ReturnsDomainIssueDocument(t *testing.T) {
 	id := uuid.New()
 	workspaceID := uuid.New()
 	now := time.Now().UTC()
+	embedding := []float32{0.1, 0.2, 0.3}
+	vector := pgvector.NewVector(embedding)
 
 	returnedRow := searchdb.IssueDocument{
 		ID:          id,
@@ -93,6 +97,7 @@ func Test_Create_Success_ReturnsDomainIssueDocument(t *testing.T) {
 		Description: "detailed description",
 		CreatedAt:   pgtype.Timestamptz{Time: now, Valid: true},
 		UpdatedAt:   pgtype.Timestamptz{Time: now, Valid: true},
+		Embedding:   &vector,
 	}
 
 	mockDatabase := new(mockDBTX)
@@ -105,12 +110,14 @@ func Test_Create_Success_ReturnsDomainIssueDocument(t *testing.T) {
 		ID:          id,
 		Title:       "Fix bug",
 		Description: "detailed description",
+		Embedding:   embedding,
 	})
 
 	require.NoError(t, err)
 	assert.Equal(t, id, actual.ID)
 	assert.Equal(t, "Fix bug", actual.Title)
 	assert.Equal(t, "detailed description", actual.Description)
+	assert.Equal(t, embedding, actual.Embedding)
 	mockDatabase.AssertExpectations(t)
 }
 

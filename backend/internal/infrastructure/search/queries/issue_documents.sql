@@ -1,6 +1,6 @@
 -- name: CreateIssueDocument :one
-INSERT INTO issue_documents (id, workspace_id, title, description, created_at, updated_at)
-VALUES (@id, current_setting('app.workspace_id')::uuid, @title, @description, NOW(), NOW())
+INSERT INTO issue_documents (id, workspace_id, title, description, embedding, created_at, updated_at)
+VALUES (@id, current_setting('app.workspace_id')::uuid, @title, @description, @embedding, NOW(), NOW())
 ON CONFLICT (id) DO NOTHING
 RETURNING *;
 

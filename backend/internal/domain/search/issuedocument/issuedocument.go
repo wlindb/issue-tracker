@@ -16,6 +16,15 @@ var (
 
 type IssueDocuments struct {
 	Documents []IssueDocument
+	rank      map[uuid.UUID]int
+}
+
+func NewIssueDocuments(documents []IssueDocument) IssueDocuments {
+	rank := make(map[uuid.UUID]int, len(documents))
+	for i, document := range documents {
+		rank[document.ID] = i
+	}
+	return IssueDocuments{Documents: documents, rank: rank}
 }
 
 func (documents IssueDocuments) IDs() []uuid.UUID {
@@ -26,19 +35,28 @@ func (documents IssueDocuments) IDs() []uuid.UUID {
 	return ids
 }
 
+// CompareRank reports the relative rank order of two issue document IDs within this result
+// set, suitable as a slices.SortFunc comparator: negative if firstID is a stronger match
+// (ranks before) secondID, positive if weaker, zero if equal or either ID is not present.
+func (documents IssueDocuments) CompareRank(firstID, secondID uuid.UUID) int {
+	return documents.rank[firstID] - documents.rank[secondID]
+}
+
 type IssueDocument struct {
 	ID          uuid.UUID
 	Title       string
 	Description string
 	UpdatedAt   time.Time
+	Embedding   []float32
 }
 
-func NewIssueDocument(id uuid.UUID, title string, description string, updatedAt time.Time) IssueDocument {
+func NewIssueDocument(id uuid.UUID, title string, description string, updatedAt time.Time, embedding []float32) IssueDocument {
 	return IssueDocument{
 		ID:          id,
 		Title:       title,
 		Description: description,
 		UpdatedAt:   updatedAt,
+		Embedding:   embedding,
 	}
 }
 
@@ -48,4 +66,9 @@ type IssueDocumentRepository interface {
 	Update(ctx context.Context, document IssueDocument) (IssueDocument, error)
 	Get(ctx context.Context, id uuid.UUID) (IssueDocument, error)
 	Find(ctx context.Context, description string) (IssueDocuments, error)
+}
+
+// EmbeddingGenerator generates a vector embedding for issue content.
+type EmbeddingGenerator interface {
+	GenerateEmbedding(ctx context.Context, title, description string) ([]float32, error)
 }

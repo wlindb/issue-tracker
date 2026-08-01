@@ -48,7 +48,7 @@ func TestMain(m *testing.M) {
 		fmt.Fprintf(os.Stderr, "start postgres: connect migration pool: %v\n", err)
 		os.Exit(1)
 	}
-	if err := search.Migrate(ctx, migrationPool); err != nil {
+	if err = search.Migrate(ctx, migrationPool); err != nil {
 		fmt.Fprintf(os.Stderr, "migrate: %v\n", err)
 		os.Exit(1)
 	}
@@ -71,6 +71,7 @@ func TestMain(m *testing.M) {
 				return id, nil
 			},
 		),
+		infradb.WithVectorTypes(),
 	)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "start postgres: connect app pool: %v\n", err)

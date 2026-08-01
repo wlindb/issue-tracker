@@ -7,6 +7,7 @@ package searchdb
 import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
+	pgvector "github.com/pgvector/pgvector-go"
 )
 
 type IssueDocument struct {
@@ -16,4 +17,5 @@ type IssueDocument struct {
 	Description string
 	CreatedAt   pgtype.Timestamptz
 	UpdatedAt   pgtype.Timestamptz
+	Embedding   *pgvector.Vector
 }

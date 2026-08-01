@@ -14,6 +14,11 @@ var ErrEmptyContent = errors.New("title and description are both empty")
 // ErrEmptyQuery is returned when the query is empty.
 var ErrEmptyQuery = errors.New("query is empty")
 
+// embeddingDimensions is the truncated output size requested from the Gemini embedding API.
+// gemini-embedding-2 auto-normalizes truncated embeddings, so no manual normalization is needed.
+// It must match the issue_documents.embedding column width (see migrations/002_add_embedding_to_issue_documents.sql).
+const embeddingDimensions int32 = 1536
+
 // EmbeddingGenerator generates vector embeddings for issue content.
 type EmbeddingGenerator interface {
 	GenerateEmbedding(ctx context.Context, title, description string) ([]float32, error)
@@ -92,8 +97,10 @@ func (g *GeminiEmbeddingGenerator) GenerateQueryEmbedding(ctx context.Context, q
 func (g *GeminiEmbeddingGenerator) embed(ctx context.Context, content, taskType string) ([]float32, error) {
 	var zero []float32
 
+	dimensions := embeddingDimensions
 	result, err := g.client.Models.EmbedContent(ctx, g.model, genai.Text(content), &genai.EmbedContentConfig{
-		TaskType: taskType,
+		TaskType:             taskType,
+		OutputDimensionality: &dimensions,
 	})
 	if err != nil {
 		return zero, fmt.Errorf("generate embedding: %w", err)

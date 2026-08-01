@@ -10,23 +10,30 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
+	pgvector "github.com/pgvector/pgvector-go"
 )
 
 const createIssueDocument = `-- name: CreateIssueDocument :one
-INSERT INTO issue_documents (id, workspace_id, title, description, created_at, updated_at)
-VALUES ($1, current_setting('app.workspace_id')::uuid, $2, $3, NOW(), NOW())
+INSERT INTO issue_documents (id, workspace_id, title, description, embedding, created_at, updated_at)
+VALUES ($1, current_setting('app.workspace_id')::uuid, $2, $3, $4, NOW(), NOW())
 ON CONFLICT (id) DO NOTHING
-RETURNING id, workspace_id, title, description, created_at, updated_at
+RETURNING id, workspace_id, title, description, created_at, updated_at, embedding
 `
 
 type CreateIssueDocumentParams struct {
 	ID          uuid.UUID
 	Title       string
 	Description string
+	Embedding   *pgvector.Vector
 }
 
 func (q *Queries) CreateIssueDocument(ctx context.Context, arg CreateIssueDocumentParams) (IssueDocument, error) {
-	row := q.db.QueryRow(ctx, createIssueDocument, arg.ID, arg.Title, arg.Description)
+	row := q.db.QueryRow(ctx, createIssueDocument,
+		arg.ID,
+		arg.Title,
+		arg.Description,
+		arg.Embedding,
+	)
 	var i IssueDocument
 	err := row.Scan(
 		&i.ID,
@@ -35,12 +42,13 @@ func (q *Queries) CreateIssueDocument(ctx context.Context, arg CreateIssueDocume
 		&i.Description,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Embedding,
 	)
 	return i, err
 }
 
 const findIssueDocumentsByDescription = `-- name: FindIssueDocumentsByDescription :many
-SELECT id, workspace_id, title, description, created_at, updated_at FROM issue_documents
+SELECT id, workspace_id, title, description, created_at, updated_at, embedding FROM issue_documents
 ORDER BY description <@> to_bm25query($1::text, 'issue_documents_description_bm25_idx')
 LIMIT 50
 `
@@ -61,6 +69,7 @@ func (q *Queries) FindIssueDocumentsByDescription(ctx context.Context, descripti
 			&i.Description,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.Embedding,
 		); err != nil {
 			return nil, err
 		}
@@ -73,7 +82,7 @@ func (q *Queries) FindIssueDocumentsByDescription(ctx context.Context, descripti
 }
 
 const getIssueDocument = `-- name: GetIssueDocument :one
-SELECT id, workspace_id, title, description, created_at, updated_at FROM issue_documents WHERE id = $1
+SELECT id, workspace_id, title, description, created_at, updated_at, embedding FROM issue_documents WHERE id = $1
 `
 
 func (q *Queries) GetIssueDocument(ctx context.Context, id uuid.UUID) (IssueDocument, error) {
@@ -86,12 +95,13 @@ func (q *Queries) GetIssueDocument(ctx context.Context, id uuid.UUID) (IssueDocu
 		&i.Description,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Embedding,
 	)
 	return i, err
 }
 
 const listIssueDocuments = `-- name: ListIssueDocuments :many
-SELECT id, workspace_id, title, description, created_at, updated_at FROM issue_documents
+SELECT id, workspace_id, title, description, created_at, updated_at, embedding FROM issue_documents
 WHERE workspace_id = $1
 ORDER BY created_at DESC
 `
@@ -112,6 +122,7 @@ func (q *Queries) ListIssueDocuments(ctx context.Context, workspaceID uuid.UUID)
 			&i.Description,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.Embedding,
 		); err != nil {
 			return nil, err
 		}
@@ -130,7 +141,7 @@ SET title       = $1,
     updated_at  = NOW()
 WHERE id = $3
   AND updated_at = $4
-RETURNING id, workspace_id, title, description, created_at, updated_at
+RETURNING id, workspace_id, title, description, created_at, updated_at, embedding
 `
 
 type UpdateIssueDocumentParams struct {
@@ -155,6 +166,7 @@ func (q *Queries) UpdateIssueDocument(ctx context.Context, arg UpdateIssueDocume
 		&i.Description,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Embedding,
 	)
 	return i, err
 }

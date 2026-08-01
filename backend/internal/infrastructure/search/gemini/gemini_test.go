@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -15,7 +16,7 @@ import (
 	"github.com/wlindb/issue-tracker/internal/infrastructure/search/gemini"
 )
 
-func embeddingServer(t *testing.T, statusCode int, values []float32) *httptest.Server {
+func embeddingServer(t *testing.T, statusCode int, values []float32) (*httptest.Server, *[]byte) {
 	t.Helper()
 	body, err := json.Marshal(map[string]any{
 		"embeddings": []map[string]any{
@@ -24,13 +25,15 @@ func embeddingServer(t *testing.T, statusCode int, values []float32) *httptest.S
 	})
 	require.NoError(t, err)
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+	var capturedRequestBody []byte
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		capturedRequestBody, _ = io.ReadAll(r.Body)
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(statusCode)
 		_, _ = w.Write(body)
 	}))
 	t.Cleanup(server.Close)
-	return server
+	return server, &capturedRequestBody
 }
 
 func newTestGenerator(t *testing.T, server *httptest.Server) *gemini.GeminiEmbeddingGenerator {
@@ -47,7 +50,7 @@ func newTestGenerator(t *testing.T, server *httptest.Server) *gemini.GeminiEmbed
 
 func Test_GenerateEmbedding_TitleAndDescription_ReturnsVector(t *testing.T) {
 	expected := []float32{0.1, 0.2, 0.3, 0.4}
-	server := embeddingServer(t, http.StatusOK, expected)
+	server, _ := embeddingServer(t, http.StatusOK, expected)
 
 	generator := newTestGenerator(t, server)
 
@@ -57,8 +60,19 @@ func Test_GenerateEmbedding_TitleAndDescription_ReturnsVector(t *testing.T) {
 	assert.Equal(t, expected, actual)
 }
 
+func Test_GenerateEmbedding_TitleAndDescription_RequestsTruncatedOutputDimensionality(t *testing.T) {
+	server, capturedRequestBody := embeddingServer(t, http.StatusOK, []float32{0.1})
+
+	generator := newTestGenerator(t, server)
+
+	_, err := generator.GenerateEmbedding(context.Background(), "Test Title", "Test description body")
+
+	require.NoError(t, err)
+	assert.Contains(t, string(*capturedRequestBody), `"outputDimensionality":1536`)
+}
+
 func Test_GenerateEmbedding_EmptyTitleAndDescription_ReturnsError(t *testing.T) {
-	server := embeddingServer(t, http.StatusOK, nil)
+	server, _ := embeddingServer(t, http.StatusOK, nil)
 
 	generator := newTestGenerator(t, server)
 
@@ -69,7 +83,7 @@ func Test_GenerateEmbedding_EmptyTitleAndDescription_ReturnsError(t *testing.T) 
 }
 
 func Test_GenerateEmbedding_ServerError_ReturnsError(t *testing.T) {
-	server := embeddingServer(t, http.StatusInternalServerError, nil)
+	server, _ := embeddingServer(t, http.StatusInternalServerError, nil)
 
 	generator := newTestGenerator(t, server)
 
@@ -80,7 +94,7 @@ func Test_GenerateEmbedding_ServerError_ReturnsError(t *testing.T) {
 
 func Test_GenerateQueryEmbedding_ValidQuery_ReturnsVector(t *testing.T) {
 	expected := []float32{0.1, 0.2, 0.3, 0.4}
-	server := embeddingServer(t, http.StatusOK, expected)
+	server, _ := embeddingServer(t, http.StatusOK, expected)
 
 	generator := newTestGenerator(t, server)
 
@@ -90,8 +104,19 @@ func Test_GenerateQueryEmbedding_ValidQuery_ReturnsVector(t *testing.T) {
 	assert.Equal(t, expected, actual)
 }
 
+func Test_GenerateQueryEmbedding_ValidQuery_RequestsTruncatedOutputDimensionality(t *testing.T) {
+	server, capturedRequestBody := embeddingServer(t, http.StatusOK, []float32{0.1})
+
+	generator := newTestGenerator(t, server)
+
+	_, err := generator.GenerateQueryEmbedding(context.Background(), "Test query")
+
+	require.NoError(t, err)
+	assert.Contains(t, string(*capturedRequestBody), `"outputDimensionality":1536`)
+}
+
 func Test_GenerateQueryEmbedding_EmptyQuery_ReturnsError(t *testing.T) {
-	server := embeddingServer(t, http.StatusOK, nil)
+	server, _ := embeddingServer(t, http.StatusOK, nil)
 
 	generator := newTestGenerator(t, server)
 
@@ -102,7 +127,7 @@ func Test_GenerateQueryEmbedding_EmptyQuery_ReturnsError(t *testing.T) {
 }
 
 func Test_GenerateQueryEmbedding_ServerError_ReturnsError(t *testing.T) {
-	server := embeddingServer(t, http.StatusInternalServerError, nil)
+	server, _ := embeddingServer(t, http.StatusInternalServerError, nil)
 
 	generator := newTestGenerator(t, server)
 
