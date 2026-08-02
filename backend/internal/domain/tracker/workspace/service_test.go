@@ -51,6 +51,11 @@ func (m *mockWorkspaceRepository) ListMembers(ctx context.Context, workspaceID u
 	return members, args.Error(1)
 }
 
+func (m *mockWorkspaceRepository) AddMember(ctx context.Context, workspaceID uuid.UUID, userID uuid.UUID) error {
+	args := m.Called(ctx, workspaceID, userID)
+	return args.Error(0)
+}
+
 func Test_Create_ValidWorkspace_ReturnsWorkspace(t *testing.T) {
 	repository := &mockWorkspaceRepository{}
 	ownerID := uuid.New()
@@ -191,6 +196,34 @@ func Test_IsMember_RepositoryError_ReturnsWrappedError(t *testing.T) {
 
 	service := workspace.NewWorkspaceService(repository)
 	_, err := service.IsMember(context.Background(), workspaceID, userID)
+
+	require.Error(t, err)
+	assert.ErrorIs(t, err, repoErr)
+	repository.AssertExpectations(t)
+}
+
+func Test_AddMember_ValidIDs_AddsMember(t *testing.T) {
+	repository := &mockWorkspaceRepository{}
+	workspaceID, userID := uuid.New(), uuid.New()
+
+	repository.On("AddMember", mock.Anything, workspaceID, userID).Return(nil)
+
+	service := workspace.NewWorkspaceService(repository)
+	err := service.AddMember(context.Background(), workspaceID, userID)
+
+	require.NoError(t, err)
+	repository.AssertExpectations(t)
+}
+
+func Test_AddMember_RepositoryError_ReturnsWrappedError(t *testing.T) {
+	repository := &mockWorkspaceRepository{}
+	workspaceID, userID := uuid.New(), uuid.New()
+	repoErr := errors.New("db down")
+
+	repository.On("AddMember", mock.Anything, workspaceID, userID).Return(repoErr)
+
+	service := workspace.NewWorkspaceService(repository)
+	err := service.AddMember(context.Background(), workspaceID, userID)
 
 	require.Error(t, err)
 	assert.ErrorIs(t, err, repoErr)

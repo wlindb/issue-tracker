@@ -112,3 +112,14 @@ func (r *WorkspaceRepository) IsMember(ctx context.Context, workspaceID uuid.UUI
 	}
 	return member, nil
 }
+
+// AddMember inserts userID as a member of workspaceID.
+func (r *WorkspaceRepository) AddMember(ctx context.Context, workspaceID uuid.UUID, userID uuid.UUID) error {
+	if err := r.queries.InsertWorkspaceMember(ctx, trackerdb.InsertWorkspaceMemberParams{
+		WorkspaceID: workspaceID,
+		UserID:      userID,
+	}); err != nil {
+		return fmt.Errorf("add workspace member: %w", err)
+	}
+	return nil
+}
