@@ -9,8 +9,8 @@ import (
 )
 
 type InvitationCreatedEvent struct {
-	OccurredAt time.Time  `json:"occurred_at"`
-	Payload    Invitation `json:"payload"`
+	OccurredAt time.Time
+	Payload    Invitation
 }
 
 var Created = event.New[InvitationCreatedEvent]()
