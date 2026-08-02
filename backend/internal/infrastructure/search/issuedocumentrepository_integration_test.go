@@ -4,6 +4,7 @@ package search_test
 
 import (
 	"context"
+	"slices"
 	"testing"
 
 	"github.com/google/uuid"
@@ -20,6 +21,14 @@ func testEmbedding() []float32 {
 	embedding := make([]float32, 1536)
 	for i := range embedding {
 		embedding[i] = 0.1
+	}
+	return embedding
+}
+
+func testEmbeddingWithPrefix(values ...float32) []float32 {
+	embedding := make([]float32, 1536)
+	for i, value := range values {
+		embedding[i] = value
 	}
 	return embedding
 }
@@ -186,7 +195,7 @@ func Test_Find_MatchingDescription_ReturnsIssueDocuments(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	actual, err := repository.Find(ctx, "database")
+	actual, err := repository.Find(ctx, "database", testEmbedding())
 
 	require.NoError(t, err)
 	assert.NotEmpty(t, actual.Documents)
@@ -195,7 +204,7 @@ func Test_Find_MatchingDescription_ReturnsIssueDocuments(t *testing.T) {
 func Test_Find_NoMatch_ReturnsEmptySlice(t *testing.T) {
 	repository := search.NewIssueDocumentRepository(testPool)
 
-	actual, err := repository.Find(withWorkspaceContext(uuid.New(), uuid.New()), "zzz-no-match-"+uuid.New().String())
+	actual, err := repository.Find(withWorkspaceContext(uuid.New(), uuid.New()), "zzz-no-match-"+uuid.New().String(), testEmbedding())
 
 	require.NoError(t, err)
 	assert.Empty(t, actual)
@@ -209,10 +218,129 @@ func Test_Find_NullEmbedding_ReturnsIssueDocuments(t *testing.T) {
 	insertIssueDocumentWithoutEmbedding(t, ctx, id, "Legacy issue", "no embedding was ever generated for this row")
 
 	repository := search.NewIssueDocumentRepository(testPool)
-	actual, err := repository.Find(ctx, "no embedding was ever generated")
+	actual, err := repository.Find(ctx, "no embedding was ever generated", testEmbedding())
 
 	require.NoError(t, err)
 	assert.Contains(t, actual.IDs(), id)
+}
+
+func Test_Find_HybridRanking_ReturnsCombinedResultsInScoreOrder(t *testing.T) {
+	repository := search.NewIssueDocumentRepository(testPool)
+	ctx := withWorkspaceContext(uuid.New(), uuid.New())
+	queryEmbedding := testEmbeddingWithPrefix(1, 0)
+
+	hybridID := uuid.New()
+	semanticOnlyID := uuid.New()
+	keywordOnlyID := uuid.New()
+
+	_, err := repository.Create(ctx, issuedocumentdomain.IssueDocument{
+		ID:          hybridID,
+		Title:       "Hybrid match",
+		Description: "database timeout during report generation",
+		Embedding:   testEmbeddingWithPrefix(1, 0),
+	})
+	require.NoError(t, err)
+
+	_, err = repository.Create(ctx, issuedocumentdomain.IssueDocument{
+		ID:          semanticOnlyID,
+		Title:       "Semantic match",
+		Description: "request latency spike during API calls",
+		Embedding:   testEmbeddingWithPrefix(0.8, 0.2),
+	})
+	require.NoError(t, err)
+
+	_, err = repository.Create(ctx, issuedocumentdomain.IssueDocument{
+		ID:          keywordOnlyID,
+		Title:       "Keyword match",
+		Description: "database timeout after deploy",
+		Embedding:   testEmbeddingWithPrefix(0, 1),
+	})
+	require.NoError(t, err)
+
+	actual, err := repository.Find(ctx, "database timeout", queryEmbedding)
+
+	require.NoError(t, err)
+	ids := actual.IDs()
+	require.Contains(t, ids, hybridID)
+	require.Contains(t, ids, semanticOnlyID)
+	require.Contains(t, ids, keywordOnlyID)
+	assert.Equal(t, hybridID, ids[0])
+	assert.Less(t, slices.Index(ids, keywordOnlyID), slices.Index(ids, semanticOnlyID))
+}
+
+// Test_Find_NoKeywordOverlapAcrossAllDocuments_RanksBySemanticSimilarityOnly is a regression test
+// for a bug where the keyword_search CTE had no predicate excluding documents with zero real BM25
+// relevance to the query. The pg_textsearch <@> operator returns exactly 0 as a "no match"
+// sentinel for every row when the query shares no words with any indexed description, and without
+// a match predicate, ROW_NUMBER() still assigned every such row an arbitrary (tie-break-order)
+// keyword rank, contributing a phantom nonzero term to combined_score regardless of true
+// relevance. That let a document with no real relevance to the query outrank a document that was
+// genuinely closer by vector similarity.
+func Test_Find_NoKeywordOverlapAcrossAllDocuments_RanksBySemanticSimilarityOnly(t *testing.T) {
+	repository := search.NewIssueDocumentRepository(testPool)
+	ctx := withWorkspaceContext(uuid.New(), uuid.New())
+	queryEmbedding := testEmbeddingWithPrefix(1, 0)
+
+	closerVectorID := uuid.New()
+	fartherVectorID := uuid.New()
+
+	_, err := repository.Create(ctx, issuedocumentdomain.IssueDocument{
+		ID:          closerVectorID,
+		Title:       "Pentest",
+		Description: "penetration testing",
+		Embedding:   testEmbeddingWithPrefix(1, 0),
+	})
+	require.NoError(t, err)
+
+	_, err = repository.Create(ctx, issuedocumentdomain.IssueDocument{
+		ID:          fartherVectorID,
+		Title:       "Arch",
+		Description: "software design and architecture",
+		Embedding:   testEmbeddingWithPrefix(0, 1),
+	})
+	require.NoError(t, err)
+
+	actual, err := repository.Find(ctx, "hacking", queryEmbedding)
+
+	require.NoError(t, err)
+	ids := actual.IDs()
+	require.Contains(t, ids, closerVectorID)
+	require.Contains(t, ids, fartherVectorID)
+	assert.Less(t, slices.Index(ids, closerVectorID), slices.Index(ids, fartherVectorID))
+}
+
+func Test_Find_DifferentWorkspaceDocument_DoesNotReturnResult(t *testing.T) {
+	repository := search.NewIssueDocumentRepository(testPool)
+	workspaceID := uuid.New()
+	queryEmbedding := testEmbeddingWithPrefix(1, 0)
+
+	visibleCtx := withWorkspaceContext(workspaceID, uuid.New())
+	hiddenCtx := withWorkspaceContext(uuid.New(), uuid.New())
+
+	visibleID := uuid.New()
+	hiddenID := uuid.New()
+
+	_, err := repository.Create(visibleCtx, issuedocumentdomain.IssueDocument{
+		ID:          visibleID,
+		Title:       "Visible issue",
+		Description: "database timeout in billing service",
+		Embedding:   queryEmbedding,
+	})
+	require.NoError(t, err)
+
+	_, err = repository.Create(hiddenCtx, issuedocumentdomain.IssueDocument{
+		ID:          hiddenID,
+		Title:       "Hidden issue",
+		Description: "database timeout in billing service",
+		Embedding:   queryEmbedding,
+	})
+	require.NoError(t, err)
+
+	actual, err := repository.Find(visibleCtx, "database timeout", queryEmbedding)
+
+	require.NoError(t, err)
+	assert.Contains(t, actual.IDs(), visibleID)
+	assert.NotContains(t, actual.IDs(), hiddenID)
 }
 
 // insertIssueDocumentWithoutEmbedding inserts an issue_documents row leaving embedding as SQL NULL,

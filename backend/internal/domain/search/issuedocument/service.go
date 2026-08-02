@@ -8,13 +8,22 @@ import (
 	"github.com/google/uuid"
 )
 
+// EmbeddingGenerator generates vector embeddings for issue content and search queries.
+type EmbeddingGenerator interface {
+	GenerateEmbedding(ctx context.Context, title, description string) ([]float32, error)
+	GenerateQueryEmbedding(ctx context.Context, query string) ([]float32, error)
+}
+
 type IssueDocumentService struct {
 	repository         IssueDocumentRepository
 	embeddingGenerator EmbeddingGenerator
 }
 
 func NewIssueDocumentService(repository IssueDocumentRepository, embeddingGenerator EmbeddingGenerator) *IssueDocumentService {
-	return &IssueDocumentService{repository: repository, embeddingGenerator: embeddingGenerator}
+	return &IssueDocumentService{
+		repository:         repository,
+		embeddingGenerator: embeddingGenerator,
+	}
 }
 
 func (s *IssueDocumentService) Create(ctx context.Context, id uuid.UUID, title string, description string, updatedAt time.Time) error {
@@ -69,4 +78,17 @@ func (s *IssueDocumentService) UpdateDescription(ctx context.Context, id uuid.UU
 		return fmt.Errorf("update issue document description: %w", err)
 	}
 	return nil
+}
+
+func (s *IssueDocumentService) Find(ctx context.Context, description string) (IssueDocuments, error) {
+	embedding, err := s.embeddingGenerator.GenerateQueryEmbedding(ctx, description)
+	if err != nil {
+		return IssueDocuments{}, fmt.Errorf("generate query embedding: %w", err)
+	}
+
+	documents, err := s.repository.Find(ctx, description, embedding)
+	if err != nil {
+		return IssueDocuments{}, fmt.Errorf("find issue documents: %w", err)
+	}
+	return documents, nil
 }

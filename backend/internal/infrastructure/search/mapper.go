@@ -30,6 +30,28 @@ func issueDocumentsToDomain(rows []searchdb.IssueDocument) issuedocumentdomain.I
 	return issuedocumentdomain.NewIssueDocuments(documents)
 }
 
+func issueDocumentSearchRowToDomain(row searchdb.FindIssueDocumentsByDescriptionRow) issuedocumentdomain.IssueDocument {
+	var embedding []float32
+	if row.Embedding != nil {
+		embedding = row.Embedding.Slice()
+	}
+	return issuedocumentdomain.IssueDocument{
+		ID:          row.ID,
+		Title:       row.Title,
+		Description: row.Description,
+		UpdatedAt:   row.UpdatedAt.Time,
+		Embedding:   embedding,
+	}
+}
+
+func issueDocumentSearchRowsToDomain(rows []searchdb.FindIssueDocumentsByDescriptionRow) issuedocumentdomain.IssueDocuments {
+	documents := make([]issuedocumentdomain.IssueDocument, len(rows))
+	for i, row := range rows {
+		documents[i] = issueDocumentSearchRowToDomain(row)
+	}
+	return issuedocumentdomain.NewIssueDocuments(documents)
+}
+
 func createIssueDocumentParamsFromDomain(document issuedocumentdomain.IssueDocument) searchdb.CreateIssueDocumentParams {
 	embedding := pgvector.NewVector(document.Embedding)
 	return searchdb.CreateIssueDocumentParams{

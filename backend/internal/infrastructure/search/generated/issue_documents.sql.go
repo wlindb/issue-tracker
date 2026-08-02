@@ -48,20 +48,59 @@ func (q *Queries) CreateIssueDocument(ctx context.Context, arg CreateIssueDocume
 }
 
 const findIssueDocumentsByDescription = `-- name: FindIssueDocumentsByDescription :many
-SELECT id, workspace_id, title, description, created_at, updated_at, embedding FROM issue_documents
-ORDER BY description <@> to_bm25query($1::text, 'issue_documents_description_bm25_idx')
-LIMIT 50
+WITH vector_search AS (
+    SELECT id,
+           ROW_NUMBER() OVER (ORDER BY embedding <=> $1::vector) AS rank
+    FROM issue_documents
+    WHERE workspace_id = current_setting('app.workspace_id')::uuid
+      AND embedding IS NOT NULL
+    ORDER BY embedding <=> $1::vector
+    LIMIT 20
+),
+keyword_search AS (
+    SELECT id,
+           ROW_NUMBER() OVER (ORDER BY description <@> to_bm25query($2::text, 'issue_documents_description_bm25_idx')) AS rank
+    FROM issue_documents
+    WHERE workspace_id = current_setting('app.workspace_id')::uuid
+      AND description <@> to_bm25query($2::text, 'issue_documents_description_bm25_idx') < 0
+    ORDER BY description <@> to_bm25query($2::text, 'issue_documents_description_bm25_idx')
+    LIMIT 20
+)
+SELECT d.id, d.workspace_id, d.title, d.description, d.created_at, d.updated_at, d.embedding,
+       (COALESCE(1.0 / (60 + v.rank), 0.0) + COALESCE(1.0 / (60 + k.rank), 0.0))::double precision AS combined_score
+FROM issue_documents d
+LEFT JOIN vector_search v ON d.id = v.id
+LEFT JOIN keyword_search k ON d.id = k.id
+WHERE v.id IS NOT NULL OR k.id IS NOT NULL
+ORDER BY combined_score DESC
+LIMIT 10
 `
 
-func (q *Queries) FindIssueDocumentsByDescription(ctx context.Context, description string) ([]IssueDocument, error) {
-	rows, err := q.db.Query(ctx, findIssueDocumentsByDescription, description)
+type FindIssueDocumentsByDescriptionParams struct {
+	Embedding   pgvector.Vector
+	Description string
+}
+
+type FindIssueDocumentsByDescriptionRow struct {
+	ID            uuid.UUID
+	WorkspaceID   uuid.UUID
+	Title         string
+	Description   string
+	CreatedAt     pgtype.Timestamptz
+	UpdatedAt     pgtype.Timestamptz
+	Embedding     *pgvector.Vector
+	CombinedScore float64
+}
+
+func (q *Queries) FindIssueDocumentsByDescription(ctx context.Context, arg FindIssueDocumentsByDescriptionParams) ([]FindIssueDocumentsByDescriptionRow, error) {
+	rows, err := q.db.Query(ctx, findIssueDocumentsByDescription, arg.Embedding, arg.Description)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []IssueDocument
+	var items []FindIssueDocumentsByDescriptionRow
 	for rows.Next() {
-		var i IssueDocument
+		var i FindIssueDocumentsByDescriptionRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.WorkspaceID,
@@ -70,6 +109,7 @@ func (q *Queries) FindIssueDocumentsByDescription(ctx context.Context, descripti
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.Embedding,
+			&i.CombinedScore,
 		); err != nil {
 			return nil, err
 		}

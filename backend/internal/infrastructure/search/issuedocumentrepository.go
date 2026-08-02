@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/pgvector/pgvector-go"
 
 	issuedocumentdomain "github.com/wlindb/issue-tracker/internal/domain/search/issuedocument"
 	searchdb "github.com/wlindb/issue-tracker/internal/infrastructure/search/generated"
@@ -67,14 +68,17 @@ func (r *IssueDocumentRepository) Get(ctx context.Context, id uuid.UUID) (issued
 	return issueDocumentToDomain(row), nil
 }
 
-func (r *IssueDocumentRepository) Find(ctx context.Context, description string) (issuedocumentdomain.IssueDocuments, error) {
+func (r *IssueDocumentRepository) Find(ctx context.Context, description string, embedding []float32) (issuedocumentdomain.IssueDocuments, error) {
 	queries := searchdb.New(r.db)
-	rows, err := queries.FindIssueDocumentsByDescription(ctx, description)
+	rows, err := queries.FindIssueDocumentsByDescription(ctx, searchdb.FindIssueDocumentsByDescriptionParams{
+		Description: description,
+		Embedding:   pgvector.NewVector(embedding),
+	})
 	if err != nil {
 		return issuedocumentdomain.IssueDocuments{}, fmt.Errorf("find issue documents by description: %w", err)
 	}
 	if len(rows) == 0 {
 		return issuedocumentdomain.IssueDocuments{}, nil
 	}
-	return issueDocumentsToDomain(rows), nil
+	return issueDocumentSearchRowsToDomain(rows), nil
 }

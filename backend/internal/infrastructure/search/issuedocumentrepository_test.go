@@ -61,7 +61,7 @@ func (r *mockIssueDocumentRow) Scan(dest ...any) error {
 }
 
 type mockIssueDocumentRows struct {
-	documents []searchdb.IssueDocument
+	documents []searchdb.FindIssueDocumentsByDescriptionRow
 	index     int
 }
 
@@ -78,7 +78,16 @@ func (r *mockIssueDocumentRows) Next() bool {
 }
 
 func (r *mockIssueDocumentRows) Scan(dest ...any) error {
-	return (&mockIssueDocumentRow{document: r.documents[r.index-1]}).Scan(dest...)
+	document := r.documents[r.index-1]
+	*(dest[0].(*uuid.UUID)) = document.ID
+	*(dest[1].(*uuid.UUID)) = document.WorkspaceID
+	*(dest[2].(*string)) = document.Title
+	*(dest[3].(*string)) = document.Description
+	*(dest[4].(*pgtype.Timestamptz)) = document.CreatedAt
+	*(dest[5].(*pgtype.Timestamptz)) = document.UpdatedAt
+	*(dest[6].(**pgvector.Vector)) = document.Embedding
+	*(dest[7].(*float64)) = document.CombinedScore
+	return nil
 }
 
 // — Create unit tests —
@@ -303,10 +312,11 @@ func Test_Find_Success_ReturnsDomainIssueDocuments(t *testing.T) {
 	now := time.Now().UTC()
 	firstID, secondID := uuid.New(), uuid.New()
 	workspaceID := uuid.New()
+	embedding := []float32{0.1, 0.2, 0.3}
 
-	returnedRows := []searchdb.IssueDocument{
-		{ID: firstID, WorkspaceID: workspaceID, Title: "First", Description: "backend issue", CreatedAt: pgtype.Timestamptz{Time: now, Valid: true}, UpdatedAt: pgtype.Timestamptz{Time: now, Valid: true}},
-		{ID: secondID, WorkspaceID: workspaceID, Title: "Second", Description: "backend fix", CreatedAt: pgtype.Timestamptz{Time: now, Valid: true}, UpdatedAt: pgtype.Timestamptz{Time: now, Valid: true}},
+	returnedRows := []searchdb.FindIssueDocumentsByDescriptionRow{
+		{ID: firstID, WorkspaceID: workspaceID, Title: "First", Description: "backend issue", CreatedAt: pgtype.Timestamptz{Time: now, Valid: true}, UpdatedAt: pgtype.Timestamptz{Time: now, Valid: true}, CombinedScore: 2.0},
+		{ID: secondID, WorkspaceID: workspaceID, Title: "Second", Description: "backend fix", CreatedAt: pgtype.Timestamptz{Time: now, Valid: true}, UpdatedAt: pgtype.Timestamptz{Time: now, Valid: true}, CombinedScore: 1.0},
 	}
 
 	mockDatabase := new(mockDBTX)
@@ -315,7 +325,7 @@ func Test_Find_Success_ReturnsDomainIssueDocuments(t *testing.T) {
 
 	repository := &IssueDocumentRepository{db: mockDatabase}
 
-	actual, err := repository.Find(context.Background(), "backend")
+	actual, err := repository.Find(context.Background(), "backend", embedding)
 
 	require.NoError(t, err)
 	require.Len(t, actual.Documents, 2)
@@ -331,7 +341,7 @@ func Test_Find_EmptyResult_ReturnsEmptySlice(t *testing.T) {
 
 	repository := &IssueDocumentRepository{db: mockDatabase}
 
-	actual, err := repository.Find(context.Background(), "nonexistent")
+	actual, err := repository.Find(context.Background(), "nonexistent", []float32{0.1, 0.2, 0.3})
 
 	require.NoError(t, err)
 	assert.NotNil(t, actual)
@@ -348,7 +358,7 @@ func Test_Find_QueryError_ReturnsWrappedError(t *testing.T) {
 
 	repository := &IssueDocumentRepository{db: mockDatabase}
 
-	_, err := repository.Find(context.Background(), "backend")
+	_, err := repository.Find(context.Background(), "backend", []float32{0.1, 0.2, 0.3})
 
 	require.Error(t, err)
 	assert.ErrorIs(t, err, dbErr)

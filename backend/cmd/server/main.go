@@ -104,7 +104,7 @@ func run() error {
 		return fmt.Errorf("nats auth callout: %w", err)
 	}
 
-	h := newHandler(pool, issueDocumentRepository, tracer, workspaceService)
+	h := newHandler(pool, issueDocumentService, tracer, workspaceService)
 
 	e, err := newServer(h, cfg, workspaceService)
 	if err != nil {
@@ -302,7 +302,7 @@ func newSearchPool(searchDatabaseURL string) (*pgxpool.Pool, error) {
 	return searchPool, nil
 }
 
-func newHandler(pool *pgxpool.Pool, issueDocumentRepository issuedocumentdomain.IssueDocumentRepository, tracer trace.Tracer, workspaceService *workspacedomain.WorkspaceService) *api.Handler {
+func newHandler(pool *pgxpool.Pool, issueDocumentService *issuedocumentdomain.IssueDocumentService, tracer trace.Tracer, workspaceService *workspacedomain.WorkspaceService) *api.Handler {
 	projectRepository := trackerinfra.NewTracingProjectRepository(
 		trackerinfra.NewProjectRepository(pool),
 		tracer,
@@ -330,7 +330,7 @@ func newHandler(pool *pgxpool.Pool, issueDocumentRepository issuedocumentdomain.
 
 	issueApplicationService := tracker.NewIssueService(issueRepository)
 
-	searchService := searchapi.NewSearcher(issueDocumentRepository, &issueApplicationService)
+	searchService := searchapi.NewSearcher(issueDocumentService, &issueApplicationService)
 
 	return &api.Handler{
 		Handler: trackerapi.Handler{
